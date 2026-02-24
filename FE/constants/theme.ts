@@ -1,11 +1,48 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Food App Theme - Modern & Professional
+ * Color palette inspired by warm food tones
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
+// Primary Colors
+export const AppColors = {
+  primary: '#FF6B35',        // Warm Orange
+  primaryDark: '#E55A2B',
+  primaryLight: '#FF8F65',
+  secondary: '#2D6A4F',      // Deep Forest Green
+  secondaryLight: '#40916C',
+  accent: '#FFB627',         // Golden Yellow
+  accentLight: '#FFC857',
+
+  // Neutrals
+  white: '#FFFFFF',
+  offWhite: '#FAFAFA',
+  lightGray: '#F5F5F5',
+  gray: '#9CA3AF',
+  darkGray: '#4B5563',
+  charcoal: '#1F2937',
+  dark: '#111827',
+  black: '#000000',
+
+  // Semantic
+  success: '#10B981',
+  error: '#EF4444',
+  warning: '#F59E0B',
+
+  // Gradients
+  gradientPrimary: ['#FF6B35', '#FF8F65', '#FFB627'] as const,
+  gradientDark: ['#1F2937', '#111827', '#0B0F14'] as const,
+  gradientHero: ['#FF6B35', '#E55A2B', '#C44A20'] as const,
+  gradientGreen: ['#2D6A4F', '#40916C', '#52B788'] as const,
+  gradientAuth: ['#FF6B35', '#FF8F65', '#FFB627', '#FFC857'] as const,
+
+  // Shadows
+  shadowColor: 'rgba(0, 0, 0, 0.1)',
+  shadowColorDark: 'rgba(0, 0, 0, 0.25)',
+};
+
+const tintColorLight = AppColors.primary;
 const tintColorDark = '#fff';
 
 export const Colors = {
@@ -29,13 +66,9 @@ export const Colors = {
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
@@ -51,3 +84,20 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
+
+export const Spacing = {
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 48,
+};
+
+export const BorderRadius = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  full: 9999,
+};
