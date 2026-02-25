@@ -21,6 +21,7 @@ const formatUserResponse = (user) => ({
     avatar: user.avatar || "",
     role: user.role,
     authProvider: user.authProvider,
+    address: user.address || "",
 });
 
 /**
@@ -254,10 +255,28 @@ const getUserProfile = async (userId) => {
     return user;
 };
 
+/**
+ * Update user profile
+ */
+const updateUserProfile = async (userId, updateData) => {
+    const user = await User.findByIdAndUpdate(
+        userId,
+        { $set: updateData },
+        { new: true, runValidators: true }
+    );
+    if (!user) {
+        const error = new Error("User not found");
+        error.statusCode = 404;
+        throw error;
+    }
+    return user;
+};
+
 module.exports = {
     registerUser,
     loginUser,
     socialLogin,
     getUserProfile,
+    updateUserProfile,
     generateToken,
 };

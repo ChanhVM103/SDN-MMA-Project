@@ -22,12 +22,13 @@ export const apiRequest = async (
 ) => {
     const url = `${API_BASE_URL}${endpoint}`;
 
+    const { headers: optionHeaders, ...restOptions } = options;
     const config: RequestInit = {
+        ...restOptions,
         headers: {
             "Content-Type": "application/json",
-            ...options.headers,
+            ...optionHeaders,
         },
-        ...options,
     };
 
     try {
@@ -94,5 +95,14 @@ export const authAPI = {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
+        }),
+
+    updateProfile: (token: string, body: { fullName?: string; phone?: string; address?: string }) =>
+        apiRequest("/auth/profile", {
+            method: "PUT",
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(body),
         }),
 };

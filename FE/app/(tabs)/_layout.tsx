@@ -3,7 +3,6 @@ import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { AppColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,7 +41,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Trang chủ',
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeIcon : undefined}>
               <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
@@ -51,16 +50,51 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="orders"
         options={{
-          title: 'Explore',
+          title: 'Đơn hàng',
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeIcon : undefined}>
-              <Ionicons name={focused ? 'compass' : 'compass-outline'} size={24} color={color} />
+              <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={24} color={color} />
             </View>
           ),
         }}
       />
+      <Tabs.Screen
+        name="favorites"
+        options={{
+          title: 'Đã thích',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? styles.activeIcon : undefined}>
+              <Ionicons name={focused ? 'heart' : 'heart-outline'} size={24} color={color} />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          title: 'Thông báo',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? styles.activeIcon : undefined}>
+              <Ionicons name={focused ? 'notifications' : 'notifications-outline'} size={24} color={color} />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Tôi',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? styles.activeIcon : undefined}>
+              <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+            </View>
+          ),
+        }}
+      />
+      {/* Hide explore tab from bottom bar */}
+      <Tabs.Screen name="explore" options={{ href: null }} />
     </Tabs>
   );
 }
