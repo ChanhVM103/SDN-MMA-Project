@@ -14,12 +14,14 @@ import { makeRedirectUri } from 'expo-auth-session';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { authAPI } from '@/constants/api';
 import { GOOGLE_CONFIG, FACEBOOK_CONFIG } from '@/constants/auth-config';
+import { useAuth } from '@/constants/auth-context';
 
 WebBrowser.maybeCompleteAuthSession();
 const { height } = Dimensions.get('window');
 
 export default function SignInScreen() {
     const router = useRouter();
+    const auth = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -84,10 +86,10 @@ export default function SignInScreen() {
 
     const validateForm = (): boolean => {
         const e: { email?: string; password?: string } = {};
-        if (!email.trim()) e.email = 'Email is required';
-        else if (!/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(email)) e.email = 'Please enter a valid email';
-        if (!password) e.password = 'Password is required';
-        else if (password.length < 6) e.password = 'Password must be at least 6 characters';
+        if (!email.trim()) e.email = 'Vui lòng nhập email';
+        else if (!/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(email)) e.email = 'Email không hợp lệ';
+        if (!password) e.password = 'Vui lòng nhập mật khẩu';
+        else if (password.length < 6) e.password = 'Mật khẩu phải có ít nhất 6 ký tự';
         setErrors(e);
         return Object.keys(e).length === 0;
     };
@@ -109,11 +111,12 @@ export default function SignInScreen() {
             const fn = provider === 'google' ? authAPI.googleLogin : authAPI.facebookLogin;
             const res = await fn(accessToken);
             if (res.success) {
-                showToast(`🎉 Welcome, ${res.data.user.fullName}!`, 'success', true);
+                await auth.login(res.data.user, res.data.token);
+                showToast(`🎉 Chào mừng, ${res.data.user.fullName}!`, 'success', true);
             }
         } catch (error: any) {
             triggerShake();
-            showToast(error.message || 'Login failed', 'error');
+            showToast(error.message || 'Đăng nhập thất bại', 'error');
         } finally {
             setSocialLoading(null);
         }
@@ -125,12 +128,13 @@ export default function SignInScreen() {
         try {
             const res = await authAPI.login({ email: email.trim().toLowerCase(), password });
             if (res.success) {
-                showToast(`🎉 Welcome back, ${res.data.user.fullName}!`, 'success', true);
+                await auth.login(res.data.user, res.data.token);
+                showToast(`🎉 Chào mừng trở lại, ${res.data.user.fullName}!`, 'success', true);
             }
         } catch (error: any) {
             triggerShake();
-            if (error.status === 401) setErrors({ password: 'Invalid email or password' });
-            else showToast(error.message || 'Something went wrong', 'error');
+            if (error.status === 401) setErrors({ password: 'Email hoặc mật khẩu không đúng' });
+            else showToast(error.message || 'Đã có lỗi xảy ra', 'error');
         } finally { setIsLoading(false); }
     };
 
@@ -153,18 +157,18 @@ export default function SignInScreen() {
                 <Animated.View style={[s.logoContainer, { transform: [{ scale: logoScale }] }]}>
                     <Text style={s.logoEmoji}>🍽️</Text>
                     <Text style={s.logoText}>FoodieHub</Text>
-                    <Text style={s.logoSubtext}>Welcome back, food lover!</Text>
+                    <Text style={s.logoSubtext}>Chào mừng trở lại!</Text>
                 </Animated.View>
             </LinearGradient>
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.formContainer}>
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent} keyboardShouldPersistTaps="handled">
                     <Animated.View style={[s.formCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }, { translateX: shakeAnim }] }]}>
-                        <Text style={s.formTitle}>Sign In</Text>
-                        <Text style={s.formSubtitle}>Enter your credentials to continue</Text>
+                        <Text style={s.formTitle}>Đăng Nhập</Text>
+                        <Text style={s.formSubtitle}>Nhập thông tin để tiếp tục</Text>
 
                         <View style={s.inputGroup}>
-                            <Text style={s.inputLabel}>Email Address</Text>
+                            <Text style={s.inputLabel}>Địa chỉ Email</Text>
                             <View style={[s.inputContainer, focusedInput === 'email' && s.inputFocused, errors.email && s.inputErr]}>
                                 <Ionicons name="mail-outline" size={20} color={errors.email ? AppColors.error : focusedInput === 'email' ? AppColors.primary : AppColors.gray} />
                                 <TextInput style={s.input} placeholder="your@email.com" placeholderTextColor={AppColors.gray} value={email}
@@ -176,10 +180,10 @@ export default function SignInScreen() {
                         </View>
 
                         <View style={s.inputGroup}>
-                            <Text style={s.inputLabel}>Password</Text>
+                            <Text style={s.inputLabel}>Mật khẩu</Text>
                             <View style={[s.inputContainer, focusedInput === 'password' && s.inputFocused, errors.password && s.inputErr]}>
                                 <Ionicons name="lock-closed-outline" size={20} color={errors.password ? AppColors.error : focusedInput === 'password' ? AppColors.primary : AppColors.gray} />
-                                <TextInput style={s.input} placeholder="Enter your password" placeholderTextColor={AppColors.gray} value={password}
+                                <TextInput style={s.input} placeholder="Nhập mật khẩu" placeholderTextColor={AppColors.gray} value={password}
                                     onChangeText={t => { setPassword(t); if (errors.password) setErrors(p => ({ ...p, password: undefined })); }}
                                     secureTextEntry={!showPassword} editable={!isAnyLoading}
                                     onFocus={() => setFocusedInput('password')} onBlur={() => setFocusedInput(null)} />
@@ -190,15 +194,15 @@ export default function SignInScreen() {
                             {errors.password && <View style={s.errorRow}><Ionicons name="alert-circle" size={14} color={AppColors.error} /><Text style={s.errorText}>{errors.password}</Text></View>}
                         </View>
 
-                        <TouchableOpacity style={s.forgotPassword}><Text style={s.forgotPasswordText}>Forgot Password?</Text></TouchableOpacity>
+                        <TouchableOpacity style={s.forgotPassword}><Text style={s.forgotPasswordText}>Quên mật khẩu?</Text></TouchableOpacity>
 
                         <TouchableOpacity activeOpacity={0.85} onPress={handleSignIn} disabled={isAnyLoading}>
                             <LinearGradient colors={isAnyLoading ? ['#ccc', '#bbb'] : ['#FF6B35', '#E55A2B']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.primaryButton}>
-                                {isLoading ? <ActivityIndicator size="small" color="#fff" /> : <><Text style={s.primaryButtonText}>Sign In</Text><Ionicons name="arrow-forward" size={20} color="#fff" /></>}
+                                {isLoading ? <ActivityIndicator size="small" color="#fff" /> : <><Text style={s.primaryButtonText}>Đăng Nhập</Text><Ionicons name="arrow-forward" size={20} color="#fff" /></>}
                             </LinearGradient>
                         </TouchableOpacity>
 
-                        <View style={s.divider}><View style={s.dividerLine} /><Text style={s.dividerText}>or continue with</Text><View style={s.dividerLine} /></View>
+                        <View style={s.divider}><View style={s.dividerLine} /><Text style={s.dividerText}>hoặc tiếp tục với</Text><View style={s.dividerLine} /></View>
 
                         <View style={s.socialRow}>
                             <TouchableOpacity style={[s.socialBtn, socialLoading === 'google' && s.socialActive]} onPress={() => { setSocialLoading('google'); googlePromptAsync(); }} disabled={isAnyLoading} activeOpacity={0.7}>
@@ -210,8 +214,8 @@ export default function SignInScreen() {
                         </View>
 
                         <View style={s.bottomLink}>
-                            <Text style={s.bottomLinkText}>Don't have an account? </Text>
-                            <TouchableOpacity onPress={() => router.replace('/sign-up' as any)}><Text style={s.bottomLinkAction}>Sign Up</Text></TouchableOpacity>
+                            <Text style={s.bottomLinkText}>Chưa có tài khoản? </Text>
+                            <TouchableOpacity onPress={() => router.replace('/sign-up' as any)}><Text style={s.bottomLinkAction}>Đăng ký</Text></TouchableOpacity>
                         </View>
                     </Animated.View>
                 </ScrollView>

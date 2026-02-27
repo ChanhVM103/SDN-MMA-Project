@@ -181,10 +181,39 @@ const getProfile = async (req, res) => {
     }
 };
 
+/**
+ * PUT /api/auth/profile
+ * Update current user profile (requires auth middleware)
+ */
+const updateProfile = async (req, res) => {
+    try {
+        const { fullName, phone, address } = req.body;
+        const updateData = {};
+        if (fullName !== undefined) updateData.fullName = fullName;
+        if (phone !== undefined) updateData.phone = phone;
+        if (address !== undefined) updateData.address = address;
+
+        const user = await authService.updateUserProfile(req.userId, updateData);
+
+        res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            data: { user },
+        });
+    } catch (error) {
+        const statusCode = error.statusCode || 500;
+        res.status(statusCode).json({
+            success: false,
+            message: error.message || "Failed to update profile",
+        });
+    }
+};
+
 module.exports = {
     register,
     login,
     googleAuth,
     facebookAuth,
     getProfile,
+    updateProfile,
 };

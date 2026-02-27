@@ -50,6 +50,11 @@ const userSchema = new mongoose.Schema(
             enum: ["user", "admin"],
             default: "user",
         },
+        address: {
+            type: String,
+            trim: true,
+            default: "",
+        },
         isActive: {
             type: Boolean,
             default: true,
