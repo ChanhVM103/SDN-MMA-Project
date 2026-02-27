@@ -151,7 +151,7 @@ export default function SignInScreen() {
             )}
             <LinearGradient colors={['#FF6B35', '#E55A2B', '#C44A20']} style={s.topGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                 <View style={s.decorCircle1} /><View style={s.decorCircle2} /><View style={s.decorCircle3} />
-                <TouchableOpacity style={s.backButton} onPress={() => router.back()}>
+                <TouchableOpacity style={s.backButton} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)' as any)}>
                     <Ionicons name="arrow-back" size={24} color="#fff" />
                 </TouchableOpacity>
                 <Animated.View style={[s.logoContainer, { transform: [{ scale: logoScale }] }]}>

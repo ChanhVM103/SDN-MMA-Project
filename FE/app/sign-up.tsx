@@ -168,7 +168,7 @@ export default function SignUpScreen() {
             )}
             <LinearGradient colors={['#2D6A4F', '#40916C', '#52B788']} style={s.topGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                 <View style={s.deco1} /><View style={s.deco2} /><View style={s.deco3} /><View style={s.dot1} /><View style={s.dot2} />
-                <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
+                <TouchableOpacity style={s.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)' as any)}>
                     <Ionicons name="arrow-back" size={24} color="#fff" />
                 </TouchableOpacity>
                 <Animated.View style={[s.logoContainer, { transform: [{ scale: logoScale }] }]}>
