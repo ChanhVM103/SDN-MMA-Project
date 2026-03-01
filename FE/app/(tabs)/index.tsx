@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/constants/auth-context';
 import TopRatedSection from '@/components/home/TopRatedSection';
@@ -165,9 +165,11 @@ function FadeInView({ children, delay = 0, style }: { children: React.ReactNode;
 // ── Main Screen ───────────────────────────────────
 export default function HomeScreen() {
   const router = useRouter();
+  const { orderSuccess } = useLocalSearchParams<{ orderSuccess?: string }>();
   const { user } = useAuth();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [activeSlide, setActiveSlide] = useState(0);
+  const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const carouselRef = useRef<FlatList>(null);
   const autoPlayRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -182,6 +184,21 @@ export default function HomeScreen() {
     }, 3500);
     return () => { if (autoPlayRef.current) clearInterval(autoPlayRef.current); };
   }, []);
+
+  useEffect(() => {
+    if (orderSuccess === '1') {
+      setShowOrderSuccess(true);
+
+      const t = setTimeout(() => {
+        setShowOrderSuccess(false);
+
+      
+        router.setParams({ orderSuccess: undefined });
+      }, 2200);
+
+      return () => clearTimeout(t);
+    }
+  }, [orderSuccess]);
 
   const onCarouselScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / CAROUSEL_WIDTH);
@@ -484,6 +501,15 @@ export default function HomeScreen() {
           </LinearGradient>
         </FadeInView>
       </Animated.ScrollView>
+
+      {showOrderSuccess && (
+        <View style={styles.successToastWrap} pointerEvents="none">
+          <View style={styles.successToast}>
+            <Ionicons name="checkmark-circle" size={18} color="#fff" />
+            <Text style={styles.successToastText}>Đặt hàng thành công</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -982,5 +1008,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: AppColors.primary,
+  },
+
+  successToastWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: Platform.OS === 'ios' ? 90 : 78,
+    alignItems: 'center',
+  },
+  successToast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: AppColors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: BorderRadius.md,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.18,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  successToastText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

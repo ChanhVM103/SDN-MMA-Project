@@ -7,13 +7,13 @@ import * as ExpoSplashScreen from 'expo-splash-screen';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider } from '@/constants/auth-context';
+import { OrderProvider } from '@/constants/order-context';
 import SplashScreen from '@/components/SplashScreen';
 
-// Giữ native splash screen cho đến khi ta tự ẩn
 ExpoSplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  initialRouteName: '(tabs)', 
 };
 
 export default function RootLayout() {
@@ -21,35 +21,37 @@ export default function RootLayout() {
   const [showCustomSplash, setShowCustomSplash] = useState(true);
 
   useEffect(() => {
-    // Ẩn native splash screen để custom splash hiển thị thay thế
     ExpoSplashScreen.hideAsync();
   }, []);
 
   return (
     <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-          <Stack.Screen name="sign-up" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="search"
-            options={{
-              headerShown: false,
-              animation: 'fade',
-              animationDuration: 200,
-            }}
-          />
-        </Stack>
-        <StatusBar style="light" />
+      <OrderProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack initialRouteName="(tabs)">
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="restaurant/create.modal" options={{ headerShown: false }} />
+           
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+            <Stack.Screen name="sign-up" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="search"
+              options={{
+                headerShown: false,
+                animation: 'fade',
+                animationDuration: 200,
+              }}
+            />
+          </Stack>
+          <StatusBar style="light" />
 
-        {/* Custom Animated Splash Screen - đè lên toàn bộ app */}
-        {showCustomSplash && (
-          <SplashScreen onFinish={() => setShowCustomSplash(false)} />
-        )}
-      </ThemeProvider>
+          {showCustomSplash && (
+            <SplashScreen onFinish={() => setShowCustomSplash(false)} />
+          )}
+        </ThemeProvider>
+      </OrderProvider>
     </AuthProvider>
   );
 }
