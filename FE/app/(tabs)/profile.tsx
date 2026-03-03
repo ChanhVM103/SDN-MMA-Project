@@ -15,7 +15,7 @@ const { width } = Dimensions.get('window');
 
 export default function ProfileScreen() {
     const router = useRouter();
-    const { user, logout, token, updateUser } = useAuth();
+    const { user, logout, token, updateUser, login } = useAuth();
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
     const [showAddressModal, setShowAddressModal] = useState(false);
@@ -83,6 +83,27 @@ export default function ProfileScreen() {
                                 Chưa có tài khoản? <Text style={s.signUpLinkAction}>Đăng ký</Text>
                             </Text>
                         </TouchableOpacity>
+
+                        {/* Dev Login - Chỉ dùng để test FE khi không có Backend */}
+                        <TouchableOpacity
+                            style={s.devLoginButton}
+                            activeOpacity={0.7}
+                            onPress={async () => {
+                                const mockUser = {
+                                    id: 'dev-user-001',
+                                    fullName: 'Nguyễn Văn Test',
+                                    email: 'test@foodiehub.com',
+                                    phone: '0912345678',
+                                    role: 'user',
+                                    authProvider: 'local',
+                                    address: '123 Đường Lê Lợi, Quận 1, TP.HCM',
+                                };
+                                await login(mockUser, 'dev-token-fake-123');
+                            }}
+                        >
+                            <Ionicons name="code-slash-outline" size={16} color="#6C5CE7" />
+                            <Text style={s.devLoginText}>🧪 Dev Login (Test FE)</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </View>
@@ -103,12 +124,13 @@ export default function ProfileScreen() {
     };
 
     const menuItems = [
-        { icon: 'receipt-outline' as const, label: 'Lịch sử đơn hàng', color: '#FF6B35' },
-        { icon: 'heart-outline' as const, label: 'Yêu thích', color: '#EF4444' },
-        { icon: 'location-outline' as const, label: 'Địa chỉ giao hàng', color: '#2D6A4F' },
-        { icon: 'card-outline' as const, label: 'Phương thức thanh toán', color: '#6C5CE7' },
-        { icon: 'notifications-outline' as const, label: 'Thông báo', color: '#FFB627' },
-        { icon: 'settings-outline' as const, label: 'Cài đặt', color: '#9CA3AF' },
+        { icon: 'create-outline' as const, label: 'Chỉnh sửa hồ sơ', color: '#FF6B35', route: '/edit-profile' },
+        { icon: 'key-outline' as const, label: 'Đổi mật khẩu', color: '#6C5CE7', route: '/change-password' },
+        { icon: 'receipt-outline' as const, label: 'Lịch sử đơn hàng', color: '#FF6B35', route: '/(tabs)/orders' },
+        { icon: 'heart-outline' as const, label: 'Yêu thích', color: '#EF4444', route: '/(tabs)/favorites' },
+        { icon: 'location-outline' as const, label: 'Địa chỉ giao hàng', color: '#2D6A4F', route: undefined },
+        { icon: 'notifications-outline' as const, label: 'Thông báo', color: '#FFB627', route: '/(tabs)/notifications' },
+        { icon: 'settings-outline' as const, label: 'Cài đặt', color: '#9CA3AF', route: undefined },
     ];
 
     return (
@@ -232,7 +254,7 @@ export default function ProfileScreen() {
                     <View style={s.menuCard}>
                         {menuItems.map((item, index) => (
                             <React.Fragment key={item.label}>
-                                <TouchableOpacity style={s.menuRow} activeOpacity={0.6}>
+                                <TouchableOpacity style={s.menuRow} activeOpacity={0.6} onPress={() => item.route && router.push(item.route as any)}>
                                     <View style={[s.menuIconContainer, { backgroundColor: item.color + '15' }]}>
                                         <Ionicons name={item.icon} size={20} color={item.color} />
                                     </View>
@@ -363,6 +385,14 @@ const s = StyleSheet.create({
     signUpLink: { marginTop: 16 },
     signUpLinkText: { fontSize: 14, color: AppColors.gray },
     signUpLinkAction: { fontWeight: '700', color: AppColors.primary },
+    devLoginButton: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+        marginTop: 16, paddingVertical: 12, paddingHorizontal: 20,
+        borderRadius: BorderRadius.md, borderWidth: 1.5,
+        borderColor: '#6C5CE7', borderStyle: 'dashed',
+        backgroundColor: '#F3F0FF',
+    },
+    devLoginText: { fontSize: 13, fontWeight: '600', color: '#6C5CE7' },
 
     // Address Card
     addressSection: { paddingHorizontal: Spacing.lg, marginTop: 16 },

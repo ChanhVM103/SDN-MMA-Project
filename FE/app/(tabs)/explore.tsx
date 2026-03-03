@@ -1,12 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, FlatList,
     TouchableOpacity, Image, Platform, Dimensions,
-    TextInput, Animated,
+    TextInput, Animated, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
+import { useFavorites } from '@/constants/favorites-context';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48 - 12) / 3; // 3 cột
@@ -26,7 +27,7 @@ const QUICK_CATEGORIES = [
     { id: '5', label: 'Freeship', emoji: '🚀', color: '#F3E5F5' },
 ];
 
-const RESTAURANTS = [
+export const RESTAURANTS = [
     {
         id: '1',
         name: 'Chè Ngon Phố',
@@ -188,6 +189,9 @@ const COLLECTIONS = [
 
 // ── Restaurant Card (3 cột, ảnh thật) ────────────
 function RestaurantCard({ item, onPress }: { item: typeof RESTAURANTS[0]; onPress: () => void }) {
+    const { isFavorite, toggleFavorite } = useFavorites();
+    const liked = isFavorite(item.id);
+
     return (
         <TouchableOpacity style={s.card} onPress={onPress} activeOpacity={0.85}>
             <View style={s.cardImgWrap}>
@@ -201,6 +205,17 @@ function RestaurantCard({ item, onPress }: { item: typeof RESTAURANTS[0]; onPres
                         <Text style={s.flashTagText}>Flash Sale</Text>
                     </View>
                 )}
+                <TouchableOpacity
+                    style={s.heartBtn}
+                    onPress={() => toggleFavorite(item.id)}
+                    activeOpacity={0.7}
+                >
+                    <Ionicons
+                        name={liked ? 'heart' : 'heart-outline'}
+                        size={18}
+                        color={liked ? '#EF4444' : '#fff'}
+                    />
+                </TouchableOpacity>
             </View>
             <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
             <View style={s.cardMeta}>
@@ -255,10 +270,21 @@ export default function ExploreScreen() {
     const router = useRouter();
     const [search, setSearch] = useState('');
     const [bannerIdx, setBannerIdx] = useState(0);
+    const [refreshing, setRefreshing] = useState(false);
+    const [showAll, setShowAll] = useState(false);
 
     const handleRestaurantPress = (item: typeof RESTAURANTS[0]) => {
         router.push({ pathname: '/restaurant/[id]', params: { id: item.id, data: JSON.stringify(item) } } as any);
     };
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        setTimeout(() => setRefreshing(false), 1200);
+    }, []);
+
+    const filteredRestaurants = search.trim()
+        ? RESTAURANTS.filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
+        : RESTAURANTS;
 
     return (
         <View style={s.container}>
@@ -276,7 +302,12 @@ export default function ExploreScreen() {
                 </View>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF6B35']} tintColor="#FF6B35" />
+                }
+            >
                 {/* Quick Categories */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.quickCats}>
                     {QUICK_CATEGORIES.map(cat => (
@@ -289,16 +320,41 @@ export default function ExploreScreen() {
                     ))}
                 </ScrollView>
 
-                {/* Collections */}
-                {COLLECTIONS.map(col => (
-                    <CollectionSection
-                        key={col.id}
-                        title={col.title}
-                        subtitle={col.subtitle}
-                        data={col.data}
-                        onPress={handleRestaurantPress}
-                    />
-                ))}
+                {/* Collections or Show All */}
+                {showAll ? (
+                    <View style={s.allRestaurantsSection}>
+                        <View style={s.allHeader}>
+                            <Text style={s.sectionTitle}>Tất cả quán ăn ({filteredRestaurants.length})</Text>
+                            <TouchableOpacity onPress={() => setShowAll(false)}>
+                                <Text style={s.seeAll}>Thu gọn</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={s.allGrid}>
+                            {filteredRestaurants.map(item => (
+                                <RestaurantCard key={item.id} item={item} onPress={() => handleRestaurantPress(item)} />
+                            ))}
+                        </View>
+                    </View>
+                ) : (
+                    <>
+                        {COLLECTIONS.map(col => (
+                            <CollectionSection
+                                key={col.id}
+                                title={col.title}
+                                subtitle={col.subtitle}
+                                data={col.data}
+                                onPress={handleRestaurantPress}
+                            />
+                        ))}
+
+                        {/* Show All Button */}
+                        <TouchableOpacity style={s.showAllButton} onPress={() => setShowAll(true)} activeOpacity={0.85}>
+                            <Ionicons name="grid-outline" size={18} color={AppColors.primary} />
+                            <Text style={s.showAllButtonText}>Xem tất cả quán ăn</Text>
+                            <Ionicons name="arrow-forward" size={16} color={AppColors.primary} />
+                        </TouchableOpacity>
+                    </>
+                )}
 
                 <View style={{ height: 80 }} />
             </ScrollView>
@@ -365,10 +421,34 @@ const s = StyleSheet.create({
         paddingVertical: 3, alignItems: 'center',
     },
     flashTagText: { fontSize: 10, fontWeight: '800', color: '#fff' },
+    heartBtn: {
+        position: 'absolute', top: 4, right: 4, zIndex: 10,
+        width: 28, height: 28, borderRadius: 14,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        justifyContent: 'center', alignItems: 'center',
+    },
     cardName: { fontSize: 12, fontWeight: '700', color: AppColors.charcoal, marginBottom: 2 },
     cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 2 },
     cardRating: { fontSize: 11, fontWeight: '700', color: AppColors.charcoal },
     cardDot: { fontSize: 11, color: AppColors.gray },
     cardTime: { fontSize: 11, color: AppColors.gray },
     cardFee: { fontSize: 11, color: AppColors.primary, fontWeight: '600' },
+
+    // Show All
+    showAllButton: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+        marginHorizontal: Spacing.lg, marginTop: 16,
+        paddingVertical: 14, borderRadius: BorderRadius.md,
+        borderWidth: 1.5, borderColor: AppColors.primary,
+        backgroundColor: '#FFF8F5',
+    },
+    showAllButtonText: { fontSize: 14, fontWeight: '700', color: AppColors.primary },
+    allRestaurantsSection: { paddingHorizontal: Spacing.lg, marginTop: 8 },
+    allHeader: {
+        flexDirection: 'row', justifyContent: 'space-between',
+        alignItems: 'center', marginBottom: 12,
+    },
+    allGrid: {
+        flexDirection: 'row', flexWrap: 'wrap', gap: 10,
+    },
 });

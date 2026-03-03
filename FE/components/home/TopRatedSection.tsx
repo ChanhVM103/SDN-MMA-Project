@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from '
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
+import { useFavorites } from '@/constants/favorites-context';
 
 const TOP_RATED = [
     { id: '1', name: 'Nhà hàng Hải Sản Biển Đông', rating: 5.0, reviews: 1283, distance: '1.2 km', tags: ['Hải sản', 'Nướng'], emoji: '🦞', image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80', isFlashSale: false, discountPercent: 0, deliveryTime: 30, deliveryFee: 20000, isOpen: true, menu: [{ id: 'm1', name: 'Tôm Hùm Nướng', price: 450000, emoji: '🦞', category: 'Hải Sản', isBestSeller: true, description: 'Tôm hùm tươi nướng muối ớt' }, { id: 'm2', name: 'Cua Rang Me', price: 320000, emoji: '🦀', category: 'Hải Sản', description: 'Cua biển rang me chua ngọt' }, { id: 'm3', name: 'Ốc Hương Xào Bơ', price: 180000, emoji: '🐚', category: 'Hải Sản', isBestSeller: true, description: 'Ốc hương tươi xào bơ tỏi' }] },
@@ -13,6 +14,7 @@ const TOP_RATED = [
 
 export default function TopRatedSection() {
     const router = useRouter();
+    const { isFavorite, toggleFavorite } = useFavorites();
 
     const handlePress = (item: typeof TOP_RATED[0]) => {
         router.push({ pathname: '/restaurant/[id]', params: { id: item.id, data: JSON.stringify(item) } } as any);
@@ -33,6 +35,9 @@ export default function TopRatedSection() {
                                 <Ionicons name="star" size={11} color="#FFB627" />
                                 <Text style={s.ratingText}>{item.rating}</Text>
                             </View>
+                            <TouchableOpacity style={s.heartBtn} onPress={() => toggleFavorite(item.id)} activeOpacity={0.7}>
+                                <Ionicons name={isFavorite(item.id) ? 'heart' : 'heart-outline'} size={18} color={isFavorite(item.id) ? '#EF4444' : '#999'} />
+                            </TouchableOpacity>
                         </View>
                         <View style={s.info}>
                             <Text style={s.name} numberOfLines={1}>{item.name}</Text>
@@ -69,6 +74,7 @@ const s = StyleSheet.create({
     emoji: { fontSize: 44 },
     ratingBadge: { position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#fff', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 },
     ratingText: { fontSize: 12, fontWeight: '700', color: AppColors.charcoal },
+    heartBtn: { position: 'absolute', top: 8, left: 8 },
     info: { padding: 12 },
     name: { fontSize: 14, fontWeight: '700', color: AppColors.charcoal, marginBottom: 6 },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },

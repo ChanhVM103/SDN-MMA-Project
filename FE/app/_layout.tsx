@@ -8,12 +8,13 @@ import * as ExpoSplashScreen from 'expo-splash-screen';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider } from '@/constants/auth-context';
 import { OrderProvider } from '@/constants/order-context';
+import { FavoritesProvider } from '@/constants/favorites-context';
 import SplashScreen from '@/components/SplashScreen';
 
 ExpoSplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
-  initialRouteName: '(tabs)', 
+  initialRouteName: '(tabs)',
 };
 
 export default function RootLayout() {
@@ -27,30 +28,35 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <OrderProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack initialRouteName="(tabs)">
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="restaurant/create.modal" options={{ headerShown: false }} />
-           
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-            <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-            <Stack.Screen name="sign-up" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="search"
-              options={{
-                headerShown: false,
-                animation: 'fade',
-                animationDuration: 200,
-              }}
-            />
-          </Stack>
-          <StatusBar style="light" />
+        <FavoritesProvider>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <Stack initialRouteName="(tabs)">
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/create.modal" options={{ headerShown: false }} />
 
-          {showCustomSplash && (
-            <SplashScreen onFinish={() => setShowCustomSplash(false)} />
-          )}
-        </ThemeProvider>
+              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+              <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+              <Stack.Screen name="sign-up" options={{ headerShown: false }} />
+              <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+              <Stack.Screen name="change-password" options={{ headerShown: false }} />
+              <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="search"
+                options={{
+                  headerShown: false,
+                  animation: 'fade',
+                  animationDuration: 200,
+                }}
+              />
+            </Stack>
+            <StatusBar style="light" />
+
+            {showCustomSplash && (
+              <SplashScreen onFinish={() => setShowCustomSplash(false)} />
+            )}
+          </ThemeProvider>
+        </FavoritesProvider>
       </OrderProvider>
     </AuthProvider>
   );

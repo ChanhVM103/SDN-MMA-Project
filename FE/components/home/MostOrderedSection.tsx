@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Platform, Pressable, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
+import { useFavorites } from '@/constants/favorites-context';
 
 const MOST_ORDERED = [
     { id: '1', name: 'Bún Bò Huế', orders: '12.5k', emoji: '🍜', price: '45.000đ', badge: '#1', isFlashSale: false, discountPercent: 0, deliveryTime: 20, deliveryFee: 10000, isOpen: true, rating: 4.8, image: 'https://images.unsplash.com/photo-1555126634-323283e090fa?w=400&q=80', tags: ['Bún bò', 'Huế'], menu: [{ id: 'm1', name: 'Bún Bò Huế Đặc Biệt', price: 65000, emoji: '🍲', category: 'Bún', isBestSeller: true, description: 'Giò heo, chả cua, huyết heo' }, { id: 'm2', name: 'Bún Bò Thường', price: 45000, emoji: '🍜', category: 'Bún', description: 'Thịt bò, nước dùng cay' }] },
@@ -21,6 +22,7 @@ const BADGE_COLORS: Record<string, [string, string]> = {
 
 export default function MostOrderedSection() {
     const router = useRouter();
+    const { isFavorite, toggleFavorite } = useFavorites();
 
     const handlePress = (item: typeof MOST_ORDERED[0]) => {
         router.push({ pathname: '/restaurant/[id]', params: { id: item.id, data: JSON.stringify(item) } } as any);
@@ -56,6 +58,9 @@ export default function MostOrderedSection() {
                         </View>
                     </View>
                     <Text style={s.price}>{item.price}</Text>
+                    <TouchableOpacity onPress={() => toggleFavorite(item.id)} activeOpacity={0.7} style={{ padding: 4 }}>
+                        <Ionicons name={isFavorite(item.id) ? 'heart' : 'heart-outline'} size={20} color={isFavorite(item.id) ? '#EF4444' : AppColors.gray} />
+                    </TouchableOpacity>
                 </Pressable>
             ))}
         </View>

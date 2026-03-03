@@ -105,4 +105,19 @@ export const authAPI = {
             },
             body: JSON.stringify(body),
         }),
+
+    changePassword: (token: string, body: { currentPassword: string; newPassword: string }) =>
+        apiRequest("/auth/change-password", {
+            method: "PUT",
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(body),
+        }),
+
+    forgotPassword: (email: string) =>
+        apiRequest("/auth/forgot-password", {
+            method: "POST",
+            body: JSON.stringify({ email }),
+        }),
 };

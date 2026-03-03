@@ -11,6 +11,7 @@ import {
   Dimensions,
   Animated,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,7 @@ import TopRatedSection from '@/components/home/TopRatedSection';
 import NearbySection from '@/components/home/NearbySection';
 import MostOrderedSection from '@/components/home/MostOrderedSection';
 import FlashSaleSection from '@/components/home/FlashSaleSection';
+import SalePopup from '@/components/SalePopup';
 
 const { width } = Dimensions.get('window');
 
@@ -170,6 +172,7 @@ export default function HomeScreen() {
   const scrollY = useRef(new Animated.Value(0)).current;
   const [activeSlide, setActiveSlide] = useState(0);
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const carouselRef = useRef<FlatList>(null);
   const autoPlayRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -192,7 +195,7 @@ export default function HomeScreen() {
       const t = setTimeout(() => {
         setShowOrderSuccess(false);
 
-      
+
         router.setParams({ orderSuccess: undefined });
       }, 2200);
 
@@ -218,6 +221,11 @@ export default function HomeScreen() {
     }, 3500);
   }, []);
 
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1200);
+  }, []);
+
   return (
     <View style={styles.container}>
       <Animated.ScrollView
@@ -227,6 +235,9 @@ export default function HomeScreen() {
           { useNativeDriver: true }
         )}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF6B35']} tintColor="#FF6B35" />
+        }
       >
         {/* ── Hero Section ────────────────── */}
         <LinearGradient colors={['#FF6B35', '#E55A2B', '#C44A20']} style={styles.heroSection}>
@@ -510,6 +521,9 @@ export default function HomeScreen() {
           </View>
         </View>
       )}
+
+      {/* Sale Popup */}
+      <SalePopup />
     </View>
   );
 }

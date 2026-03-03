@@ -194,7 +194,7 @@ export default function SignInScreen() {
                             {errors.password && <View style={s.errorRow}><Ionicons name="alert-circle" size={14} color={AppColors.error} /><Text style={s.errorText}>{errors.password}</Text></View>}
                         </View>
 
-                        <TouchableOpacity style={s.forgotPassword}><Text style={s.forgotPasswordText}>Quên mật khẩu?</Text></TouchableOpacity>
+                        <TouchableOpacity style={s.forgotPassword} onPress={() => router.push('/forgot-password' as any)}><Text style={s.forgotPasswordText}>Quên mật khẩu?</Text></TouchableOpacity>
 
                         <TouchableOpacity activeOpacity={0.85} onPress={handleSignIn} disabled={isAnyLoading}>
                             <LinearGradient colors={isAnyLoading ? ['#ccc', '#bbb'] : ['#FF6B35', '#E55A2B']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.primaryButton}>
