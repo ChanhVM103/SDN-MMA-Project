@@ -4,10 +4,14 @@ const User = require("../models/user.model");
 /**
  * Generate JWT token for a user
  */
-const generateToken = (userId) => {
-    return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES_IN || "7d",
-    });
+const generateToken = (userId, role = "user") => {
+    return jwt.sign(
+        { id: userId, role },
+        process.env.JWT_SECRET,
+        {
+            expiresIn: process.env.JWT_EXPIRES_IN || "2h",
+        }
+    );
 };
 
 /**
@@ -53,7 +57,7 @@ const registerUser = async ({ fullName, email, phone, password }) => {
     });
 
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, user.role);
 
     return {
         user: formatUserResponse(user),
@@ -99,7 +103,7 @@ const loginUser = async ({ email, password }) => {
     }
 
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, user.role);
 
     return {
         user: formatUserResponse(user),
@@ -234,7 +238,7 @@ const socialLogin = async ({ accessToken, provider }) => {
     }
 
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, user.role);
 
     return {
         user: formatUserResponse(user),
