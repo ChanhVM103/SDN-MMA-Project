@@ -44,15 +44,17 @@ export default function ChangePasswordScreen() {
         if (!validate()) return;
         setLoading(true);
         try {
-            if (token) {
-                await authAPI.changePassword(token, {
-                    currentPassword,
-                    newPassword,
-                });
-                Alert.alert('Thành công', 'Mật khẩu đã được thay đổi', [
-                    { text: 'OK', onPress: () => router.back() },
-                ]);
+            if (!token) {
+                Alert.alert('Lỗi', 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+                return;
             }
+            await authAPI.changePassword(token, {
+                currentPassword,
+                newPassword,
+            });
+            Alert.alert('Thành công', 'Mật khẩu đã được thay đổi', [
+                { text: 'OK', onPress: () => router.back() },
+            ]);
         } catch (error: any) {
             Alert.alert('Lỗi', error.message || 'Không thể đổi mật khẩu. Vui lòng thử lại.');
         } finally {

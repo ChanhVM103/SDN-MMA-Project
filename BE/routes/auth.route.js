@@ -15,5 +15,6 @@ router.post("/facebook", authController.facebookAuth);
 // Protected routes - All authenticated users can access
 router.get("/profile", authMiddleware, authController.getProfile);
 router.put("/profile", authMiddleware, authController.updateProfile);
+router.put("/change-password", authMiddleware, authController.changePassword);
 
 module.exports = router;
