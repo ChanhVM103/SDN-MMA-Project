@@ -1,35 +1,46 @@
-/**
- * Social Auth Configuration
- *
- * ⚠️ SETUP REQUIRED:
- * Replace placeholder values below with your real credentials.
- *
- * 🔵 GOOGLE:
- * 1. Go to https://console.cloud.google.com/
- * 2. Create a project → APIs & Services → Credentials
- * 3. Create OAuth 2.0 Client ID
- *    - For Web: Authorized redirect URI → https://auth.expo.io/@your-username/FE
- *    - For iOS: Bundle ID → your app bundle ID
- *    - For Android: Package name + SHA1 fingerprint
- * 4. Copy the Client IDs below
- *
- * 🔵 FACEBOOK:
- * 1. Go to https://developers.facebook.com/
- * 2. Create App → Consumer type
- * 3. Add Facebook Login product
- * 4. Settings → Basic → Copy App ID
- * 5. In Facebook Login → Settings:
- *    - Valid OAuth Redirect URIs → https://auth.expo.io/@your-username/FE
- */
+const readEnv = (key: string) => {
+    const value = process.env[key];
+    return typeof value === "string" && value.trim() ? value.trim() : "";
+};
+
+const isPlaceholder = (value: string) =>
+    !value || value.includes("YOUR_GOOGLE_") || value.includes("YOUR_FACEBOOK_");
+
+const fallbackGoogleWebClientId =
+    "426947498833-ntdcblojnotrpqi91kuu03076samaav3.apps.googleusercontent.com";
+const fallbackFacebookAppId = "1689158855839628";
 
 export const GOOGLE_CONFIG = {
-    // Replace with your Google OAuth Client IDs
-    webClientId: "426947498833-ntdcblojnotrpqi91kuu03076samaav3.apps.googleusercontent.com",
-    iosClientId: "YOUR_GOOGLE_IOS_CLIENT_ID.apps.googleusercontent.com",
-    androidClientId: "YOUR_GOOGLE_ANDROID_CLIENT_ID.apps.googleusercontent.com",
+    webClientId:
+        readEnv("EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID") || fallbackGoogleWebClientId,
+    iosClientId: readEnv("EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID"),
+    androidClientId: readEnv("EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID"),
+    scopes: ["openid", "profile", "email"],
 };
 
 export const FACEBOOK_CONFIG = {
-    // Replace with your Facebook App ID
-    appId: "1689158855839628",
+    appId: readEnv("EXPO_PUBLIC_FACEBOOK_APP_ID") || fallbackFacebookAppId,
+};
+
+export const getMissingGoogleEnvVars = () => {
+    const missing = [];
+
+    if (isPlaceholder(GOOGLE_CONFIG.webClientId)) {
+        missing.push("EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID");
+    }
+    if (isPlaceholder(GOOGLE_CONFIG.iosClientId)) {
+        missing.push("EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID");
+    }
+    if (isPlaceholder(GOOGLE_CONFIG.androidClientId)) {
+        missing.push("EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID");
+    }
+
+    return missing;
+};
+
+export const getGoogleAuthSetupMessage = () => {
+    const missing = getMissingGoogleEnvVars();
+    if (!missing.length) return "";
+
+    return `Missing Google OAuth config: ${missing.join(", ")}`;
 };

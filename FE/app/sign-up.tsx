@@ -13,8 +13,9 @@ import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { authAPI } from '@/constants/api';
-import { GOOGLE_CONFIG, FACEBOOK_CONFIG } from '@/constants/auth-config';
+import { GOOGLE_CONFIG, FACEBOOK_CONFIG, getGoogleAuthSetupMessage } from '@/constants/auth-config';
 import { useAuth } from '@/constants/auth-context';
+import { extractAccessToken, getAuthErrorMessage } from '@/constants/social-auth';
 
 WebBrowser.maybeCompleteAuthSession();
 const { height } = Dimensions.get('window');
@@ -37,12 +38,13 @@ export default function SignUpScreen() {
     const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' });
     const toastAnim = useRef(new Animated.Value(-100)).current;
 
-    const redirectUri = makeRedirectUri({ scheme: 'fe', path: 'sign-up' });
+    const redirectUri = makeRedirectUri({ scheme: 'fe', path: 'oauth' });
 
     const [, googleResponse, googlePromptAsync] = Google.useAuthRequest({
         webClientId: GOOGLE_CONFIG.webClientId,
         iosClientId: GOOGLE_CONFIG.iosClientId,
         androidClientId: GOOGLE_CONFIG.androidClientId,
+        scopes: GOOGLE_CONFIG.scopes,
         redirectUri,
     });
     const [, fbResponse, fbPromptAsync] = Facebook.useAuthRequest({
@@ -64,15 +66,35 @@ export default function SignUpScreen() {
     }, []);
 
     useEffect(() => {
-        if (googleResponse?.type === 'success' && googleResponse.authentication?.accessToken)
-            handleSocialLogin('google', googleResponse.authentication.accessToken);
-        else if (googleResponse?.type === 'error') setSocialLoading(null);
+        if (googleResponse?.type === 'success') {
+            const accessToken = extractAccessToken(googleResponse);
+            if (accessToken) handleSocialLogin('google', accessToken);
+            else {
+                setSocialLoading(null);
+                showToast('Google login did not return an access token', 'error');
+            }
+        }
+        else if (googleResponse?.type === 'error') {
+            setSocialLoading(null);
+            showToast(getAuthErrorMessage(googleResponse, 'Google login failed'), 'error');
+        }
+        else if (googleResponse?.type === 'dismiss' || googleResponse?.type === 'cancel') setSocialLoading(null);
     }, [googleResponse]);
 
     useEffect(() => {
-        if (fbResponse?.type === 'success' && fbResponse.authentication?.accessToken)
-            handleSocialLogin('facebook', fbResponse.authentication.accessToken);
-        else if (fbResponse?.type === 'error') setSocialLoading(null);
+        if (fbResponse?.type === 'success') {
+            const accessToken = extractAccessToken(fbResponse);
+            if (accessToken) handleSocialLogin('facebook', accessToken);
+            else {
+                setSocialLoading(null);
+                showToast('Facebook login did not return an access token', 'error');
+            }
+        }
+        else if (fbResponse?.type === 'error') {
+            setSocialLoading(null);
+            showToast(getAuthErrorMessage(fbResponse, 'Facebook login failed'), 'error');
+        }
+        else if (fbResponse?.type === 'dismiss' || fbResponse?.type === 'cancel') setSocialLoading(null);
     }, [fbResponse]);
 
     const triggerShake = () => {
@@ -276,7 +298,20 @@ export default function SignUpScreen() {
 
                         {/* Social Buttons */}
                         <View style={s.socialRow}>
-                            <TouchableOpacity style={[s.socialBtn, socialLoading === 'google' && s.socialActive]} onPress={() => { setSocialLoading('google'); googlePromptAsync(); }} disabled={isAnyLoading} activeOpacity={0.7}>
+                            <TouchableOpacity
+                                style={[s.socialBtn, socialLoading === 'google' && s.socialActive]}
+                                onPress={() => {
+                                    const setupError = getGoogleAuthSetupMessage();
+                                    if (setupError) {
+                                        showToast(setupError, 'error');
+                                        return;
+                                    }
+                                    setSocialLoading('google');
+                                    googlePromptAsync();
+                                }}
+                                disabled={isAnyLoading}
+                                activeOpacity={0.7}
+                            >
                                 {socialLoading === 'google' ? <ActivityIndicator size="small" color={AppColors.secondary} /> : <><Text style={s.googleG}>G</Text><Text style={s.socialBtnText}>Google</Text></>}
                             </TouchableOpacity>
                             <TouchableOpacity style={[s.socialBtn, s.fbBtn, socialLoading === 'facebook' && s.socialActive]} onPress={() => { setSocialLoading('facebook'); fbPromptAsync(); }} disabled={isAnyLoading} activeOpacity={0.7}>
