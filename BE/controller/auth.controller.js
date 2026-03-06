@@ -209,6 +209,75 @@ const updateProfile = async (req, res) => {
     }
 };
 
+/**
+ * PUT /api/auth/change-password
+ * User tự đổi mật khẩu (cần nhập mật khẩu hiện tại)
+ */
+const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Vui lòng nhập mật khẩu hiện tại và mật khẩu mới",
+            });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: "Mật khẩu mới phải có ít nhất 6 ký tự",
+            });
+        }
+
+        if (currentPassword === newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Mật khẩu mới phải khác mật khẩu hiện tại",
+            });
+        }
+
+        // Lấy user kèm password
+        const User = require("../models/user.model");
+        const user = await User.findById(req.userId).select("+password");
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy người dùng" });
+        }
+
+        if (!user.password) {
+            return res.status(400).json({
+                success: false,
+                message: "Tài khoản đăng nhập qua mạng xã hội không thể đổi mật khẩu",
+            });
+        }
+
+        // Xác minh mật khẩu hiện tại
+        const isMatch = await user.comparePassword(currentPassword);
+        if (!isMatch) {
+            return res.status(400).json({
+                success: false,
+                message: "Mật khẩu hiện tại không đúng",
+            });
+        }
+
+        // Lưu mật khẩu mới (pre-save hook tự hash)
+        user.password = newPassword;
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Đổi mật khẩu thành công",
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message || "Đổi mật khẩu thất bại",
+        });
+    }
+};
+
 module.exports = {
     register,
     login,
@@ -216,4 +285,5 @@ module.exports = {
     facebookAuth,
     getProfile,
     updateProfile,
+    changePassword,
 };
