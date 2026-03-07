@@ -5,9 +5,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment
-.env
-.env.local
-.env.*.local
+# .env and .env.local are now committed
 
 # IDE
 .vscode/
