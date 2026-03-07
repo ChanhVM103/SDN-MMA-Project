@@ -28,6 +28,15 @@ const productSchema = new mongoose.Schema(
       required: [true, "Product category is required"],
       trim: true,
     },
+    type: {
+      type: String,
+      enum: ["food", "drink"],
+      default: "food",
+    },
+    allowToppings: {
+      type: Boolean,
+      default: false,
+    },
     isBestSeller: {
       type: Boolean,
       default: false,
@@ -51,6 +60,7 @@ const productSchema = new mongoose.Schema(
 productSchema.index({ restaurantId: 1 });
 productSchema.index({ name: "text", description: "text" });
 productSchema.index({ category: 1 });
+productSchema.index({ type: 1 });
 productSchema.index({ isBestSeller: -1 });
 productSchema.index({ price: 1 });
 
