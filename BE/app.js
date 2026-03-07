@@ -36,11 +36,14 @@ app.set("view engine", "jade");
 // CORS - Allow requests from React Native / Expo
 app.use(
   cors({
-    origin: "*", // Allow all origins for mobile development
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    origin: true, 
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
   })
 );
+// Handle preflight requests
+app.options("*", cors());
 
 app.use(logger("dev"));
 app.use(express.json());

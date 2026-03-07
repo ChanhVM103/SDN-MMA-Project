@@ -1,19 +1,18 @@
 var express = require("express");
 var router = express.Router();
 var authController = require("../controller/auth.controller");
-var {
-  authMiddleware,
-  authorizeRole,
-} = require("../middleware/auth.middleware");
+var { authMiddleware } = require("../middleware/auth.middleware");
 
-// Public routes - No auth required
+// Public routes
 router.post("/register", authController.register);
 router.post("/login", authController.login);
 router.post("/google", authController.googleAuth);
 router.post("/facebook", authController.facebookAuth);
 
-// Protected routes - All authenticated users can access
+// Protected routes
 router.get("/profile", authMiddleware, authController.getProfile);
 router.put("/profile", authMiddleware, authController.updateProfile);
+router.put("/change-password", authMiddleware, authController.changePassword);
+router.put("/avatar", authMiddleware, authController.updateAvatar);
 
 module.exports = router;

@@ -209,6 +209,110 @@ const updateProfile = async (req, res) => {
     }
 };
 
+/**
+ * PUT /api/auth/change-password
+ * User tự đổi mật khẩu (cần nhập mật khẩu hiện tại)
+ */
+const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Vui lòng nhập mật khẩu hiện tại và mật khẩu mới",
+            });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: "Mật khẩu mới phải có ít nhất 6 ký tự",
+            });
+        }
+
+        if (currentPassword === newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Mật khẩu mới phải khác mật khẩu hiện tại",
+            });
+        }
+
+        // Lấy user kèm password
+        const User = require("../models/user.model");
+        const user = await User.findById(req.userId).select("+password");
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy người dùng" });
+        }
+
+        if (!user.password) {
+            return res.status(400).json({
+                success: false,
+                message: "Tài khoản đăng nhập qua mạng xã hội không thể đổi mật khẩu",
+            });
+        }
+
+        // Xác minh mật khẩu hiện tại
+        const isMatch = await user.comparePassword(currentPassword);
+        if (!isMatch) {
+            return res.status(400).json({
+                success: false,
+                message: "Mật khẩu hiện tại không đúng",
+            });
+        }
+
+        // Lưu mật khẩu mới (pre-save hook tự hash)
+        user.password = newPassword;
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Đổi mật khẩu thành công",
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message || "Đổi mật khẩu thất bại",
+        });
+    }
+};
+
+
+/**
+ * PUT /api/auth/avatar
+ * Upload avatar dạng base64
+ */
+const updateAvatar = async (req, res) => {
+    try {
+        const { avatar } = req.body;
+
+        if (!avatar) {
+            return res.status(400).json({ success: false, message: 'Vui lòng cung cấp ảnh avatar' });
+        }
+
+        const isValidBase64 = /^data:image\/(jpeg|jpg|png|gif|webp);base64,/.test(avatar);
+        if (!isValidBase64) {
+            return res.status(400).json({ success: false, message: 'Định dạng ảnh không hợp lệ (jpeg/png/webp)' });
+        }
+
+        const sizeInBytes = Buffer.byteLength(avatar, 'utf8');
+        if (sizeInBytes > 2.5 * 1024 * 1024) {
+            return res.status(400).json({ success: false, message: 'Ảnh quá lớn, vui lòng chọn ảnh dưới 2MB' });
+        }
+
+        const user = await authService.updateUserProfile(req.userId, { avatar });
+
+        res.status(200).json({
+            success: true,
+            message: 'Cập nhật avatar thành công',
+            data: { user },
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message || 'Cập nhật avatar thất bại' });
+    }
+};
+
 module.exports = {
     register,
     login,
@@ -216,4 +320,6 @@ module.exports = {
     facebookAuth,
     getProfile,
     updateProfile,
+    changePassword,
+    updateAvatar,
 };

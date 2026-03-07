@@ -22,8 +22,9 @@ const getAllRestaurants = async (
     // Get total count for pagination
     const total = await Restaurant.countDocuments(query);
 
-    // Fetch restaurants with sorting
+    // Fetch restaurants with sorting and owner info
     const restaurants = await Restaurant.find(query)
+      .populate("owner", "fullName email")
       .sort({ [sortBy]: sortOrder })
       .skip(skip)
       .limit(limit);
@@ -58,7 +59,7 @@ const getRestaurantById = async (id) => {
 };
 
 /**
- * Create a new restaurant
+ * Create a new restaurant (Normal flow)
  */
 const createRestaurant = async (restaurantData) => {
   try {
@@ -71,10 +72,66 @@ const createRestaurant = async (restaurantData) => {
 };
 
 /**
+ * Admin Create Restaurant for Brand
+ */
+const adminCreateRestaurant = async (restaurantData, ownerId) => {
+  try {
+    // Basic validation to ensure owner exists and is a brand
+    const User = require("../models/user.model");
+    const owner = await User.findById(ownerId);
+    if (!owner) {
+      throw new Error("Owner (User) not found");
+    }
+    if (owner.role !== "brand") {
+      throw new Error("Assigned user must have the 'brand' role");
+    }
+
+    // Check if owner already has a restaurant
+    const existingRestaurant = await Restaurant.findOne({ owner: ownerId });
+    if (existingRestaurant) {
+      throw new Error("This brand already has a restaurant associated with it");
+    }
+
+    const restaurant = new Restaurant({
+      ...restaurantData,
+      owner: ownerId
+    });
+    await restaurant.save();
+    return restaurant;
+  } catch (error) {
+    throw new Error(`Error creating restaurant: ${error.message}`);
+  }
+};
+
+/**
  * Update restaurant
  */
 const updateRestaurant = async (id, updateData) => {
   try {
+    // If owner is being updated (Transfer Owner feature)
+    if (updateData.owner) {
+      const User = require("../models/user.model");
+      
+      // 1. Check if the new owner exists and is a brand
+      const newOwner = await User.findById(updateData.owner);
+      if (!newOwner) {
+        throw new Error("New owner (User) not found");
+      }
+      if (newOwner.role !== "brand") {
+        throw new Error("The new owner must have the 'brand' role");
+      }
+
+      // 2. Check if the new owner already has another restaurant
+      const existingRestaurant = await Restaurant.findOne({ 
+        owner: updateData.owner,
+        _id: { $ne: id } // Exclude the current restaurant being updated
+      });
+      
+      if (existingRestaurant) {
+        throw new Error("This brand already owns another restaurant. Cannot transfer ownership.");
+      }
+    }
+
     const restaurant = await Restaurant.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
@@ -144,6 +201,7 @@ module.exports = {
   getAllRestaurants,
   getRestaurantById,
   createRestaurant,
+  adminCreateRestaurant,
   updateRestaurant,
   deleteRestaurant,
   getTopRatedRestaurants,

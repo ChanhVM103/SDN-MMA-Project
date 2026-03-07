@@ -1,8 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, ScrollView,
-    Platform, Animated, Dimensions, Alert,
+    Platform, Animated, Dimensions, Alert, ActivityIndicator,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
+import { launchImageLibraryAsync, requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -19,6 +21,7 @@ export default function ProfileScreen() {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
     const [showAddressModal, setShowAddressModal] = useState(false);
+    const [avatarLoading, setAvatarLoading] = useState(false);
 
     useEffect(() => {
         Animated.parallel([
@@ -43,6 +46,38 @@ export default function ProfileScreen() {
                 },
             ]
         );
+    };
+
+    const handlePickAvatar = async () => {
+        const { status } = await requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Cần quyền truy cập', 'Vui lòng cho phép truy cập thư viện ảnh trong cài đặt');
+            return;
+        }
+
+        const result = await launchImageLibraryAsync({
+            mediaTypes: ['images'] as any,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.7,
+            base64: true,
+        });
+
+        if (result.canceled || !result.assets[0].base64) return;
+
+        const base64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
+        setAvatarLoading(true);
+        try {
+            const res = await authAPI.updateAvatar(token!, base64);
+            if (res.success && user) {
+                await updateUser({ ...user, avatar: base64 });
+                Alert.alert('Thành công', 'Đã cập nhật ảnh đại diện');
+            }
+        } catch (e: any) {
+            Alert.alert('Lỗi', e.message || 'Không thể cập nhật ảnh');
+        } finally {
+            setAvatarLoading(false);
+        }
     };
 
     // Not logged in state
@@ -142,15 +177,28 @@ export default function ProfileScreen() {
                     <View style={s.decorCircle2} />
                     <Animated.View style={[s.headerContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
                         {/* Avatar */}
-                        <View style={s.avatarContainer}>
-                            <LinearGradient
-                                colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
-                                style={s.avatarGradient}
-                            >
-                                <Text style={s.avatarText}>{getInitials(user.fullName)}</Text>
-                            </LinearGradient>
-                            <View style={s.onlineDot} />
-                        </View>
+                        <TouchableOpacity style={s.avatarContainer} onPress={handlePickAvatar} activeOpacity={0.8}>
+                            {user.avatar ? (
+                                <ExpoImage
+                                    source={{ uri: user.avatar }}
+                                    style={s.avatarImage}
+                                    contentFit="cover"
+                                />
+                            ) : (
+                                <LinearGradient
+                                    colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
+                                    style={s.avatarGradient}
+                                >
+                                    <Text style={s.avatarText}>{getInitials(user.fullName)}</Text>
+                                </LinearGradient>
+                            )}
+                            <View style={s.cameraBtn}>
+                                {avatarLoading
+                                    ? <ActivityIndicator size={10} color="#fff" />
+                                    : <Text style={{ fontSize: 10 }}>📷</Text>
+                                }
+                            </View>
+                        </TouchableOpacity>
                         <Text style={s.headerTitle}>{user.fullName}</Text>
                         <Text style={s.headerSubtitle}>{user.email}</Text>
                         <View style={s.providerBadge}>
@@ -294,6 +342,16 @@ const s = StyleSheet.create({
     decorCircle2: { position: 'absolute', width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(255,255,255,0.05)', bottom: -20, left: -30 },
     headerContent: { alignItems: 'center', paddingHorizontal: Spacing.lg },
     avatarContainer: { position: 'relative', marginBottom: 12 },
+    avatarImage: {
+        width: 88, height: 88, borderRadius: 44,
+        borderWidth: 3, borderColor: 'rgba(255,255,255,0.4)',
+    },
+    cameraBtn: {
+        position: 'absolute', bottom: 0, right: 0,
+        width: 26, height: 26, borderRadius: 13,
+        backgroundColor: '#FF6B35', borderWidth: 2, borderColor: '#fff',
+        justifyContent: 'center', alignItems: 'center',
+    },
     avatarGradient: {
         width: 88, height: 88, borderRadius: 44,
         justifyContent: 'center', alignItems: 'center',

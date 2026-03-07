@@ -83,106 +83,119 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
   };
 
   return (
-    <section className="auth-screen signup">
-      <article className="auth-banner green">
-        <p>FoodieHub</p>
-        <h1>Tạo tài khoản</h1>
-        <span>Gia nhập cộng đồng ẩm thực và đặt món nhanh hơn.</span>
-      </article>
-
-      <form className="auth-card" onSubmit={handleSubmit}>
-        <h2>Đăng ký tài khoản</h2>
-        <p>Điền thông tin bên dưới để bắt đầu.</p>
-
-        <label className="field-group">
-          Họ và tên
-          <input
-            type="text"
-            placeholder="Nguyễn Văn A"
-            value={form.fullName}
-            onChange={(event) => handleChange("fullName", event.target.value)}
-            autoComplete="name"
-          />
-        </label>
-
-        <label className="field-group">
-          Email
-          <input
-            type="email"
-            placeholder="you@email.com"
-            value={form.email}
-            onChange={(event) => handleChange("email", event.target.value)}
-            autoComplete="email"
-          />
-        </label>
-
-        <label className="field-group">
-          Số điện thoại
-          <input
-            type="tel"
-            placeholder="+84..."
-            value={form.phone}
-            onChange={(event) => handleChange("phone", event.target.value)}
-            autoComplete="tel"
-          />
-        </label>
-
-        <div className="dual-input">
-          <label className="field-group">
-            Mật khẩu
-            <input
-              type="password"
-              placeholder="Mật khẩu"
-              value={form.password}
-              onChange={(event) => handleChange("password", event.target.value)}
-              autoComplete="new-password"
-            />
-          </label>
-
-          <label className="field-group">
-            Xác nhận
-            <input
-              type="password"
-              placeholder="Nhập lại"
-              value={form.confirmPassword}
-              onChange={(event) => handleChange("confirmPassword", event.target.value)}
-              autoComplete="new-password"
-            />
-          </label>
+    <>
+      <div style={{ backgroundColor: "var(--shopee-surface)", padding: "20px 0", borderBottom: "1px solid var(--border-color)" }}>
+        <div className="topbar-content" style={{ justifyContent: "flex-start", gap: "20px", color: "var(--shopee-orange)" }}>
+          <button className="brand" type="button" onClick={() => navigate("/home")} style={{ color: "var(--shopee-orange)" }}>
+            <svg viewBox="0 0 100 100" width="40" height="40" style={{ fill: "var(--shopee-orange)" }}>
+              <circle cx="50" cy="50" r="45" fill="none" stroke="var(--shopee-orange)" strokeWidth="5" />
+              <path d="M35 40 L50 65 L65 40 Z" fill="var(--shopee-orange)" />
+            </svg>
+            <span className="brand-name" style={{ fontSize: "24px", color: "var(--shopee-orange)" }}>FoodieHub</span>
+          </button>
+          <span style={{ fontSize: "24px", color: "var(--text-main)", marginLeft: "10px" }}>Đăng ký</span>
         </div>
+      </div>
 
-        <label className="check-row">
-          <input
-            type="checkbox"
-            checked={form.agree}
-            onChange={(event) => handleChange("agree", event.target.checked)}
-          />
-          <span>Tôi đồng ý điều khoản và chính sách sử dụng.</span>
-        </label>
+      <section className="auth-page">
+        <div className="auth-container">
+          <div className="auth-branding">
+            <svg viewBox="0 0 100 100" width="100" height="100" style={{ fill: "white", marginBottom: "20px" }}>
+              <circle cx="50" cy="50" r="45" fill="none" stroke="white" strokeWidth="5" />
+              <path d="M35 40 L50 65 L65 40 Z" fill="white" />
+            </svg>
+            <h1>FoodieHub</h1>
+            <p style={{ fontSize: "16px", lineHeight: "1.5" }}>Nền tảng đặt đồ ăn trực tuyến<br />nhanh chóng & tiện lợi</p>
+          </div>
 
-        {message && <p className="error-text">{message}</p>}
+          <form className="auth-card" onSubmit={handleSubmit}>
+            <h2>Đăng ký</h2>
 
-        <button className="primary-btn wide" type="submit" disabled={loading}>
-          {loading ? "Đang xử lý..." : "Tạo tài khoản"}
-        </button>
+            <div className="field-group">
+              <input
+                type="text"
+                placeholder="Họ và tên"
+                value={form.fullName}
+                onChange={(event) => handleChange("fullName", event.target.value)}
+                autoComplete="name"
+              />
+            </div>
 
-        <div className="social-row">
-          <button className="social-btn" type="button" onClick={handleGoogleClick} disabled={googleLoading}>
-            {googleLoading ? "Đang kết nối..." : "Google"}
-          </button>
-          <button className="social-btn fb" type="button" onClick={handleFacebookClick} disabled={facebookLoading}>
-            {facebookLoading ? "Đang kết nối..." : "Facebook"}
-          </button>
+            <div className="field-group">
+              <input
+                type="email"
+                placeholder="Email/Số điện thoại"
+                value={form.email}
+                onChange={(event) => handleChange("email", event.target.value)}
+                autoComplete="email"
+              />
+            </div>
+
+            <div className="field-group" style={{ display: "flex", gap: "10px" }}>
+              <input
+                type="password"
+                placeholder="Mật khẩu"
+                value={form.password}
+                onChange={(event) => handleChange("password", event.target.value)}
+                autoComplete="new-password"
+                style={{ flex: 1 }}
+              />
+              <input
+                type="password"
+                placeholder="Xác nhận"
+                value={form.confirmPassword}
+                onChange={(event) => handleChange("confirmPassword", event.target.value)}
+                autoComplete="new-password"
+                style={{ flex: 1 }}
+              />
+            </div>
+
+            <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "12px", color: "var(--text-main)", marginBottom: "15px", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={form.agree}
+                onChange={(event) => handleChange("agree", event.target.checked)}
+                style={{ width: "auto" }}
+              />
+              <span>Tôi đồng ý với <span style={{ color: "var(--shopee-orange)" }}>Điều khoản FoodieHub</span></span>
+            </label>
+
+            {message && <p className="error-text">{message}</p>}
+
+            <button className="primary-btn wide" type="submit" disabled={loading}>
+              {loading ? "ĐANG TẢI..." : "ĐĂNG KÝ"}
+            </button>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "15px 0" }}>
+              <div style={{ flex: 1, height: "1px", backgroundColor: "var(--border-color)" }}></div>
+              <span style={{ padding: "0 10px", color: "var(--text-muted)", fontSize: "12px" }}>HOẶC</span>
+              <div style={{ flex: 1, height: "1px", backgroundColor: "var(--border-color)" }}></div>
+            </div>
+
+            <div className="social-row" style={{ marginTop: "0" }}>
+              <button className="social-btn fb" type="button" onClick={handleFacebookClick} disabled={facebookLoading}>
+                {facebookLoading ? "Đang tải..." : "Facebook"}
+              </button>
+              <button className="social-btn" type="button" onClick={handleGoogleClick} disabled={googleLoading}>
+                {googleLoading ? "Đang tải..." : "Google"}
+              </button>
+            </div>
+
+            <div style={{ textAlign: "center", marginTop: "20px", fontSize: "12px", color: "var(--text-muted)", padding: "0 20px" }}>
+              Bằng việc đăng kí, bạn đã đồng ý với FoodieHub về<br />
+              <span style={{ color: "var(--shopee-orange)" }}>Điều khoản dịch vụ</span> & <span style={{ color: "var(--shopee-orange)" }}>Chính sách bảo mật</span>
+            </div>
+
+            <p className="auth-switch" style={{ marginTop: "15px" }}>
+              Bạn đã có tài khoản?{" "}
+              <button type="button" onClick={() => navigate("/sign-in")}>
+                Đăng nhập
+              </button>
+            </p>
+          </form>
         </div>
-
-        <p className="auth-switch">
-          Đã có tài khoản?{" "}
-          <button type="button" onClick={() => navigate("/sign-in")}>
-            Đăng nhập
-          </button>
-        </p>
-      </form>
-    </section>
+      </section>
+    </>
   );
 }
 
