@@ -1,0 +1,37 @@
+{
+  "user": {
+    "_id": "69aa78317a0f132571c8e881",
+    "_id_type": "object",
+    "isObjectId": true
+  },
+  "restaurants": [
+    {
+      "name": "Phúc long",
+      "owner": "69aa78317a0f132571c8e881",
+      "owner_type": "object",
+      "isObjectId": true,
+      "matchExact": true
+    },
+    {
+      "name": "Phúc long",
+      "owner": "69aa78317a0f132571c8e881",
+      "owner_type": "object",
+      "isObjectId": true,
+      "matchExact": true
+    },
+    {
+      "name": "Phuc long",
+      "owner": "69aa78317a0f132571c8e881",
+      "owner_type": "object",
+      "isObjectId": true,
+      "matchExact": true
+    },
+    {
+      "name": "Phuc long nè",
+      "owner": "69aa78317a0f132571c8e881",
+      "owner_type": "object",
+      "isObjectId": true,
+      "matchExact": true
+    }
+  ]
+}

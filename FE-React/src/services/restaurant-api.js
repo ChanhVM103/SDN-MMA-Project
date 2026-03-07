@@ -27,6 +27,11 @@ export const getAllRestaurants = async (params = {}) => {
     return apiRequest(`/restaurants${queryString ? `?${queryString}` : ''}`);
 };
 
+// Lấy nhà hàng theo tags
+export const getRestaurantsByTags = async (tags) => {
+    return apiRequest(`/restaurants/special/tags/${encodeURIComponent(tags)}`);
+};
+
 // Lấy nhà hàng nổi bật (có thể dùng top-rated)
 export const getTopRatedRestaurants = async () => {
     return apiRequest('/restaurants/special/top-rated');

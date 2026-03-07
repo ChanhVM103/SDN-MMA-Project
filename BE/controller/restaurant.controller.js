@@ -150,6 +150,58 @@ const createRestaurant = async (req, res) => {
 };
 
 /**
+ * POST /api/restaurants/admin-create
+ * Admin creates a new restaurant and assigns to a brand owner
+ */
+const adminCreateRestaurant = async (req, res) => {
+  try {
+    const {
+      ownerId,
+      name,
+      image,
+      deliveryTime,
+      deliveryFee,
+      tags,
+      address,
+      phone,
+      description
+    } = req.body;
+
+    if (!ownerId) {
+      return res.status(400).json({ success: false, message: "Owner ID is required" });
+    }
+    if (!name || !image || deliveryTime === undefined || deliveryFee === undefined) {
+      return res.status(400).json({ success: false, message: "Missing required fields (name, image, deliveryTime, deliveryFee)" });
+    }
+
+    const restaurantData = {
+      name,
+      image,
+      deliveryTime,
+      deliveryFee,
+      tags: tags || [],
+      address: address || "",
+      phone: phone || "",
+      description: description || "",
+      isOpen: true
+    };
+
+    const restaurant = await restaurantService.adminCreateRestaurant(restaurantData, ownerId);
+
+    res.status(201).json({
+      success: true,
+      message: "Restaurant created and assigned to brand successfully",
+      data: restaurant,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/**
  * PUT /api/restaurants/:id
  * Update restaurant
  */
@@ -278,6 +330,7 @@ module.exports = {
   getAllRestaurants,
   getRestaurantById,
   createRestaurant,
+  adminCreateRestaurant,
   updateRestaurant,
   deleteRestaurant,
   getTopRatedRestaurants,
