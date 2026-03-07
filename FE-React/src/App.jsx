@@ -23,6 +23,7 @@ import { normalizePath } from "./utils/navigation";
 function App() {
   const [path, setPath] = useState(() => normalizePath(window.location.pathname));
   const [auth, setAuth] = useState(() => parseStoredAuth());
+  const [globalSearchTerm, setGlobalSearchTerm] = useState("");
 
   useEffect(() => {
     const current = normalizePath(window.location.pathname);
@@ -119,8 +120,8 @@ function App() {
       return <ProfilePage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
     }
 
-    return <HomePage user={auth.user} navigate={navigate} />;
-  }, [auth.user, path]);
+    return <HomePage user={auth.user} navigate={navigate} globalSearchTerm={globalSearchTerm} />;
+  }, [auth.user, path, globalSearchTerm]);
 
   return (
     <div className={`app-shell ${isAuthScreen ? "auth-mode" : ""}`}>
@@ -128,8 +129,18 @@ function App() {
       <div className="ambient a2" />
       <div className="ambient-grid" />
 
-      {!isAuthScreen && <TopBar user={auth.user} navigate={navigate} />}
-      <main className="view-port">{screen}</main>
+      {!isAuthScreen && (
+        <TopBar
+          user={auth.user}
+          navigate={navigate}
+          onLogout={handleLogout}
+          onSearch={(term) => {
+            setGlobalSearchTerm(term);
+            navigate("/home");
+          }}
+        />
+      )}
+      <main className={isAuthScreen ? "" : "view-port"} style={{ flexGrow: 1 }}>{screen}</main>
       {!isAuthScreen && <TabBar path={path} navigate={navigate} />}
     </div>
   );

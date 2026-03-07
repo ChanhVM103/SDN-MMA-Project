@@ -3,7 +3,7 @@ import RestaurantCard from "../components/RestaurantCard";
 import { getRestaurantsByTags, getAllRestaurants } from "../services/restaurant-api";
 import { TypewriterText } from "../components/ui/TypewriterText";
 
-function HomePage({ user, navigate }) {
+function HomePage({ user, navigate, globalSearchTerm }) {
   // Filters
   const [activeType, setActiveType] = useState("all-type"); // all-type, food, drink
   const [activeCountry, setActiveCountry] = useState("all-country"); // all-country, vietnam, japan, korea
@@ -41,14 +41,24 @@ function HomePage({ user, navigate }) {
         }
 
         let data;
-        if (tagsToSearch.length > 0) {
+        if (globalSearchTerm) {
+          // If a global search term exists, prioritize searching by text over tags locally
+          data = await getAllRestaurants({ search: globalSearchTerm });
+        } else if (tagsToSearch.length > 0) {
           // Send tags as comma separated string
           data = await getRestaurantsByTags(tagsToSearch.join(","));
         } else {
           data = await getAllRestaurants();
         }
 
-        setRestaurants(Array.isArray(data) ? data : data.restaurants || []);
+        const rawList = Array.isArray(data) ? data : data.restaurants || [];
+        // Flash Sale ưu tiên lên trước
+        const sorted = [...rawList].sort((a, b) => {
+          if (a.isFlashSale && !b.isFlashSale) return -1;
+          if (!a.isFlashSale && b.isFlashSale) return 1;
+          return 0;
+        });
+        setRestaurants(sorted);
       } catch (error) {
         console.error("Failed to fetch restaurants:", error);
       } finally {
@@ -56,31 +66,36 @@ function HomePage({ user, navigate }) {
       }
     };
     fetchRestaurants();
-  }, [activeType, activeCountry]);
+  }, [activeType, activeCountry, globalSearchTerm]);
 
   return (
     <div style={{ backgroundColor: "var(--shopee-bg)", minHeight: "100vh", paddingBottom: "20px" }}>
       {/* Banner Skeleton */}
       <section className="view-port" style={{ paddingTop: "20px", paddingBottom: "0" }}>
-        <div className="hero-banner">
-          <div className="carousel-main">
-            <h2>
-              <TypewriterText
-                words={[
-                  "Trải nghiệm ẩm thực đỉnh cao",
-                  "Giao hàng siêu tốc 🚀",
-                  "Khám phá món ngon mỗi ngày",
-                  "FoodieHub - Đặt đồ ăn dễ dàng",
-                ]}
-                typingSpeed={80}
-                deletingSpeed={40}
-                pauseDuration={2000}
-              />
-            </h2>
+        <div className="hero-banner" style={{ background: "transparent", boxShadow: "none" }}>
+          <div className="carousel-main" style={{
+            position: "relative",
+            padding: 0,
+            overflow: "hidden",
+            backgroundColor: "#222",
+            borderRadius: "12px",
+            boxShadow: "var(--shadow-sm)",
+            width: "100%",
+            height: "100%"
+          }}>
+            <img
+              src="/banner.png"
+              alt="FoodieHub Banner"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
           </div>
           <div className="carousel-side">
-            <div className="carousel-side-item">Freeship Xtra</div>
-            <div className="carousel-side-item">Flash Sale</div>
+            <div className="carousel-side-item" style={{ padding: 0, overflow: "hidden", backgroundColor: "#fff", borderRadius: "12px", boxShadow: "var(--shadow-sm)" }}>
+              <img src="/freeship.png" alt="Freeship Xtra" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            </div>
+            <div className="carousel-side-item" style={{ padding: 0, overflow: "hidden", backgroundColor: "#fff", borderRadius: "12px", boxShadow: "var(--shadow-sm)" }}>
+              <img src="/flash_sale.png" alt="Flash Sale" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            </div>
           </div>
         </div>
       </section>

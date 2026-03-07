@@ -17,11 +17,14 @@ const apiRequest = async (endpoint, options = {}) => {
     return payload.data;
 };
 
-// Lấy tất cả nhà hàng
+// Lấy tất cả nhà hàng (hỗ trợ search, pagination, sort)
 export const getAllRestaurants = async (params = {}) => {
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append('page', params.page);
     if (params.limit) queryParams.append('limit', params.limit);
+    if (params.search) queryParams.append('search', params.search);
+    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
 
     const queryString = queryParams.toString();
     return apiRequest(`/restaurants${queryString ? `?${queryString}` : ''}`);

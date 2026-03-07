@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ShutterText } from "../components/ui/ShutterText";
 
 function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
   const [form, setForm] = useState({
@@ -86,12 +87,25 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
     <>
       <div style={{ backgroundColor: "var(--shopee-surface)", padding: "20px 0", borderBottom: "1px solid var(--border-color)" }}>
         <div className="topbar-content" style={{ justifyContent: "flex-start", gap: "20px", color: "var(--shopee-orange)" }}>
-          <button className="brand" type="button" onClick={() => navigate("/home")} style={{ color: "var(--shopee-orange)" }}>
-            <svg viewBox="0 0 100 100" width="40" height="40" style={{ fill: "var(--shopee-orange)" }}>
-              <circle cx="50" cy="50" r="45" fill="none" stroke="var(--shopee-orange)" strokeWidth="5" />
-              <path d="M35 40 L50 65 L65 40 Z" fill="var(--shopee-orange)" />
-            </svg>
-            <span className="brand-name" style={{ fontSize: "24px", color: "var(--shopee-orange)" }}>FoodieHub</span>
+          <button className="brand" type="button" onClick={() => navigate("/home")} style={{ color: "var(--shopee-orange)", display: "flex", alignItems: "center" }}>
+            <img
+              src="/logo.jpg"
+              alt="FoodieHub Logo"
+              style={{
+                height: "42px",
+                width: "auto",
+                borderRadius: "6px",
+                objectFit: "contain",
+                marginRight: "10px"
+              }}
+            />
+            <ShutterText
+              text="FoodieHub"
+              trigger="auto"
+              sliceColor="#ffdd57"
+              textColor="var(--shopee-orange)"
+              className="brand-name"
+            />
           </button>
           <span style={{ fontSize: "24px", color: "var(--text-main)", marginLeft: "10px" }}>Đăng ký</span>
         </div>
@@ -100,11 +114,15 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
       <section className="auth-page">
         <div className="auth-container">
           <div className="auth-branding">
-            <svg viewBox="0 0 100 100" width="100" height="100" style={{ fill: "white", marginBottom: "20px" }}>
-              <circle cx="50" cy="50" r="45" fill="none" stroke="white" strokeWidth="5" />
-              <path d="M35 40 L50 65 L65 40 Z" fill="white" />
-            </svg>
-            <h1>FoodieHub</h1>
+            <img src="/logo.jpg" alt="FoodieHub" style={{ width: "100px", height: "auto", borderRadius: "12px", marginBottom: "20px" }} />
+            <h1 style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
+              <ShutterText
+                text="FoodieHub"
+                trigger="auto"
+                sliceColor="#ffdd57"
+                textColor="#ffffff"
+              />
+            </h1>
             <p style={{ fontSize: "16px", lineHeight: "1.5" }}>Nền tảng đặt đồ ăn trực tuyến<br />nhanh chóng & tiện lợi</p>
           </div>
 
@@ -118,6 +136,7 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
                 value={form.fullName}
                 onChange={(event) => handleChange("fullName", event.target.value)}
                 autoComplete="name"
+                style={{ padding: "14px", backgroundColor: "#fff", border: "1px solid #e0e0e0", outline: "none" }}
               />
             </div>
 
@@ -128,6 +147,7 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
                 value={form.email}
                 onChange={(event) => handleChange("email", event.target.value)}
                 autoComplete="email"
+                style={{ padding: "14px", backgroundColor: "#fff", border: "1px solid #e0e0e0", outline: "none" }}
               />
             </div>
 
@@ -138,7 +158,7 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
                 value={form.password}
                 onChange={(event) => handleChange("password", event.target.value)}
                 autoComplete="new-password"
-                style={{ flex: 1 }}
+                style={{ flex: 1, padding: "14px", backgroundColor: "#fff", border: "1px solid #e0e0e0", outline: "none" }}
               />
               <input
                 type="password"
@@ -146,7 +166,7 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
                 value={form.confirmPassword}
                 onChange={(event) => handleChange("confirmPassword", event.target.value)}
                 autoComplete="new-password"
-                style={{ flex: 1 }}
+                style={{ flex: 1, padding: "14px", backgroundColor: "#fff", border: "1px solid #e0e0e0", outline: "none" }}
               />
             </div>
 
@@ -162,7 +182,7 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
 
             {message && <p className="error-text">{message}</p>}
 
-            <button className="primary-btn wide" type="submit" disabled={loading}>
+            <button className="primary-btn wide" type="submit" disabled={loading} style={{ marginTop: "10px", padding: "14px", fontSize: "14px", fontWeight: "bold" }}>
               {loading ? "ĐANG TẢI..." : "ĐĂNG KÝ"}
             </button>
 
@@ -173,10 +193,10 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
             </div>
 
             <div className="social-row" style={{ marginTop: "0" }}>
-              <button className="social-btn fb" type="button" onClick={handleFacebookClick} disabled={facebookLoading}>
+              <button className="social-btn fb" type="button" onClick={handleFacebookClick} disabled={facebookLoading} style={{ color: "white", backgroundColor: "#1877f2", padding: "12px", border: "none" }}>
                 {facebookLoading ? "Đang tải..." : "Facebook"}
               </button>
-              <button className="social-btn" type="button" onClick={handleGoogleClick} disabled={googleLoading}>
+              <button className="social-btn" type="button" onClick={handleGoogleClick} disabled={googleLoading} style={{ backgroundColor: "#fff", padding: "12px", border: "1px solid #e0e0e0", color: "#333" }}>
                 {googleLoading ? "Đang tải..." : "Google"}
               </button>
             </div>
