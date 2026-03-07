@@ -3,6 +3,12 @@ var router = express.Router();
 var userController = require("../controller/user.controller");
 var { authMiddleware, authorizeRole } = require("../middleware/auth.middleware");
 
+<<<<<<< HEAD
+=======
+// ── User tự đổi mật khẩu (chỉ cần đăng nhập) ────
+router.patch("/change-password", authMiddleware, userController.changePassword);
+
+>>>>>>> 30cae0e2f630089fbcf52d3d4cae322ae9b2c886
 // ── Admin routes ──────────────────────────────────
 router.use(authMiddleware, authorizeRole("admin"));
 
