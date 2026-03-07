@@ -127,8 +127,15 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
     setLoading(true);
     try {
       const data = await getAllUsersApi();
-      if (data?.users) setUsersList(data.users);
-    } catch (error) { showSnack("Lỗi tải danh sách người dùng", "error"); }
+      // After teammate's refactor, adminApiRequest returns payload.data directly
+      // which is already the array of users
+      if (Array.isArray(data)) {
+        setUsersList(data);
+      } else if (data?.users) {
+        // fallback for original format
+        setUsersList(data.users);
+      }
+    } catch (error) { showSnack("Lỗi tải danh sách người dùng: " + error.message, "error"); }
     finally { setLoading(false); }
   };
 
