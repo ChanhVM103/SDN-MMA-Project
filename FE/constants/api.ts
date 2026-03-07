@@ -1,13 +1,16 @@
 import { Platform } from "react-native";
 
-// For Android emulator, use 10.0.2.2 to access host machine's localhost
-// For iOS simulator, use localhost
-// For physical device, use your computer's IP address
+// ⚠️ Đổi IP này thành IP máy tính của bạn khi test trên điện thoại thật
+// Xem IP: ipconfig (Windows) hoặc ifconfig (Mac/Linux)
+const LOCAL_IP = "192.168.1.225"; // ← ĐỔI IP NÀY
+
 const getBaseUrl = () => {
     if (Platform.OS === "android") {
-        return "http://10.0.2.2:3000/api";
+        // Android emulator → dùng 10.0.2.2
+        // Điện thoại thật → dùng IP máy tính
+        return `http://${LOCAL_IP}:3000/api`;
     }
-    // iOS simulator and web
+    // iOS simulator
     return "http://localhost:3000/api";
 };
 
@@ -119,5 +122,12 @@ export const authAPI = {
         apiRequest("/auth/forgot-password", {
             method: "POST",
             body: JSON.stringify({ email }),
+        }),
+
+    updateAvatar: (token: string, avatar: string) =>
+        apiRequest("/auth/avatar", {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ avatar }),
         }),
 };
