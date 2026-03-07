@@ -87,11 +87,11 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
       <div style={{ backgroundColor: "var(--shopee-surface)", padding: "20px 0", borderBottom: "1px solid var(--border-color)" }}>
         <div className="topbar-content" style={{ justifyContent: "flex-start", gap: "20px", color: "var(--shopee-orange)" }}>
           <button className="brand" type="button" onClick={() => navigate("/home")} style={{ color: "var(--shopee-orange)" }}>
-             <svg viewBox="0 0 100 100" width="40" height="40" style={{ fill: "var(--shopee-orange)" }}>
-              <circle cx="50" cy="50" r="45" fill="none" stroke="var(--shopee-orange)" strokeWidth="5"/>
-              <path d="M35 40 L50 65 L65 40 Z" fill="var(--shopee-orange)"/>
+            <svg viewBox="0 0 100 100" width="40" height="40" style={{ fill: "var(--shopee-orange)" }}>
+              <circle cx="50" cy="50" r="45" fill="none" stroke="var(--shopee-orange)" strokeWidth="5" />
+              <path d="M35 40 L50 65 L65 40 Z" fill="var(--shopee-orange)" />
             </svg>
-            <span className="brand-name" style={{ fontSize: "24px", color: "var(--shopee-orange)" }}>Shopee Clone</span>
+            <span className="brand-name" style={{ fontSize: "24px", color: "var(--shopee-orange)" }}>FoodieHub</span>
           </button>
           <span style={{ fontSize: "24px", color: "var(--text-main)", marginLeft: "10px" }}>Đăng ký</span>
         </div>
@@ -101,11 +101,11 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
         <div className="auth-container">
           <div className="auth-branding">
             <svg viewBox="0 0 100 100" width="100" height="100" style={{ fill: "white", marginBottom: "20px" }}>
-              <circle cx="50" cy="50" r="45" fill="none" stroke="white" strokeWidth="5"/>
-              <path d="M35 40 L50 65 L65 40 Z" fill="white"/>
+              <circle cx="50" cy="50" r="45" fill="none" stroke="white" strokeWidth="5" />
+              <path d="M35 40 L50 65 L65 40 Z" fill="white" />
             </svg>
-            <h1>Shopee Clone</h1>
-            <p style={{ fontSize: "16px", lineHeight: "1.5" }}>Nền tảng thương mại điện tử<br/>yêu thích ở Đông Nam Á & Đài Loan</p>
+            <h1>FoodieHub</h1>
+            <p style={{ fontSize: "16px", lineHeight: "1.5" }}>Nền tảng đặt đồ ăn trực tuyến<br />nhanh chóng & tiện lợi</p>
           </div>
 
           <form className="auth-card" onSubmit={handleSubmit}>
@@ -141,13 +141,13 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
                 style={{ flex: 1 }}
               />
               <input
-                 type="password"
-                 placeholder="Xác nhận"
-                 value={form.confirmPassword}
-                 onChange={(event) => handleChange("confirmPassword", event.target.value)}
-                 autoComplete="new-password"
-                 style={{ flex: 1 }}
-               />
+                type="password"
+                placeholder="Xác nhận"
+                value={form.confirmPassword}
+                onChange={(event) => handleChange("confirmPassword", event.target.value)}
+                autoComplete="new-password"
+                style={{ flex: 1 }}
+              />
             </div>
 
             <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "12px", color: "var(--text-main)", marginBottom: "15px", cursor: "pointer" }}>
@@ -157,7 +157,7 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
                 onChange={(event) => handleChange("agree", event.target.checked)}
                 style={{ width: "auto" }}
               />
-              <span>Tôi đồng ý với <span style={{ color: "var(--shopee-orange)" }}>Điều khoản Shopee</span></span>
+              <span>Tôi đồng ý với <span style={{ color: "var(--shopee-orange)" }}>Điều khoản FoodieHub</span></span>
             </label>
 
             {message && <p className="error-text">{message}</p>}
@@ -181,10 +181,10 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
               </button>
             </div>
 
-             <div style={{ textAlign: "center", marginTop: "20px", fontSize: "12px", color: "var(--text-muted)", padding: "0 20px" }}>
-                Bằng việc đăng kí, bạn đã đồng ý với Shopee về<br/>
-                <span style={{ color: "var(--shopee-orange)" }}>Điều khoản dịch vụ</span> & <span style={{ color: "var(--shopee-orange)" }}>Chính sách bảo mật</span>
-             </div>
+            <div style={{ textAlign: "center", marginTop: "20px", fontSize: "12px", color: "var(--text-muted)", padding: "0 20px" }}>
+              Bằng việc đăng kí, bạn đã đồng ý với FoodieHub về<br />
+              <span style={{ color: "var(--shopee-orange)" }}>Điều khoản dịch vụ</span> & <span style={{ color: "var(--shopee-orange)" }}>Chính sách bảo mật</span>
+            </div>
 
             <p className="auth-switch" style={{ marginTop: "15px" }}>
               Bạn đã có tài khoản?{" "}
