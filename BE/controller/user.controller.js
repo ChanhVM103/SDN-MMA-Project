@@ -257,73 +257,6 @@ const deleteUser = async (req, res) => {
   }
 };
 
-// ── PATCH /api/users/change-password ─────────────
-// User tự đổi mật khẩu (cần nhập mật khẩu cũ)
-const changePassword = async (req, res) => {
-  try {
-    const { oldPassword, newPassword, confirmPassword } = req.body;
-
-    if (!oldPassword || !newPassword || !confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "Vui lòng nhập đầy đủ mật khẩu cũ, mới và xác nhận",
-      });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "Mật khẩu mới phải có ít nhất 6 ký tự",
-      });
-    }
-
-    if (newPassword !== confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "Mật khẩu mới và xác nhận không khớp",
-      });
-    }
-
-    // Lấy user kèm password (bị select: false nên phải chỉ định)
-    const user = await User.findById(req.userId).select("+password");
-    if (!user) {
-      return res.status(404).json({ success: false, message: "Không tìm thấy người dùng" });
-    }
-
-    // Kiểm tra tài khoản social (không có password)
-    if (!user.password) {
-      return res.status(400).json({
-        success: false,
-        message: "Tài khoản đăng nhập qua mạng xã hội không thể đổi mật khẩu",
-      });
-    }
-
-    // Xác minh mật khẩu cũ
-    const isMatch = await user.comparePassword(oldPassword);
-    if (!isMatch) {
-      return res.status(400).json({
-        success: false,
-        message: "Mật khẩu cũ không đúng",
-      });
-    }
-
-    if (oldPassword === newPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "Mật khẩu mới phải khác mật khẩu cũ",
-      });
-    }
-
-    // Lưu mật khẩu mới (pre-save hook sẽ tự hash)
-    user.password = newPassword;
-    await user.save();
-
-    return res.json({ success: true, message: "Đổi mật khẩu thành công" });
-  } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
-  }
-};
-
 // ── PATCH /api/users/:id/reset-password ──────────
 // Admin reset mật khẩu cho user (không cần mật khẩu cũ)
 const resetPassword = async (req, res) => {
@@ -377,6 +310,5 @@ module.exports = {
   changeUserRole,
   toggleUserActive,
   deleteUser,
-  changePassword,
   resetPassword,
 };
