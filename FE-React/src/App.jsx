@@ -8,6 +8,7 @@ import OrdersPage from "./pages/OrdersPage";
 import ProfilePage from "./pages/ProfilePage";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
 import { signInApi, signUpApi, socialLoginApi } from "./services/auth-api";
 import {
   clearStoredAuth,
@@ -35,41 +36,51 @@ function App() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  // Route redirection based on role
+  useEffect(() => {
+    if (!auth?.user) return;
+
+    // Use current path from state to check
+    if (auth.user.role === "admin" && path !== "/admin") {
+      navigate("/admin");
+    } else if (auth.user.role !== "admin" && (path === "/admin" || path === "/sign-in" || path === "/sign-up")) {
+      navigate("/home");
+    }
+  }, [auth, path]);
+
   const navigate = (to) => {
     const next = normalizePath(to);
-    if (next === path) return;
-    window.history.pushState({}, "", next);
-    setPath(next);
+    setPath((prevPath) => {
+      if (next === prevPath) return prevPath;
+      window.history.pushState({}, "", next);
+      return next;
+    });
   };
 
   const handleSignIn = async ({ email, password }) => {
     const data = await signInApi({ email, password });
-    setAuth({ user: data.user, token: data.token });
     persistAuth(data.user, data.token);
-    navigate("/home");
+    setAuth({ user: data.user, token: data.token });
   };
 
   const handleSignUp = async (payload) => {
     const data = await signUpApi(payload);
-    setAuth({ user: data.user, token: data.token });
     persistAuth(data.user, data.token);
-    navigate("/home");
+    setAuth({ user: data.user, token: data.token });
   };
 
   const handleGoogleAuth = async () => {
     const accessToken = await requestGoogleAccessToken();
     const data = await socialLoginApi({ provider: "google", accessToken });
-    setAuth({ user: data.user, token: data.token });
     persistAuth(data.user, data.token);
-    navigate("/home");
+    setAuth({ user: data.user, token: data.token });
   };
 
   const handleFacebookAuth = async () => {
     const accessToken = await requestFacebookAccessToken();
     const data = await socialLoginApi({ provider: "facebook", accessToken });
-    setAuth({ user: data.user, token: data.token });
     persistAuth(data.user, data.token);
-    navigate("/home");
+    setAuth({ user: data.user, token: data.token });
   };
 
   const handleLogout = () => {
@@ -79,6 +90,8 @@ function App() {
   };
 
   const isAuthScreen = path === "/sign-in" || path === "/sign-up";
+  const isAdminScreen = path === "/admin" && auth?.user?.role === "admin";
+  const hideNav = isAuthScreen || isAdminScreen;
 
   const screen = useMemo(() => {
     if (path === "/sign-in") {
@@ -119,18 +132,22 @@ function App() {
       return <ProfilePage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
     }
 
+    if (path === "/admin" && auth?.user?.role === "admin") {
+      return <AdminDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
+    }
+
     return <HomePage user={auth.user} navigate={navigate} />;
   }, [auth.user, path]);
 
   return (
-    <div className={`app-shell ${isAuthScreen ? "auth-mode" : ""}`}>
+    <div className={`app-shell ${hideNav ? "auth-mode" : ""}`}>
       <div className="ambient a1" />
       <div className="ambient a2" />
       <div className="ambient-grid" />
 
-      {!isAuthScreen && <TopBar user={auth.user} navigate={navigate} />}
+      {!hideNav && <TopBar user={auth.user} navigate={navigate} />}
       <main className="view-port">{screen}</main>
-      {!isAuthScreen && <TabBar path={path} navigate={navigate} />}
+      {!hideNav && <TabBar path={path} navigate={navigate} />}
     </div>
   );
 }
