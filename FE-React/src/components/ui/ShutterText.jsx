@@ -1,6 +1,20 @@
 import { AnimatePresence, motion, useInView } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+// Global unified tick to sync all "auto" animations
+let globalTick = 0;
+const tickListeners = new Set();
+let globalIntervalId = null;
+
+function ensureGlobalInterval(intervalMs) {
+    if (!globalIntervalId && intervalMs > 0) {
+        globalIntervalId = setInterval(() => {
+            globalTick++;
+            tickListeners.forEach(l => l(globalTick));
+        }, intervalMs);
+    }
+}
+
 export function ShutterText({
     text = "IMMERSE",
     trigger = "auto",
@@ -32,19 +46,22 @@ export function ShutterText({
         }
     }, [trigger, isInView]);
 
-    // Handle auto trigger – animate on mount and repeat every repeatInterval ms
+    // Handle auto trigger
     useEffect(() => {
         if (trigger === "auto") {
             setActive(true);
             setAnimating(true);
-            setCount((c) => c + 1);
 
             if (repeatInterval > 0) {
-                const interval = setInterval(() => {
+                ensureGlobalInterval(repeatInterval);
+                const listener = (newTick) => {
                     setAnimating(true);
-                    setCount((c) => c + 1);
-                }, repeatInterval);
-                return () => clearInterval(interval);
+                    setCount(newTick);
+                };
+                tickListeners.add(listener);
+                // Initialize to global tick so late-mounters are synced
+                setCount(globalTick);
+                return () => tickListeners.delete(listener);
             }
         }
     }, [trigger, repeatInterval]);
@@ -91,13 +108,13 @@ export function ShutterText({
     const charWrapStyle = {
         position: "relative",
         display: "inline-block",
-        overflow: "hidden",
-        padding: "0 0.5px",
+        overflow: "visible", // Fix potential clipping
+        padding: "0 1px",
     };
 
     const flexCenter = {
         display: "flex",
-        flexWrap: "wrap",
+        flexWrap: "nowrap", // DO NOT WRAP CHARACTERS
         alignItems: "center",
         justifyContent: "center",
     };
@@ -113,24 +130,29 @@ export function ShutterText({
             style={{
                 position: "relative",
                 display: "inline-flex",
-                flexWrap: "wrap",
+                flexWrap: "nowrap", // PREVENT WRAPPING
                 alignItems: "center",
                 justifyContent: "center",
+                whiteSpace: "nowrap", // Enforce no line breaking
                 cursor: trigger === "click" || trigger === "hover" ? "pointer" : "default",
             }}
             className={className}
             {...props}
         >
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="popLayout">
                 {animating ? (
-                    <motion.span key={count} style={flexCenter}>
+                    <motion.span
+                        key={count}
+                        style={flexCenter}
+                        exit={{ opacity: 0, transition: { duration: 0.1 } }}
+                    >
                         {characters.map((char, i) => (
                             <span key={i} style={charWrapStyle}>
                                 {/* Main Character */}
                                 <motion.span
-                                    initial={{ opacity: 0, filter: "blur(10px)" }}
+                                    initial={{ opacity: 0, filter: "blur(4px)" }}
                                     animate={{ opacity: 1, filter: "blur(0px)" }}
-                                    transition={{ delay: i * 0.04 + 0.3, duration: 0.8 }}
+                                    transition={{ delay: i * 0.04 + 0.3, duration: 0.4 }}
                                     style={baseCharStyle}
                                 >
                                     {char === " " ? "\u00A0" : char}
@@ -141,7 +163,7 @@ export function ShutterText({
                                     initial={{ x: "-100%", opacity: 0 }}
                                     animate={{ x: "100%", opacity: [0, 1, 0] }}
                                     transition={{
-                                        duration: 0.7,
+                                        duration: 0.6,
                                         delay: i * 0.04,
                                         ease: "easeInOut",
                                     }}
@@ -150,7 +172,7 @@ export function ShutterText({
                                         clipPath: "polygon(0 0, 100% 0, 100% 35%, 0 35%)",
                                     }}
                                 >
-                                    {char}
+                                    {char === " " ? "\u00A0" : char}
                                 </motion.span>
 
                                 {/* Middle Slice Layer */}
@@ -158,7 +180,7 @@ export function ShutterText({
                                     initial={{ x: "100%", opacity: 0 }}
                                     animate={{ x: "-100%", opacity: [0, 1, 0] }}
                                     transition={{
-                                        duration: 0.7,
+                                        duration: 0.6,
                                         delay: i * 0.04 + 0.1,
                                         ease: "easeInOut",
                                     }}
@@ -168,7 +190,7 @@ export function ShutterText({
                                         clipPath: "polygon(0 35%, 100% 35%, 100% 65%, 0 65%)",
                                     }}
                                 >
-                                    {char}
+                                    {char === " " ? "\u00A0" : char}
                                 </motion.span>
 
                                 {/* Bottom Slice Layer */}
@@ -176,7 +198,7 @@ export function ShutterText({
                                     initial={{ x: "-100%", opacity: 0 }}
                                     animate={{ x: "100%", opacity: [0, 1, 0] }}
                                     transition={{
-                                        duration: 0.7,
+                                        duration: 0.6,
                                         delay: i * 0.04 + 0.2,
                                         ease: "easeInOut",
                                     }}
@@ -185,7 +207,7 @@ export function ShutterText({
                                         clipPath: "polygon(0 65%, 100% 65%, 100% 100%, 0 100%)",
                                     }}
                                 >
-                                    {char}
+                                    {char === " " ? "\u00A0" : char}
                                 </motion.span>
                             </span>
                         ))}

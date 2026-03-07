@@ -32,8 +32,16 @@ router.get("/:id", restaurantController.getRestaurantById);
 router.post(
   "/",
   authMiddleware,
-  authorizeRole("admin"),
+  authorizeRole("admin", "brand"),
   restaurantController.createRestaurant,
+);
+
+// Admin explicitly creates a restaurant for a Brand owner
+router.post(
+  "/admin-create",
+  authMiddleware,
+  authorizeRole("admin"),
+  restaurantController.adminCreateRestaurant,
 );
 
 // Update restaurant - Admin, Brand
