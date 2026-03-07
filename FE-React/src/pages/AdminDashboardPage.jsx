@@ -280,9 +280,12 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
         }}>
           {/* Brand */}
           <Box sx={{ p: 2.5, display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Avatar sx={{ bgcolor: "primary.main", width: 40, height: 40, fontSize: "1.2rem" }}>🛍️</Avatar>
+            <Box sx={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: "50%", bgcolor: "rgba(255,255,255,0.1)" }} />
+            <Avatar sx={{ width: 48, height: 48, bgcolor: "transparent" }}>
+              <img src="/logo.jpg" alt="Logo" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+            </Avatar>
             <Box>
-              <Typography variant="subtitle1" fontWeight={700} color="primary.main">Shopee Admin</Typography>
+              <Typography variant="subtitle1" fontWeight={700} color="primary.main">Foodie admin</Typography>
               <Typography variant="caption" color="text.secondary">Bảng điều khiển</Typography>
             </Box>
           </Box>
