@@ -45,6 +45,11 @@ const restaurantSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    type: {
+      type: String,
+      enum: ["food", "drink"],
+      default: "food",
+    },
     isFlashSale: {
       type: Boolean,
       default: false,
@@ -106,6 +111,7 @@ const restaurantSchema = new mongoose.Schema(
 restaurantSchema.index({ name: "text", tags: "text" });
 restaurantSchema.index({ rating: -1 });
 restaurantSchema.index({ isFlashSale: 1 });
+restaurantSchema.index({ type: 1 });
 
 const Restaurant = mongoose.model("Restaurant", restaurantSchema);
 
