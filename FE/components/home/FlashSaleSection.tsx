@@ -1,18 +1,34 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { useFavorites } from '@/constants/favorites-context';
+import { API_BASE_URL } from '@/constants/api';
 
 import { getFlashSaleRestaurants } from '@/constants/restaurant-api';
+
+const resolveRestaurantImage = (item: any) => {
+    const rawImage =
+        item?.image ||
+        item?.thumbnail ||
+        (Array.isArray(item?.images) ? item.images[0] : '');
+
+    if (!rawImage || typeof rawImage !== 'string') return '';
+    if (rawImage.startsWith('http://') || rawImage.startsWith('https://') || rawImage.startsWith('data:image')) {
+        return rawImage;
+    }
+
+    const base = API_BASE_URL.replace(/\/api$/, '');
+    return rawImage.startsWith('/') ? `${base}${rawImage}` : `${base}/${rawImage}`;
+};
 
 export default function FlashSaleSection() {
     const router = useRouter();
     const { isFavorite, toggleFavorite } = useFavorites();
     const [timeLeft, setTimeLeft] = useState({ h: 2, m: 15, s: 30 });
     const [flashDeals, setFlashDeals] = useState<any[]>([]);
+    const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         const fetchDeals = async () => {
@@ -40,8 +56,10 @@ export default function FlashSaleSection() {
 
     const pad = (n: number) => n.toString().padStart(2, '0');
 
-    const handlePress = (item: typeof FLASH_DEALS[0]) => {
-        router.push({ pathname: '/restaurant/[id]', params: { id: item.id, data: JSON.stringify(item) } } as any);
+    const handlePress = (item: any) => {
+        const restaurantId = item?._id || item?.id;
+        if (!restaurantId) return;
+        router.push({ pathname: '/restaurant/[id]', params: { id: restaurantId, data: JSON.stringify(item) } } as any);
     };
 
     return (
@@ -60,21 +78,36 @@ export default function FlashSaleSection() {
                 <TouchableOpacity><Text style={s.seeAll}>Xem tất cả</Text></TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.scroll} nestedScrollEnabled={true}>
-                {flashDeals.map((item) => (
-                    <TouchableOpacity key={item._id || item.id} style={s.card} activeOpacity={0.85} onPress={() => handlePress(item)}>
-                        <View style={s.discountBadge}>
-                            <Text style={s.discountText}>-{item.discountPercent || 0}%</Text>
-                        </View>
-                        <TouchableOpacity style={s.heartBtn} onPress={() => toggleFavorite(item._id || item.id)} activeOpacity={0.7}>
-                            <Ionicons name={isFavorite(item._id || item.id) ? 'heart' : 'heart-outline'} size={16} color={isFavorite(item._id || item.id) ? '#EF4444' : '#ccc'} />
+                {flashDeals.map((item) => {
+                    const itemId = String(item._id || item.id || '');
+                    const imageUri = resolveRestaurantImage(item);
+                    const showImage = Boolean(imageUri) && !imageErrors[itemId];
+
+                    return (
+                        <TouchableOpacity key={item._id || item.id} style={s.card} activeOpacity={0.85} onPress={() => handlePress(item)}>
+                            <View style={s.discountBadge}>
+                                <Text style={s.discountText}>-{item.discountPercent || 0}%</Text>
+                            </View>
+                            <TouchableOpacity style={s.heartBtn} onPress={() => toggleFavorite(item._id || item.id)} activeOpacity={0.7}>
+                                <Ionicons name={isFavorite(item._id || item.id) ? 'heart' : 'heart-outline'} size={16} color={isFavorite(item._id || item.id) ? '#EF4444' : '#ccc'} />
+                            </TouchableOpacity>
+                            <View style={s.imageBox}>
+                                {showImage ? (
+                                    <Image
+                                        source={{ uri: imageUri }}
+                                        style={s.image}
+                                        resizeMode="cover"
+                                        onError={() => setImageErrors((prev) => ({ ...prev, [itemId]: true }))}
+                                    />
+                                ) : (
+                                    <Text style={s.emoji}>{item.emoji || '🍽️'}</Text>
+                                )}
+                            </View>
+                            <Text style={s.name} numberOfLines={1}>{item.name}</Text>
+                            <Text style={s.soldText}>Còn lại {item.deliveryTime} phút</Text>
                         </TouchableOpacity>
-                        <View style={s.emojiBox}>
-                            <Text style={{ fontSize: 36 }}>{item.emoji || '🍽️'}</Text>
-                        </View>
-                        <Text style={s.name} numberOfLines={1}>{item.name}</Text>
-                        <Text style={s.soldText}>Còn lại {item.deliveryTime} phút</Text>
-                    </TouchableOpacity>
-                ))}
+                    );
+                })}
             </ScrollView>
         </View>
     );
@@ -95,7 +128,19 @@ const s = StyleSheet.create({
     discountBadge: { position: 'absolute', top: 0, left: 0, backgroundColor: '#EF4444', paddingHorizontal: 8, paddingVertical: 3, borderBottomRightRadius: 10, borderTopLeftRadius: BorderRadius.lg },
     discountText: { fontSize: 11, fontWeight: '800', color: '#fff' },
     heartBtn: { position: 'absolute', top: 8, right: 8, zIndex: 10 },
-    emojiBox: { marginTop: 10, marginBottom: 8 },
+    imageBox: {
+        marginTop: 10,
+        marginBottom: 8,
+        width: 72,
+        height: 72,
+        borderRadius: 12,
+        overflow: 'hidden',
+        backgroundColor: '#FFF3ED',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    image: { width: '100%', height: '100%' },
+    emoji: { fontSize: 36 },
     name: { fontSize: 12, fontWeight: '700', color: AppColors.charcoal, textAlign: 'center', marginBottom: 4 },
     originalPrice: { fontSize: 11, color: AppColors.gray, textDecorationLine: 'line-through' },
     salePrice: { fontSize: 16, fontWeight: '800', color: '#EF4444', marginBottom: 8 },
