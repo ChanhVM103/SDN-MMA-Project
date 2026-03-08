@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import TopBar from "./components/layout/TopBar";
 import TabBar from "./components/layout/TabBar";
+import Footer from "./components/layout/Footer";
 import FavoritesPage from "./pages/FavoritesPage";
 import HomePage from "./pages/HomePage";
 import NotificationsPage from "./pages/NotificationsPage";
@@ -137,7 +138,7 @@ function App() {
       return <AdminDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
     }
 
-    return <HomePage user={auth.user} navigate={navigate} globalSearchTerm={globalSearchTerm} />;
+    return <HomePage user={auth.user} navigate={navigate} globalSearchTerm={globalSearchTerm} setGlobalSearchTerm={setGlobalSearchTerm} />;
   }, [auth.user, path, globalSearchTerm]);
 
   return (
@@ -151,6 +152,7 @@ function App() {
           user={auth.user}
           navigate={navigate}
           onLogout={handleLogout}
+          searchTerm={globalSearchTerm}
           onSearch={(term) => {
             setGlobalSearchTerm(term);
             navigate("/home");
@@ -158,6 +160,7 @@ function App() {
         />
       )}
       <main className={hideNav ? "" : "view-port"} style={{ flexGrow: 1 }}>{screen}</main>
+      {!hideNav && <Footer />}
       {!hideNav && <TabBar path={path} navigate={navigate} />}
     </div>
   );

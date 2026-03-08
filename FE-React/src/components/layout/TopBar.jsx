@@ -2,9 +2,13 @@ import { useState, useRef, useEffect } from "react";
 import { ShutterText } from "../ui/ShutterText";
 import { getAllRestaurants } from "../../services/restaurant-api";
 
-function TopBar({ user, navigate, onLogout, onSearch }) {
+function TopBar({ user, navigate, onLogout, onSearch, searchTerm }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [searchText, setSearchText] = useState("");
+  const [searchText, setSearchText] = useState(searchTerm || "");
+
+  useEffect(() => {
+    setSearchText(searchTerm || "");
+  }, [searchTerm]);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const dropdownRef = useRef(null);

@@ -3,7 +3,7 @@ import RestaurantCard from "../components/RestaurantCard";
 import { getRestaurantsByTags, getAllRestaurants } from "../services/restaurant-api";
 import { TypewriterText } from "../components/ui/TypewriterText";
 
-function HomePage({ user, navigate, globalSearchTerm }) {
+function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
   // Filters
   const [activeType, setActiveType] = useState("all-type"); // all-type, food, drink
   const [activeCountry, setActiveCountry] = useState("all-country"); // all-country, vietnam, japan, korea
@@ -113,7 +113,10 @@ function HomePage({ user, navigate, globalSearchTerm }) {
             ].map((t) => (
               <div
                 key={t.id}
-                onClick={() => setActiveType(t.id)}
+                onClick={() => {
+                  setActiveType(t.id);
+                  if (globalSearchTerm && setGlobalSearchTerm) setGlobalSearchTerm("");
+                }}
                 style={{
                   flex: 1,
                   textAlign: "center",
@@ -141,7 +144,10 @@ function HomePage({ user, navigate, globalSearchTerm }) {
             ].map((c) => (
               <div
                 key={c.id}
-                onClick={() => setActiveCountry(c.id)}
+                onClick={() => {
+                  setActiveCountry(c.id);
+                  if (globalSearchTerm && setGlobalSearchTerm) setGlobalSearchTerm("");
+                }}
                 style={{
                   padding: "6px 14px",
                   borderRadius: "16px",
@@ -187,7 +193,7 @@ function HomePage({ user, navigate, globalSearchTerm }) {
               <path d="M50 30L30 60h40L50 30z" fill="currentColor" />
             </svg>
             <div style={{ color: "var(--text-muted)", fontSize: "16px" }}>Không tìm thấy nhà hàng nào phù hợp với bộ lọc.</div>
-            <button className="ghost-btn" style={{ marginTop: "15px" }} onClick={() => { setActiveType("all-type"); setActiveCountry("all-country"); }}>Xóa bộ lọc</button>
+            <button className="ghost-btn" style={{ marginTop: "15px" }} onClick={() => { setActiveType("all-type"); setActiveCountry("all-country"); if (globalSearchTerm && setGlobalSearchTerm) setGlobalSearchTerm(""); }}>Xóa bộ lọc</button>
           </div>
         )}
       </section>
