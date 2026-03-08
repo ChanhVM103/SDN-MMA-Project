@@ -1,3 +1,5 @@
+import FlashSaleCountdown from "./FlashSaleCountdown";
+
 function RestaurantCard({ restaurant, navigate }) {
   // Handle fallback properties to support existing mock data format
   const name = restaurant.name;
@@ -8,13 +10,30 @@ function RestaurantCard({ restaurant, navigate }) {
   const distance = restaurant.distance || "";
   const deliveryTime = restaurant.deliveryTime || 0;
   const isFlashSale = restaurant.isFlashSale;
+  const discountPercent = restaurant.discountPercent || 0;
+  
+  // Calculate flash sale end time (ends at midnight today + 1 day)
+  const getFlashSaleEndTime = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    return tomorrow.toISOString();
+  };
 
   return (
     <a href={`/restaurant/${restaurant.id || restaurant._id}`} className="product-card" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ position: 'relative' }}>
         <img src={image} alt={name} className="product-image" loading="lazy" style={{ height: '160px', objectFit: 'cover' }} />
         {isFlashSale && (
-          <span className="badge" style={{ position: 'absolute', top: 0, left: 0, backgroundColor: 'var(--shopee-orange)', color: 'white', padding: '2px 6px', fontSize: '10px', borderRadius: '0 0 4px 0', zIndex: 1 }}>Flash Sale</span>
+          <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 1 }}>
+            <span className="badge" style={{ backgroundColor: 'var(--shopee-orange)', color: 'white', padding: '4px 8px', fontSize: '10px', fontWeight: '600', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>⚡ Flash Sale</span>
+            <FlashSaleCountdown endTime={getFlashSaleEndTime()} />
+          </div>
+        )}
+        {isFlashSale && discountPercent > 0 && (
+          <div style={{ position: 'absolute', top: 8, right: 8, backgroundColor: '#ee4d2d', color: 'white', padding: '6px 10px', fontSize: '13px', fontWeight: '700', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', zIndex: 1 }}>
+            -{discountPercent}%
+          </div>
         )}
       </div>
       <div className="product-info" style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
