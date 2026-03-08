@@ -6,19 +6,25 @@ import { useRouter } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { useFavorites } from '@/constants/favorites-context';
 
-const FLASH_DEALS = [
-    { id: '1', name: 'Combo Burger Đôi', original: '180.000đ', sale: '99.000đ', discount: '-45%', emoji: '🍔', sold: 82, isFlashSale: true, discountPercent: 45, deliveryTime: 25, deliveryFee: 0, isOpen: true, rating: 4.8, image: 'https://images.unsplash.com/photo-1562802378-063ec186a863?w=400&q=80', tags: ['Burger', 'Fast food'], menu: [{ id: 'm1', name: 'Combo Burger Đôi', price: 99000, emoji: '🍔', category: 'Combo', isBestSeller: true, description: '2 burger bò, 2 khoai tây, 2 nước' }, { id: 'm2', name: 'Burger Bò Phô Mai', price: 55000, emoji: '🍔', category: 'Burger', description: 'Bò xay, phô mai cheddar' }, { id: 'm3', name: 'Khoai Tây Chiên', price: 35000, emoji: '🍟', category: 'Món Phụ', isBestSeller: true, description: 'Khoai tây giòn rụm' }] },
-    { id: '2', name: 'Set Sushi 12 Miếng', original: '320.000đ', sale: '199.000đ', discount: '-38%', emoji: '🍣', sold: 64, isFlashSale: true, discountPercent: 38, deliveryTime: 35, deliveryFee: 20000, isOpen: true, rating: 4.9, image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400&q=80', tags: ['Sushi', 'Nhật Bản'], menu: [{ id: 'm1', name: 'Set Sushi 12 Miếng', price: 199000, emoji: '🍣', category: 'Set', isBestSeller: true, description: 'Cá hồi, cá ngừ, tôm - 12 miếng' }, { id: 'm2', name: 'Miso Soup', price: 35000, emoji: '🍵', category: 'Khai Vị', description: 'Canh tương Nhật truyền thống' }] },
-    { id: '3', name: 'Trà Sữa 1 Lít', original: '75.000đ', sale: '29.000đ', discount: '-61%', emoji: '🧋', sold: 95, isFlashSale: true, discountPercent: 61, deliveryTime: 15, deliveryFee: 0, isOpen: true, rating: 4.7, image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80', tags: ['Trà sữa', 'Freeship'], menu: [{ id: 'm1', name: 'Trà Sữa 1 Lít Trân Châu', price: 29000, emoji: '🧋', category: 'Trà Sữa', isBestSeller: true, description: 'Trân châu đen, trà oolong 1L', isCustomizable: true }, { id: 'm2', name: 'Trà Sữa Matcha 1 Lít', price: 35000, emoji: '🍵', category: 'Trà Sữa', isNew: true, description: 'Matcha Nhật, trân châu trắng 1L', isCustomizable: true }] },
-    { id: '4', name: 'Pizza Size L', original: '250.000đ', sale: '149.000đ', discount: '-40%', emoji: '🍕', sold: 73, isFlashSale: true, discountPercent: 40, deliveryTime: 40, deliveryFee: 0, isOpen: true, rating: 4.8, image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&q=80', tags: ['Pizza', 'Freeship'], menu: [{ id: 'm1', name: 'Pizza Pepperoni Size L', price: 149000, emoji: '🍕', category: 'Pizza', isBestSeller: true, description: 'Pepperoni, phô mai mozzarella, sốt cà chua' }, { id: 'm2', name: 'Pizza Hải Sản Size L', price: 169000, emoji: '🍕', category: 'Pizza', description: 'Tôm, mực, nghêu, phô mai' }] },
-];
+import { getFlashSaleRestaurants } from '@/constants/restaurant-api';
 
 export default function FlashSaleSection() {
     const router = useRouter();
     const { isFavorite, toggleFavorite } = useFavorites();
     const [timeLeft, setTimeLeft] = useState({ h: 2, m: 15, s: 30 });
+    const [flashDeals, setFlashDeals] = useState<any[]>([]);
 
     useEffect(() => {
+        const fetchDeals = async () => {
+            try {
+                const data = await getFlashSaleRestaurants();
+                setFlashDeals(data || []);
+            } catch (error) {
+                console.error("Failed to load flash deals:", error);
+            }
+        };
+        fetchDeals();
+
         const timer = setInterval(() => {
             setTimeLeft((prev) => {
                 let { h, m, s } = prev;
@@ -54,24 +60,19 @@ export default function FlashSaleSection() {
                 <TouchableOpacity><Text style={s.seeAll}>Xem tất cả</Text></TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.scroll} nestedScrollEnabled={true}>
-                {FLASH_DEALS.map((item) => (
-                    <TouchableOpacity key={item.id} style={s.card} activeOpacity={0.85} onPress={() => handlePress(item)}>
+                {flashDeals.map((item) => (
+                    <TouchableOpacity key={item._id || item.id} style={s.card} activeOpacity={0.85} onPress={() => handlePress(item)}>
                         <View style={s.discountBadge}>
-                            <Text style={s.discountText}>{item.discount}</Text>
+                            <Text style={s.discountText}>-{item.discountPercent || 0}%</Text>
                         </View>
-                        <TouchableOpacity style={s.heartBtn} onPress={() => toggleFavorite(item.id)} activeOpacity={0.7}>
-                            <Ionicons name={isFavorite(item.id) ? 'heart' : 'heart-outline'} size={16} color={isFavorite(item.id) ? '#EF4444' : '#ccc'} />
+                        <TouchableOpacity style={s.heartBtn} onPress={() => toggleFavorite(item._id || item.id)} activeOpacity={0.7}>
+                            <Ionicons name={isFavorite(item._id || item.id) ? 'heart' : 'heart-outline'} size={16} color={isFavorite(item._id || item.id) ? '#EF4444' : '#ccc'} />
                         </TouchableOpacity>
                         <View style={s.emojiBox}>
-                            <Text style={{ fontSize: 36 }}>{item.emoji}</Text>
+                            <Text style={{ fontSize: 36 }}>{item.emoji || '🍽️'}</Text>
                         </View>
                         <Text style={s.name} numberOfLines={1}>{item.name}</Text>
-                        <Text style={s.originalPrice}>{item.original}</Text>
-                        <Text style={s.salePrice}>{item.sale}</Text>
-                        <View style={s.progressBg}>
-                            <LinearGradient colors={['#FF6B35', '#EF4444']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.progressFill, { width: `${item.sold}%` }]} />
-                        </View>
-                        <Text style={s.soldText}>Đã bán {item.sold}%</Text>
+                        <Text style={s.soldText}>Còn lại {item.deliveryTime} phút</Text>
                     </TouchableOpacity>
                 ))}
             </ScrollView>

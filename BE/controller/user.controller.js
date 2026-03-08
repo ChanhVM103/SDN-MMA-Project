@@ -33,6 +33,17 @@ const getUserStats = async (req, res) => {
     } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
 };
 
+// ── GET /api/users/brands/public (No Auth) ─────────
+const getPublicBrands = async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 10;
+        const brands = await User.find({ role: "brand", isActive: true })
+            .select("_id fullName avatar email")
+            .limit(limit);
+        return res.json({ success: true, data: brands });
+    } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
+};
+
 // ── GET /api/users/:id ────────────────────────────
 const getUserById = async (req, res) => {
     try {
@@ -122,4 +133,5 @@ module.exports = {
     getAllUsers, getUserStats, getUserById,
     adminCreateUser, updateUser, changeUserRole,
     toggleUserActive, resetPassword, deleteUser,
+    getPublicBrands,
 };

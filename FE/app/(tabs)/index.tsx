@@ -12,6 +12,7 @@ import {
   Animated,
   Platform,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +24,8 @@ import NearbySection from '@/components/home/NearbySection';
 import MostOrderedSection from '@/components/home/MostOrderedSection';
 import FlashSaleSection from '@/components/home/FlashSaleSection';
 import SalePopup from '@/components/SalePopup';
+import BrandSection from '@/components/home/BrandSection';
+import { getRestaurantsByTags, getTopRatedRestaurants, getFlashSaleRestaurants } from '@/constants/restaurant-api';
 
 const { width } = Dimensions.get('window');
 
@@ -175,6 +178,75 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const carouselRef = useRef<FlatList>(null);
   const autoPlayRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Filters & Dynamic Data
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [filteredRestaurants, setFilteredRestaurants] = useState<any[]>([]);
+  const [loadingFilter, setLoadingFilter] = useState(false);
+  const [popularDishes, setPopularDishes] = useState<any[]>(POPULAR_DISHES);
+
+  // Load Popular Dishes Dynamically
+  useEffect(() => {
+    const fetchPopular = async () => {
+      try {
+        const res = await getTopRatedRestaurants();
+        if (res && Array.isArray(res) && res.length > 0) {
+          let dishes: any[] = [];
+          const gradients = [
+            ['#FF6B35', '#FF8F65'], ['#2D6A4F', '#52B788'],
+            ['#6C5CE7', '#A29BFE'], ['#E17055', '#FAB1A0']
+          ];
+          res.forEach((r: any) => {
+            if (r.menu) {
+              r.menu.forEach((m: any) => {
+                if (m.isBestSeller) {
+                  dishes.push({
+                    id: m._id || m.id || Math.random().toString(),
+                    name: m.name,
+                    price: m.price ? m.price.toLocaleString() + 'đ' : '50.000đ',
+                    rating: r.rating || 4.5,
+                    time: r.deliveryTime ? `${r.deliveryTime} phút` : '20 phút',
+                    emoji: m.emoji || '🍔',
+                    gradient: gradients[dishes.length % gradients.length] as readonly [string, string],
+                  });
+                }
+              });
+            }
+          });
+          if (dishes.length > 0) {
+            setPopularDishes(dishes.slice(0, 10));
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load popular dishes", e);
+      }
+    }
+    fetchPopular();
+  }, []);
+
+  // Filter effect
+  useEffect(() => {
+    if (activeCategory) {
+      setLoadingFilter(true);
+      const fetchFilter = async () => {
+        try {
+          let res;
+          if (activeCategory === 'Giảm giá') {
+            res = await getFlashSaleRestaurants();
+          } else {
+            res = await getRestaurantsByTags(activeCategory);
+          }
+          const list = Array.isArray(res) ? res : res?.restaurants || [];
+          setFilteredRestaurants(list);
+        } catch (e) {
+          console.log("Filter error:", e);
+        } finally {
+          setLoadingFilter(false);
+        }
+      }
+      fetchFilter();
+    }
+  }, [activeCategory]);
 
   // Auto-scroll carousel
   useEffect(() => {
@@ -383,8 +455,8 @@ export default function HomeScreen() {
         <FadeInView delay={400} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>🍽️ Danh mục</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAll}>Xem tất cả</Text>
+            <TouchableOpacity onPress={() => setActiveCategory(null)}>
+              <Text style={styles.seeAll}>{activeCategory ? 'Bỏ chọn' : 'Xem tất cả'}</Text>
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
@@ -392,22 +464,32 @@ export default function HomeScreen() {
               {/* Row 1 */}
               <View style={styles.catRow}>
                 {CATEGORIES.slice(0, 6).map((cat) => (
-                  <TouchableOpacity key={cat.id} style={styles.catItem} activeOpacity={0.7}>
-                    <View style={[styles.catCircle, { backgroundColor: cat.color }]}>
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[styles.catItem, activeCategory === cat.name && { opacity: 0.6 }]}
+                    activeOpacity={0.7}
+                    onPress={() => setActiveCategory(prev => prev === cat.name ? null : cat.name)}
+                  >
+                    <View style={[styles.catCircle, { backgroundColor: cat.color }, activeCategory === cat.name && { borderWidth: 2, borderColor: AppColors.primary }]}>
                       <Text style={styles.catEmoji}>{cat.emoji}</Text>
                     </View>
-                    <Text style={styles.catName} numberOfLines={1}>{cat.name}</Text>
+                    <Text style={[styles.catName, activeCategory === cat.name && { color: AppColors.primary, fontWeight: '700' }]} numberOfLines={1}>{cat.name}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
               {/* Row 2 */}
               <View style={styles.catRow}>
                 {CATEGORIES.slice(6, 12).map((cat) => (
-                  <TouchableOpacity key={cat.id} style={styles.catItem} activeOpacity={0.7}>
-                    <View style={[styles.catCircle, { backgroundColor: cat.color }]}>
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[styles.catItem, activeCategory === cat.name && { opacity: 0.6 }]}
+                    activeOpacity={0.7}
+                    onPress={() => setActiveCategory(prev => prev === cat.name ? null : cat.name)}
+                  >
+                    <View style={[styles.catCircle, { backgroundColor: cat.color }, activeCategory === cat.name && { borderWidth: 2, borderColor: AppColors.primary }]}>
                       <Text style={styles.catEmoji}>{cat.emoji}</Text>
                     </View>
-                    <Text style={styles.catName} numberOfLines={1}>{cat.name}</Text>
+                    <Text style={[styles.catName, activeCategory === cat.name && { color: AppColors.primary, fontWeight: '700' }]} numberOfLines={1}>{cat.name}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -415,102 +497,148 @@ export default function HomeScreen() {
           </ScrollView>
         </FadeInView>
 
-        {/* ── Popular Dishes ─────────────── */}
-        <FadeInView delay={500} style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>⭐ Món Phổ Biến</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAll}>Xem tất cả</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dishesScroll}>
-            {POPULAR_DISHES.map((dish) => (
-              <TouchableOpacity key={dish.id} style={styles.dishCard} activeOpacity={0.85}>
+        {activeCategory ? (
+          <FadeInView delay={500} style={styles.section}>
+            <Text style={styles.sectionTitle}>Kết quả tìm kiếm cho: {activeCategory}</Text>
+            {loadingFilter ? (
+              <Text style={{ marginTop: 14, color: AppColors.gray }}>Đang tải kết quả...</Text>
+            ) : filteredRestaurants.length > 0 ? (
+              <View style={{ marginTop: 14, gap: 12 }}>
+                {filteredRestaurants.map((item, idx) => (
+                  <TouchableOpacity
+                    key={item._id || idx.toString()}
+                    style={{
+                      backgroundColor: '#fff',
+                      padding: 14,
+                      borderRadius: BorderRadius.md,
+                      ...Platform.select({
+                        ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5 },
+                        android: { elevation: 2 }
+                      })
+                    }}
+                    onPress={() => router.push({ pathname: '/restaurant/[id]', params: { id: item._id, data: JSON.stringify(item) } } as any)}
+                  >
+                    <Text style={{ fontWeight: '700', fontSize: 15, color: AppColors.charcoal, marginBottom: 4 }}>{item.name}</Text>
+                    <Text style={{ fontSize: 13, color: AppColors.gray }} numberOfLines={1}>{item.address || 'Không có địa chỉ'}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 6 }}>
+                      <Ionicons name="star" size={12} color="#FFB627" />
+                      <Text style={{ fontSize: 12, fontWeight: '600' }}>{item.rating || '4.5'}</Text>
+                      <Text style={{ fontSize: 12, color: AppColors.gray }}>•</Text>
+                      <Text style={{ fontSize: 12, color: AppColors.gray }}>{(item.tags || []).join(', ')}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={{ marginTop: 24, alignItems: 'center', padding: 20 }}>
+                <Text style={{ fontSize: 14, color: AppColors.gray }}>Oops, Không tìm thấy kết quả nào trùng với danh mục này!</Text>
+              </View>
+            )}
+
+            <View style={{ height: 100 }} />
+          </FadeInView>
+        ) : (
+          <>
+
+            {/* ── Popular Dishes ─────────────── */}
+            <FadeInView delay={500} style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>⭐ Món Phổ Biến</Text>
+                <TouchableOpacity>
+                  <Text style={styles.seeAll}>Xem tất cả</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dishesScroll}>
+                {popularDishes.map((dish) => (
+                  <TouchableOpacity key={dish.id} style={styles.dishCard} activeOpacity={0.85}>
+                    <LinearGradient
+                      colors={dish.gradient}
+                      style={styles.dishImageContainer}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Text style={styles.dishEmoji}>{dish.emoji}</Text>
+                    </LinearGradient>
+                    <View style={styles.dishInfo}>
+                      <Text style={styles.dishName} numberOfLines={1}>{dish.name}</Text>
+                      <View style={styles.dishMeta}>
+                        <View style={styles.ratingBadge}>
+                          <Ionicons name="star" size={12} color="#FFB627" />
+                          <Text style={styles.ratingText}>{dish.rating}</Text>
+                        </View>
+                        <View style={styles.timeBadge}>
+                          <Ionicons name="time-outline" size={12} color={AppColors.gray} />
+                          <Text style={styles.timeText}>{dish.time}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.dishBottom}>
+                        <Text style={styles.dishPrice}>{dish.price}</Text>
+                        <TouchableOpacity style={styles.addButton}>
+                          <Ionicons name="add" size={18} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </FadeInView>
+
+            {/* ── New Sections (separate components) ── */}
+            <FlashSaleSection />
+            <TopRatedSection />
+            <NearbySection />
+            <MostOrderedSection />
+            <BrandSection />
+
+            {/* ── Chef Recommendation ────────── */}
+            <FadeInView delay={600} style={styles.section}>
+              <TouchableOpacity activeOpacity={0.9}>
                 <LinearGradient
-                  colors={dish.gradient}
-                  style={styles.dishImageContainer}
+                  colors={['#1F2937', '#111827']}
+                  style={styles.chefCard}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  <Text style={styles.dishEmoji}>{dish.emoji}</Text>
+                  <View style={styles.chefContent}>
+                    <Text style={styles.chefBadge}>👨‍🍳 Đầu Bếp Chọn</Text>
+                    <Text style={styles.chefTitle}>Thực Đơn{'\n'}Đặc Sắc</Text>
+                    <Text style={styles.chefSubtitle}>
+                      Hành trình 5 món độc đáo từ đầu bếp tài năng
+                    </Text>
+                    <View style={styles.chefButton}>
+                      <Text style={styles.chefButtonText}>Xem thực đơn</Text>
+                      <Ionicons name="arrow-forward" size={16} color="#fff" />
+                    </View>
+                  </View>
+                  <Text style={styles.chefEmoji}>🍷</Text>
                 </LinearGradient>
-                <View style={styles.dishInfo}>
-                  <Text style={styles.dishName} numberOfLines={1}>{dish.name}</Text>
-                  <View style={styles.dishMeta}>
-                    <View style={styles.ratingBadge}>
-                      <Ionicons name="star" size={12} color="#FFB627" />
-                      <Text style={styles.ratingText}>{dish.rating}</Text>
-                    </View>
-                    <View style={styles.timeBadge}>
-                      <Ionicons name="time-outline" size={12} color={AppColors.gray} />
-                      <Text style={styles.timeText}>{dish.time}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.dishBottom}>
-                    <Text style={styles.dishPrice}>{dish.price}</Text>
-                    <TouchableOpacity style={styles.addButton}>
-                      <Ionicons name="add" size={18} color="#fff" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </FadeInView>
+            </FadeInView>
 
-        {/* ── New Sections (separate components) ── */}
-        <FlashSaleSection />
-        <TopRatedSection />
-        <NearbySection />
-        <MostOrderedSection />
-
-        {/* ── Chef Recommendation ────────── */}
-        <FadeInView delay={600} style={styles.section}>
-          <TouchableOpacity activeOpacity={0.9}>
-            <LinearGradient
-              colors={['#1F2937', '#111827']}
-              style={styles.chefCard}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.chefContent}>
-                <Text style={styles.chefBadge}>👨‍🍳 Đầu Bếp Chọn</Text>
-                <Text style={styles.chefTitle}>Thực Đơn{'\n'}Đặc Sắc</Text>
-                <Text style={styles.chefSubtitle}>
-                  Hành trình 5 món độc đáo từ đầu bếp tài năng
+            {/* ── Bottom CTA ─────────────────── */}
+            <FadeInView delay={700} style={[styles.section, { marginBottom: 100 }]}>
+              <LinearGradient
+                colors={['#FF6B35', '#FFB627']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.ctaCard}
+              >
+                <Text style={styles.ctaEmoji}>🎁</Text>
+                <Text style={styles.ctaTitle}>Gia nhập FoodieHub!</Text>
+                <Text style={styles.ctaSubtitle}>
+                  Đăng ký ngay để nhận ưu đãi, công thức và phần thưởng độc quyền
                 </Text>
-                <View style={styles.chefButton}>
-                  <Text style={styles.chefButtonText}>Xem thực đơn</Text>
-                  <Ionicons name="arrow-forward" size={16} color="#fff" />
-                </View>
-              </View>
-              <Text style={styles.chefEmoji}>🍷</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </FadeInView>
-
-        {/* ── Bottom CTA ─────────────────── */}
-        <FadeInView delay={700} style={[styles.section, { marginBottom: 100 }]}>
-          <LinearGradient
-            colors={['#FF6B35', '#FFB627']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.ctaCard}
-          >
-            <Text style={styles.ctaEmoji}>🎁</Text>
-            <Text style={styles.ctaTitle}>Gia nhập FoodieHub!</Text>
-            <Text style={styles.ctaSubtitle}>
-              Đăng ký ngay để nhận ưu đãi, công thức và phần thưởng độc quyền
-            </Text>
-            <TouchableOpacity
-              style={styles.ctaButton}
-              onPress={() => router.push('/sign-up' as any)}
-            >
-              <Text style={styles.ctaButtonText}>Bắt đầu miễn phí</Text>
-              <Ionicons name="arrow-forward" size={18} color={AppColors.primary} />
-            </TouchableOpacity>
-          </LinearGradient>
-        </FadeInView>
+                <TouchableOpacity
+                  style={styles.ctaButton}
+                  onPress={() => router.push('/sign-up' as any)}
+                >
+                  <Text style={styles.ctaButtonText}>Bắt đầu miễn phí</Text>
+                  <Ionicons name="arrow-forward" size={18} color={AppColors.primary} />
+                </TouchableOpacity>
+              </LinearGradient>
+            </FadeInView>
+          </>
+        )}
       </Animated.ScrollView>
 
       {showOrderSuccess && (

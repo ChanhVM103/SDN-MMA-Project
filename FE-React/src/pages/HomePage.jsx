@@ -187,7 +187,7 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
       </section>
 
       {/* Categories Section */}
-      <CategorySection 
+      <CategorySection
         onSelectCategory={handleCategorySelect}
         activeCategory={activeCategory}
       />

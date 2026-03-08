@@ -3,6 +3,9 @@ var router = express.Router();
 var userController = require("../controller/user.controller");
 var { authMiddleware, authorizeRole } = require("../middleware/auth.middleware");
 
+// Public route must be defined before authMiddleware
+router.get("/brands/public", userController.getPublicBrands);
+
 router.use(authMiddleware, authorizeRole("admin"));
 
 router.get("/stats", userController.getUserStats);
