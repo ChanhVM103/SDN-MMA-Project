@@ -1,5 +1,27 @@
 const productService = require("../services/product.services");
 
+const normalizeToppings = (toppings, allowToppings, type) => {
+  if (!allowToppings || type !== "drink") {
+    return [];
+  }
+
+  if (!Array.isArray(toppings)) {
+    return [];
+  }
+
+  return toppings
+    .map((item) => {
+      const name = typeof item?.name === "string" ? item.name.trim() : "";
+      const extraPrice = Number(item?.extraPrice ?? 0);
+      if (!name) return null;
+      return {
+        name,
+        extraPrice: Number.isNaN(extraPrice) || extraPrice < 0 ? 0 : extraPrice,
+      };
+    })
+    .filter(Boolean);
+};
+
 /**
  * GET /api/products
  * Get all products with pagination, search, and filtering
@@ -77,6 +99,7 @@ const createProduct = async (req, res) => {
       category,
       type,
       allowToppings,
+      toppings,
       isBestSeller,
       description,
       isAvailable,
@@ -127,6 +150,11 @@ const createProduct = async (req, res) => {
       type: type || "food",
       allowToppings:
         allowToppings !== undefined ? allowToppings : type === "drink",
+      toppings: normalizeToppings(
+        toppings,
+        allowToppings !== undefined ? allowToppings : type === "drink",
+        type || "food",
+      ),
       isBestSeller: isBestSeller || false,
       description: description || "",
       isAvailable: isAvailable !== undefined ? isAvailable : true,
@@ -318,6 +346,7 @@ const createProductForRestaurant = async (req, res) => {
       category,
       type,
       allowToppings,
+      toppings,
       description,
       isBestSeller,
       isAvailable,
@@ -360,6 +389,11 @@ const createProductForRestaurant = async (req, res) => {
       type: type || "food",
       allowToppings:
         allowToppings !== undefined ? allowToppings : type === "drink",
+      toppings: normalizeToppings(
+        toppings,
+        allowToppings !== undefined ? allowToppings : type === "drink",
+        type || "food",
+      ),
       description: description || "",
       isBestSeller: isBestSeller || false,
       isAvailable: isAvailable !== undefined ? isAvailable : true,

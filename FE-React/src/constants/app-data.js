@@ -9,6 +9,7 @@ export const VALID_PATHS = new Set([
   "/sign-in",
   "/sign-up",
   "/admin",
+  "/brand-dashboard",
 ]);
 
 export const tabs = [

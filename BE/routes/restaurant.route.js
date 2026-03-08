@@ -19,6 +19,14 @@ router.get("/special/flash-sale", restaurantController.getFlashSaleRestaurants);
 // Get restaurants by tags
 router.get("/special/tags/:tags", restaurantController.getRestaurantsByTags);
 
+// Get my restaurant (for brand owners) - Protected
+router.get(
+  "/my-restaurant",
+  authMiddleware,
+  authorizeRole("brand"),
+  restaurantController.getMyRestaurant,
+);
+
 /**
  * CRUD Routes
  */
