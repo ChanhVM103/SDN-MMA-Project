@@ -7,6 +7,7 @@ const getAllRestaurants = async (
   page = 1,
   limit = 10,
   search = "",
+  type = "",
   sortBy = "rating",
   sortOrder = -1,
 ) => {
@@ -17,6 +18,9 @@ const getAllRestaurants = async (
     let query = {};
     if (search) {
       query = { $text: { $search: search } };
+    }
+    if (type && ["food", "drink"].includes(type)) {
+      query.type = type;
     }
 
     // Get total count for pagination
@@ -94,7 +98,7 @@ const adminCreateRestaurant = async (restaurantData, ownerId) => {
 
     const restaurant = new Restaurant({
       ...restaurantData,
-      owner: ownerId
+      owner: ownerId,
     });
     await restaurant.save();
     return restaurant;
@@ -111,7 +115,7 @@ const updateRestaurant = async (id, updateData) => {
     // If owner is being updated (Transfer Owner feature)
     if (updateData.owner) {
       const User = require("../models/user.model");
-      
+
       // 1. Check if the new owner exists and is a brand
       const newOwner = await User.findById(updateData.owner);
       if (!newOwner) {
@@ -122,13 +126,15 @@ const updateRestaurant = async (id, updateData) => {
       }
 
       // 2. Check if the new owner already has another restaurant
-      const existingRestaurant = await Restaurant.findOne({ 
+      const existingRestaurant = await Restaurant.findOne({
         owner: updateData.owner,
-        _id: { $ne: id } // Exclude the current restaurant being updated
+        _id: { $ne: id }, // Exclude the current restaurant being updated
       });
-      
+
       if (existingRestaurant) {
-        throw new Error("This brand already owns another restaurant. Cannot transfer ownership.");
+        throw new Error(
+          "This brand already owns another restaurant. Cannot transfer ownership.",
+        );
       }
     }
 
