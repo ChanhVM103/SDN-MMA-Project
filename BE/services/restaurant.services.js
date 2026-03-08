@@ -204,6 +204,22 @@ const getRestaurantsByTags = async (tags, limit = 10) => {
 };
 
 /**
+ * Get most ordered restaurants with totalOrders field
+ */
+const getMostOrderedRestaurants = async (limit = 10) => {
+  try {
+    return await Restaurant.find({ totalOrders: { $gt: 0 } })
+      .populate("owner", "fullName email")
+      .sort({ totalOrders: -1, rating: -1 })
+      .limit(limit);
+  } catch (error) {
+    throw new Error(
+      `Error fetching most ordered restaurants: ${error.message}`,
+    );
+  }
+};
+
+/**
  * Get restaurant by owner ID (for brand users)
  */
 const getRestaurantByOwner = async (ownerId) => {
@@ -228,5 +244,6 @@ module.exports = {
   getTopRatedRestaurants,
   getFlashSaleRestaurants,
   getRestaurantsByTags,
+  getMostOrderedRestaurants,
   getRestaurantByOwner,
 };

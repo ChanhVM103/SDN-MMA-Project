@@ -37,6 +37,11 @@ const restaurantSchema = new mongoose.Schema(
       default: 0,
       min: [0, "Reviews count cannot be negative"],
     },
+    totalOrders: {
+      type: Number,
+      default: 0,
+      min: [0, "Total orders cannot be negative"],
+    },
     distance: {
       type: String,
       default: "",
@@ -110,6 +115,7 @@ const restaurantSchema = new mongoose.Schema(
 // Index for searching
 restaurantSchema.index({ name: "text", tags: "text" });
 restaurantSchema.index({ rating: -1 });
+restaurantSchema.index({ totalOrders: -1 });
 restaurantSchema.index({ isFlashSale: 1 });
 restaurantSchema.index({ type: 1 });
 

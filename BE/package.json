@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "nodemon ./bin/www"
+    "start": "nodemon ./bin/www",
+    "backfill:restaurant-orders": "node ./scripts/backfill-restaurant-total-orders.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

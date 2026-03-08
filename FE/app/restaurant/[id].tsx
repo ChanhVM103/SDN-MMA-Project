@@ -246,6 +246,7 @@ export default function RestaurantDetailScreen() {
         const deliveryFee = restaurant?.deliveryFee || 0;
         const order = {
             id: `${Date.now()}`,
+            restaurantId: restaurant?._id || id,
             restaurantName: restaurant?.name || 'Nhà hàng',
             restaurantAddress: restaurant?.address || 'Quận 11, TP. HCM',
             totalPrice: cartTotalPrice + deliveryFee,

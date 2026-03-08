@@ -32,3 +32,9 @@ export const getFlashSaleRestaurants = async () => {
     const data = await apiRequest("/restaurants/special/flash-sale");
     return data.data;
 };
+
+// Lấy nhà hàng được đặt nhiều nhất
+export const getMostOrderedRestaurants = async () => {
+    const data = await apiRequest("/restaurants/special/most-ordered");
+    return data.data;
+};
