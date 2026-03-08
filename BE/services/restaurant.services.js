@@ -203,6 +203,21 @@ const getRestaurantsByTags = async (tags, limit = 10) => {
   }
 };
 
+/**
+ * Get restaurant by owner ID (for brand users)
+ */
+const getRestaurantByOwner = async (ownerId) => {
+  try {
+    const restaurant = await Restaurant.findOne({ owner: ownerId }).populate(
+      "owner",
+      "fullName email",
+    );
+    return restaurant; // Returns null if not found
+  } catch (error) {
+    throw new Error(`Error fetching restaurant by owner: ${error.message}`);
+  }
+};
+
 module.exports = {
   getAllRestaurants,
   getRestaurantById,
@@ -213,4 +228,5 @@ module.exports = {
   getTopRatedRestaurants,
   getFlashSaleRestaurants,
   getRestaurantsByTags,
+  getRestaurantByOwner,
 };
