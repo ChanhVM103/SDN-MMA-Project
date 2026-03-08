@@ -358,6 +358,31 @@ const getRestaurantsByTags = async (req, res) => {
 };
 
 /**
+ * GET /api/restaurants/special/most-ordered
+ * Get most ordered restaurants
+ */
+const getMostOrderedRestaurants = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    const restaurants = await restaurantService.getMostOrderedRestaurants(
+      parseInt(limit),
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Most ordered restaurants fetched successfully",
+      data: restaurants,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/**
  * GET /api/restaurants/my-restaurant
  * Get restaurant owned by current brand user
  */
@@ -397,5 +422,6 @@ module.exports = {
   getTopRatedRestaurants,
   getFlashSaleRestaurants,
   getRestaurantsByTags,
+  getMostOrderedRestaurants,
   getMyRestaurant,
 };

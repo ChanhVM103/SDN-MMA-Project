@@ -12,6 +12,8 @@ export interface OrderedItem {
 
 export interface OrderRecord {
   id: string;
+  restaurantId?: string; // Add restaurantId for review
+  hasReviewed?: boolean; // Track if order has been reviewed
   restaurantName: string;
   restaurantAddress: string;
   totalPrice: number;
@@ -24,6 +26,7 @@ export interface OrderRecord {
 interface OrderContextType {
   orders: OrderRecord[];
   addOrder: (order: OrderRecord) => void;
+  markAsReviewed: (orderId: string) => void;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -35,7 +38,11 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     setOrders(prev => [order, ...prev]);
   };
 
-  const value = useMemo(() => ({ orders, addOrder }), [orders]);
+  const markAsReviewed = (orderId: string) => {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, hasReviewed: true } : o));
+  };
+
+  const value = useMemo(() => ({ orders, addOrder, markAsReviewed }), [orders]);
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>;
 }

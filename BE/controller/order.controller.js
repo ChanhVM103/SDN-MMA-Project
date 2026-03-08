@@ -1,6 +1,19 @@
 const Order = require("../models/order.model");
 const Restaurant = require("../models/restaurant.model");
 
+const incrementRestaurantOrders = async (restaurantId) => {
+  await Restaurant.findByIdAndUpdate(restaurantId, {
+    $inc: { totalOrders: 1 },
+  });
+};
+
+const decrementRestaurantOrders = async (restaurantId) => {
+  await Restaurant.updateOne(
+    { _id: restaurantId, totalOrders: { $gt: 0 } },
+    { $inc: { totalOrders: -1 } },
+  );
+};
+
 // Luồng trạng thái hợp lệ
 const STATUS_FLOW = {
   pending: ["confirmed", "cancelled"],
@@ -89,6 +102,8 @@ const createOrder = async (req, res) => {
       ],
     });
 
+    await incrementRestaurantOrders(restaurantId);
+
     return res.status(201).json({
       success: true,
       message: "Đặt hàng thành công!",
@@ -146,12 +161,10 @@ const getOrderById = async (req, res) => {
 
     // User chỉ xem được đơn của mình, admin xem được tất cả
     if (req.userRole !== "admin" && order.user._id.toString() !== req.userId) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Bạn không có quyền xem đơn hàng này",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền xem đơn hàng này",
+      });
     }
 
     return res.json({ success: true, data: order });
@@ -192,6 +205,7 @@ const cancelOrder = async (req, res) => {
       note: req.body.reason || "Khách hàng hủy đơn",
     });
     await order.save();
+    await decrementRestaurantOrders(order.restaurant);
 
     return res.json({
       success: true,
@@ -298,6 +312,10 @@ const updateOrderStatus = async (req, res) => {
     });
 
     await order.save();
+
+    if (status === "cancelled") {
+      await decrementRestaurantOrders(order.restaurant);
+    }
 
     return res.json({
       success: true,

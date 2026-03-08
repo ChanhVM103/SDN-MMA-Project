@@ -1,16 +1,23 @@
 import { Platform } from "react-native";
 
-// ⚠️ Đổi IP này thành IP máy tính của bạn khi test trên điện thoại thật
-// Xem IP: ipconfig (Windows) hoặc ifconfig (Mac/Linux)
-const LOCAL_IP = "192.168.1.225"; // ← ĐỔI IP NÀY
+// Optional override for all platforms.
+// Examples:
+// - Android emulator: EXPO_PUBLIC_API_URL=http://10.0.2.2:3000/api
+// - iOS simulator: EXPO_PUBLIC_API_URL=http://localhost:3000/api
+// - Real device: EXPO_PUBLIC_API_URL=http://<LAN_IP>:3000/api
+const ENV_API_URL = process.env.EXPO_PUBLIC_API_URL?.trim();
 
 const getBaseUrl = () => {
-    if (Platform.OS === "android") {
-        // Android emulator → dùng 10.0.2.2
-        // Điện thoại thật → dùng IP máy tính
-        return `http://${LOCAL_IP}:3000/api`;
+    if (ENV_API_URL) {
+        return ENV_API_URL.replace(/\/+$/, "");
     }
-    // iOS simulator
+
+    if (Platform.OS === "android") {
+        // Android emulator (AVD) -> host machine loopback
+        return "http://10.0.2.2:3000/api";
+    }
+
+    // iOS simulator -> host machine loopback
     return "http://localhost:3000/api";
 };
 

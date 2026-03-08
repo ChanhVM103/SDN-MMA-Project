@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { useFavorites } from '@/constants/favorites-context';
-import { getAllRestaurants } from '@/constants/restaurant-api';
+import { getMostOrderedRestaurants } from '@/constants/restaurant-api';
 import { API_BASE_URL } from '@/constants/api';
 
 const BADGE_COLORS: Record<string, [string, string]> = {
@@ -20,17 +20,6 @@ const formatCompactNumber = (value: number) => {
         return `${(value / 1000).toFixed(1).replace('.0', '')}k`;
     }
     return `${value}`;
-};
-
-const formatHighlight = (item: any) => {
-    if (item?.isFlashSale && Number(item?.discountPercent) > 0) {
-        return `-${item.discountPercent}%`;
-    }
-    if (Number(item?.deliveryFee) === 0) {
-        return 'Free ship';
-    }
-    const shipFee = Number(item?.deliveryFee || 0);
-    return `${Math.round(shipFee / 1000)}k ship`;
 };
 
 const resolveRestaurantImage = (item: any) => {
@@ -57,7 +46,7 @@ export default function MostOrderedSection() {
     useEffect(() => {
         const fetchMostOrdered = async () => {
             try {
-                const data = await getAllRestaurants({ page: 1, limit: 6, sortBy: 'reviews', sortOrder: -1 });
+                const data = await getMostOrderedRestaurants();
                 setMostOrdered(Array.isArray(data) ? data : []);
             } catch (error) {
                 console.error("Failed to load most ordered restaurants:", error);
@@ -117,10 +106,9 @@ export default function MostOrderedSection() {
                             <Text style={s.name} numberOfLines={1}>{item.name}</Text>
                             <View style={s.metaRow}>
                                 <Ionicons name="cart-outline" size={12} color={AppColors.gray} />
-                                <Text style={s.metaText}>{formatCompactNumber(item.reviews || 0)} đã đặt</Text>
+                                <Text style={s.metaText}>{formatCompactNumber(item.totalOrders || 0)} đã đặt</Text>
                             </View>
                         </View>
-                        <Text style={s.price}>{formatHighlight(item)}</Text>
                         <TouchableOpacity onPress={() => toggleFavorite(item._id || item.id)} activeOpacity={0.7} style={{ padding: 4 }}>
                             <Ionicons name={isFavorite(item._id || item.id) ? 'heart' : 'heart-outline'} size={20} color={isFavorite(item._id || item.id) ? '#EF4444' : AppColors.gray} />
                         </TouchableOpacity>
@@ -146,5 +134,4 @@ const s = StyleSheet.create({
     name: { fontSize: 14, fontWeight: '700', color: AppColors.charcoal, marginBottom: 3 },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     metaText: { fontSize: 12, color: AppColors.gray },
-    price: { fontSize: 15, fontWeight: '800', color: AppColors.primary },
 });
