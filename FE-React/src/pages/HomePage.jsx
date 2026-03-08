@@ -5,11 +5,13 @@ import {
   getAllRestaurants,
 } from "../services/restaurant-api";
 import { TypewriterText } from "../components/ui/TypewriterText";
+import CategorySection from "../components/CategorySection";
 
 function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
   // Filters
   const [activeType, setActiveType] = useState("all-type"); // all-type, food, drink
   const [activeCountry, setActiveCountry] = useState("all-country"); // all-country, vietnam, japan, korea
+  const [activeCategory, setActiveCategory] = useState(null); // null hoặc tag string
 
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,12 +28,39 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
     italy: ["Ý"],
   };
 
+  const handleCategorySelect = (tag) => {
+    if (activeCategory === tag) {
+      setActiveCategory(null); // Deselect if clicking same category
+    } else {
+      setActiveCategory(tag);
+      setActiveType("all-type"); // Reset type filter
+      setActiveCountry("all-country"); // Reset country filter
+      if (setGlobalSearchTerm) setGlobalSearchTerm(""); // Clear search
+    }
+  };
+
   useEffect(() => {
     const fetchRestaurants = async () => {
       setLoading(true);
       try {
         const selectedType = typeQueryMap[activeType] || "";
         let countryTags = [];
+
+        // Handle category filter
+        if (activeCategory) {
+          if (activeCategory === 'flash-sale') {
+            // Flash sale special handling
+            data = await getAllRestaurants({ limit: 100 });
+            rawList = Array.isArray(data) ? data : data.restaurants || [];
+            rawList = rawList.filter(r => r.isFlashSale);
+            setRestaurants(rawList);
+            setLoading(false);
+            return;
+          } else {
+            // Normal category tag
+            countryTags = [activeCategory];
+          }
+        }
 
         // Append country tags
         if (activeCountry !== "all-country" && countryMap[activeCountry]) {
@@ -82,7 +111,7 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
       }
     };
     fetchRestaurants();
-  }, [activeType, activeCountry, globalSearchTerm]);
+  }, [activeType, activeCountry, activeCategory, globalSearchTerm]);
 
   return (
     <div
@@ -156,6 +185,12 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
           </div>
         </div>
       </section>
+
+      {/* Categories Section */}
+      <CategorySection 
+        onSelectCategory={handleCategorySelect}
+        activeCategory={activeCategory}
+      />
 
       {/* Advanced Filter Section */}
       <section
