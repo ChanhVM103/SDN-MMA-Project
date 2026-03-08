@@ -37,6 +37,24 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    toppings: {
+      type: [
+        {
+          name: {
+            type: String,
+            required: true,
+            trim: true,
+            maxlength: [60, "Topping name must be less than 60 characters"],
+          },
+          extraPrice: {
+            type: Number,
+            default: 0,
+            min: [0, "Topping extra price cannot be negative"],
+          },
+        },
+      ],
+      default: [],
+    },
     isBestSeller: {
       type: Boolean,
       default: false,

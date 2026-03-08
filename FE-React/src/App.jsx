@@ -9,6 +9,7 @@ import ProfilePage from "./pages/ProfilePage";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import BrandDashboardPage from "./pages/BrandDashboardPage";
 import { signInApi, signUpApi, socialLoginApi } from "./services/auth-api";
 import {
   clearStoredAuth,
@@ -22,7 +23,9 @@ import {
 import { normalizePath } from "./utils/navigation";
 
 function App() {
-  const [path, setPath] = useState(() => normalizePath(window.location.pathname));
+  const [path, setPath] = useState(() =>
+    normalizePath(window.location.pathname),
+  );
   const [auth, setAuth] = useState(() => parseStoredAuth());
   const [globalSearchTerm, setGlobalSearchTerm] = useState("");
 
@@ -44,7 +47,20 @@ function App() {
     // Use current path from state to check
     if (auth.user.role === "admin" && path !== "/admin") {
       navigate("/admin");
-    } else if (auth.user.role !== "admin" && (path === "/admin" || path === "/sign-in" || path === "/sign-up")) {
+    } else if (
+      auth.user.role === "brand" &&
+      (path === "/sign-in" || path === "/sign-up")
+    ) {
+      // Redirect brand from auth pages to dashboard
+      navigate("/brand-dashboard");
+    } else if (
+      auth.user.role !== "admin" &&
+      auth.user.role !== "brand" &&
+      (path === "/admin" ||
+        path === "/brand-dashboard" ||
+        path === "/sign-in" ||
+        path === "/sign-up")
+    ) {
       navigate("/home");
     }
   }, [auth, path]);
@@ -92,7 +108,9 @@ function App() {
 
   const isAuthScreen = path === "/sign-in" || path === "/sign-up";
   const isAdminScreen = path === "/admin" && auth?.user?.role === "admin";
-  const hideNav = isAuthScreen || isAdminScreen;
+  const isBrandScreen =
+    path === "/brand-dashboard" && auth?.user?.role === "brand";
+  const hideNav = isAuthScreen || isAdminScreen || isBrandScreen;
 
   const screen = useMemo(() => {
     if (path === "/sign-in") {
@@ -130,14 +148,42 @@ function App() {
     }
 
     if (path === "/profile") {
-      return <ProfilePage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
+      return (
+        <ProfilePage
+          user={auth.user}
+          onLogout={handleLogout}
+          navigate={navigate}
+        />
+      );
     }
 
     if (path === "/admin" && auth?.user?.role === "admin") {
-      return <AdminDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
+      return (
+        <AdminDashboardPage
+          user={auth.user}
+          onLogout={handleLogout}
+          navigate={navigate}
+        />
+      );
     }
 
-    return <HomePage user={auth.user} navigate={navigate} globalSearchTerm={globalSearchTerm} />;
+    if (path === "/brand-dashboard" && auth?.user?.role === "brand") {
+      return (
+        <BrandDashboardPage
+          user={auth.user}
+          onLogout={handleLogout}
+          navigate={navigate}
+        />
+      );
+    }
+
+    return (
+      <HomePage
+        user={auth.user}
+        navigate={navigate}
+        globalSearchTerm={globalSearchTerm}
+      />
+    );
   }, [auth.user, path, globalSearchTerm]);
 
   return (
@@ -157,7 +203,9 @@ function App() {
           }}
         />
       )}
-      <main className={hideNav ? "" : "view-port"} style={{ flexGrow: 1 }}>{screen}</main>
+      <main className={hideNav ? "" : "view-port"} style={{ flexGrow: 1 }}>
+        {screen}
+      </main>
       {!hideNav && <TabBar path={path} navigate={navigate} />}
     </div>
   );
