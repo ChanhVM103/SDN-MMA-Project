@@ -10,6 +10,7 @@ const getAllRestaurants = async (req, res) => {
       page = 1,
       limit = 10,
       search = "",
+      type = "",
       sortBy = "rating",
       sortOrder = -1,
     } = req.query;
@@ -18,6 +19,7 @@ const getAllRestaurants = async (req, res) => {
       parseInt(page),
       parseInt(limit),
       search,
+      type,
       sortBy,
       parseInt(sortOrder),
     );
@@ -164,14 +166,27 @@ const adminCreateRestaurant = async (req, res) => {
       tags,
       address,
       phone,
-      description
+      description,
     } = req.body;
 
     if (!ownerId) {
-      return res.status(400).json({ success: false, message: "Owner ID is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Owner ID is required" });
     }
-    if (!name || !image || deliveryTime === undefined || deliveryFee === undefined) {
-      return res.status(400).json({ success: false, message: "Missing required fields (name, image, deliveryTime, deliveryFee)" });
+    if (
+      !name ||
+      !image ||
+      deliveryTime === undefined ||
+      deliveryFee === undefined
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            "Missing required fields (name, image, deliveryTime, deliveryFee)",
+        });
     }
 
     const restaurantData = {
@@ -183,10 +198,13 @@ const adminCreateRestaurant = async (req, res) => {
       address: address || "",
       phone: phone || "",
       description: description || "",
-      isOpen: true
+      isOpen: true,
     };
 
-    const restaurant = await restaurantService.adminCreateRestaurant(restaurantData, ownerId);
+    const restaurant = await restaurantService.adminCreateRestaurant(
+      restaurantData,
+      ownerId,
+    );
 
     res.status(201).json({
       success: true,
