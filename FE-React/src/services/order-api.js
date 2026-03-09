@@ -28,23 +28,42 @@ const apiRequest = async (endpoint, options = {}) => {
     return payload.data;
 };
 
-// Lấy danh sách đơn hàng của tôi
-export const getMyOrders = async () => {
-    return apiRequest('/orders/my');
-};
+// ── USER ─────────────────────────────────────────
+export const getMyOrders = async () => apiRequest('/orders/my');
 
-// Tạo đơn hàng (nếu cần sau này)
-export const createOrder = async (orderData) => {
-    return apiRequest('/orders', {
-        method: 'POST',
-        body: JSON.stringify(orderData)
-    });
-};
+export const createOrder = async (orderData) => apiRequest('/orders', {
+    method: 'POST',
+    body: JSON.stringify(orderData)
+});
 
-// Hủy đơn hàng
-export const cancelOrder = async (orderId, reason = "") => {
-    return apiRequest(`/orders/${orderId}/cancel`, {
-        method: 'PATCH',
-        body: JSON.stringify({ reason })
-    });
-};
+export const cancelOrder = async (orderId, reason = "") => apiRequest(`/orders/${orderId}/cancel`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reason })
+});
+
+// ── BRAND HANDOVER ───────────────────────────────
+export const brandHandoverToShipper = async (orderId) => apiRequest(`/orders/${orderId}/brand-handover`, {
+    method: 'PATCH',
+});
+
+export const brandConfirmDelivered = async (orderId) => apiRequest(`/orders/${orderId}/brand-confirm-delivered`, {
+    method: 'PATCH',
+});
+
+// ── SHIPPER ──────────────────────────────────────
+export const getAvailableOrders = async () => apiRequest('/orders/shipper/available');
+
+export const getShipperOrders = async () => apiRequest('/orders/shipper/my');
+
+export const shipperAcceptOrder = async (orderId) => apiRequest(`/orders/${orderId}/shipper-accept`, {
+    method: 'PATCH',
+});
+
+export const shipperPickedUp = async (orderId) => apiRequest(`/orders/${orderId}/shipper-pickup`, {
+    method: 'PATCH',
+});
+
+export const shipperCompleteDelivery = async (orderId) => apiRequest(`/orders/${orderId}/shipper-delivered`, {
+    method: 'PATCH',
+});
+

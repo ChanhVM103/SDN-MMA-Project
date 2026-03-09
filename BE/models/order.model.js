@@ -25,6 +25,13 @@ const orderSchema = new mongoose.Schema(
     },
     restaurantName: { type: String, required: true },
 
+    // Shipper được giao đơn
+    shipper: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
     items: {
       type: [orderItemSchema],
       validate: {
@@ -46,11 +53,14 @@ const orderSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
-        "pending",
-        "confirmed",
-        "preparing",
-        "delivering",
-        "delivered",
+        "pending",           // Chờ xác nhận
+        "confirmed",         // Nhà hàng đã xác nhận
+        "preparing",         // Đang chuẩn bị
+        "ready_for_pickup",  // Sẵn sàng bàn giao cho shipper
+        "shipper_accepted",  // Shipper đã nhận đơn
+        "delivering",        // Shipper đang giao hàng
+        "shipper_delivered", // Shipper báo giao xong, chờ nhà hàng xác nhận
+        "delivered",         // Hoàn thành
         "cancelled",
       ],
       default: "pending",

@@ -20,12 +20,15 @@ const decrementRestaurantOrders = async (restaurantId) => {
   );
 };
 
-// Luồng trạng thái hợp lệ
+// Luồng trạng thái hợp lệ (Admin)
 const STATUS_FLOW = {
   pending: ["confirmed", "cancelled"],
   confirmed: ["preparing", "cancelled"],
-  preparing: ["delivering"],
-  delivering: ["delivered"],
+  preparing: ["ready_for_pickup", "delivering"],
+  ready_for_pickup: ["shipper_accepted"],
+  shipper_accepted: ["delivering"],
+  delivering: ["shipper_delivered", "delivered"],
+  shipper_delivered: ["delivered"],
   delivered: [],
   cancelled: [],
 };
@@ -391,12 +394,15 @@ const getOrderStats = async (req, res) => {
 // BRAND (NHÀ HÀNG) ROUTES
 // ════════════════════════════════════════════════
 
-// Luồng trạng thái hợp lệ cho Brand (nhà hàng chỉ được xác nhận → chuẩn bị → giao)
+// Luồng trạng thái hợp lệ cho Brand
 const BRAND_STATUS_FLOW = {
   pending: ["confirmed", "cancelled"],
   confirmed: ["preparing", "cancelled"],
-  preparing: ["delivering"],
-  delivering: ["delivered"],
+  preparing: ["ready_for_pickup"],
+  ready_for_pickup: [],
+  shipper_accepted: [],
+  delivering: [],
+  shipper_delivered: ["delivered"],
   delivered: [],
   cancelled: [],
 };
@@ -577,6 +583,196 @@ const updateOrderStatusByBrand = async (req, res) => {
   }
 };
 
+// ════════════════════════════════════════════════
+// BRAND HANDOVER ROUTES
+// ════════════════════════════════════════════════
+
+// ── PATCH /api/orders/:id/brand-handover ─────────
+// Brand: Bàn giao đơn cho shipper (preparing → ready_for_pickup)
+const brandHandoverToShipper = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id).populate("restaurant");
+    if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+
+    const restaurant = order.restaurant;
+    if (restaurant.owner && restaurant.owner.toString() !== req.userId && req.userRole !== "admin") {
+      return res.status(403).json({ success: false, message: "Bạn không có quyền cập nhật đơn hàng này" });
+    }
+
+    if (order.status !== "preparing") {
+      return res.status(400).json({ success: false, message: `Chỉ có thể bàn giao khi đơn đang ở trạng thái "preparing". Hiện tại: "${order.status}"` });
+    }
+
+    order.status = "ready_for_pickup";
+    order.statusHistory.push({
+      status: "ready_for_pickup",
+      changedBy: req.userId,
+      note: req.body.note || "Nhà hàng đã chuẩn bị xong, đang chờ shipper đến lấy",
+    });
+    await order.save();
+
+    return res.json({ success: true, message: "Đã bàn giao đơn hàng cho shipper", data: order });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── PATCH /api/orders/:id/brand-confirm-delivered ─
+// Brand: Xác nhận giao hàng thành công (shipper_delivered → delivered)
+const brandConfirmDelivered = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id).populate("restaurant");
+    if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+
+    const restaurant = order.restaurant;
+    if (restaurant.owner && restaurant.owner.toString() !== req.userId && req.userRole !== "admin") {
+      return res.status(403).json({ success: false, message: "Bạn không có quyền cập nhật đơn hàng này" });
+    }
+
+    if (order.status !== "shipper_delivered") {
+      return res.status(400).json({ success: false, message: `Chỉ có thể xác nhận khi shipper đã báo giao xong. Hiện tại: "${order.status}"` });
+    }
+
+    order.status = "delivered";
+    if (order.paymentMethod === "cash") {
+      order.isPaid = true;
+      order.paidAmount = order.total;
+      order.paidAt = new Date();
+      await addRestaurantRevenue(order.restaurant._id, order.total);
+    }
+    order.statusHistory.push({
+      status: "delivered",
+      changedBy: req.userId,
+      note: req.body.note || "Nhà hàng xác nhận giao hàng thành công",
+    });
+    await order.save();
+
+    return res.json({ success: true, message: "Xác nhận giao hàng thành công!", data: order });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ════════════════════════════════════════════════
+// SHIPPER ROUTES
+// ════════════════════════════════════════════════
+
+// ── GET /api/orders/shipper/available ────────────
+// Shipper: Xem các đơn đang chờ giao (ready_for_pickup)
+const getAvailableOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ status: "ready_for_pickup" })
+      .populate("restaurant", "name address image")
+      .populate("user", "fullName phone")
+      .sort({ createdAt: -1 });
+
+    return res.json({ success: true, data: orders });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── GET /api/orders/shipper/my ───────────────────
+// Shipper: Xem đơn của mình (đang giao và đã giao)
+const getShipperOrders = async (req, res) => {
+  try {
+    const { status } = req.query;
+    const filter = { shipper: req.userId };
+    if (status) filter.status = status;
+
+    const orders = await Order.find(filter)
+      .populate("restaurant", "name address image")
+      .populate("user", "fullName phone")
+      .sort({ createdAt: -1 });
+
+    return res.json({ success: true, data: orders });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── PATCH /api/orders/:id/shipper-accept ─────────
+// Shipper: Nhận đơn (ready_for_pickup → shipper_accepted)
+const shipperAcceptOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+
+    if (order.status !== "ready_for_pickup") {
+      return res.status(400).json({ success: false, message: `Đơn hàng không ở trạng thái chờ shipper. Hiện tại: "${order.status}"` });
+    }
+
+    order.shipper = req.userId;
+    order.status = "shipper_accepted";
+    order.statusHistory.push({
+      status: "shipper_accepted",
+      changedBy: req.userId,
+      note: "Shipper đã nhận đơn",
+    });
+    await order.save();
+
+    return res.json({ success: true, message: "Đã nhận đơn hàng!", data: order });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── PATCH /api/orders/:id/shipper-pickup ─────────
+// Shipper: Đã lấy hàng từ nhà hàng (shipper_accepted → delivering)
+const shipperPickedUp = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+
+    if (order.shipper?.toString() !== req.userId) {
+      return res.status(403).json({ success: false, message: "Bạn không có quyền cập nhật đơn hàng này" });
+    }
+    if (order.status !== "shipper_accepted") {
+      return res.status(400).json({ success: false, message: `Đơn hàng không ở trạng thái shipper đã nhận. Hiện tại: "${order.status}"` });
+    }
+
+    order.status = "delivering";
+    order.statusHistory.push({
+      status: "delivering",
+      changedBy: req.userId,
+      note: "Shipper đã lấy hàng, đang trên đường giao",
+    });
+    await order.save();
+
+    return res.json({ success: true, message: "Đang giao hàng!", data: order });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── PATCH /api/orders/:id/shipper-delivered ───────
+// Shipper: Báo giao hàng xong (delivering → shipper_delivered)
+const shipperCompleteDelivery = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+
+    if (order.shipper?.toString() !== req.userId) {
+      return res.status(403).json({ success: false, message: "Bạn không có quyền cập nhật đơn hàng này" });
+    }
+    if (order.status !== "delivering") {
+      return res.status(400).json({ success: false, message: `Đơn hàng không ở trạng thái đang giao. Hiện tại: "${order.status}"` });
+    }
+
+    order.status = "shipper_delivered";
+    order.statusHistory.push({
+      status: "shipper_delivered",
+      changedBy: req.userId,
+      note: "Shipper báo giao hàng thành công, chờ nhà hàng xác nhận",
+    });
+    await order.save();
+
+    return res.json({ success: true, message: "Đã báo giao hàng thành công! Đang chờ nhà hàng xác nhận.", data: order });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -588,4 +784,11 @@ module.exports = {
   getRestaurantStats,
   getRestaurantOrders,
   updateOrderStatusByBrand,
+  brandHandoverToShipper,
+  brandConfirmDelivered,
+  getAvailableOrders,
+  getShipperOrders,
+  shipperAcceptOrder,
+  shipperPickedUp,
+  shipperCompleteDelivery,
 };
