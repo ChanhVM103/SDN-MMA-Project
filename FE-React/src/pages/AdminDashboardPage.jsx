@@ -1278,28 +1278,38 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
                               spacing={0.5}
                               justifyContent="flex-end"
                             >
-                              {u.role === "brand" && !u.hasRestaurant && (
-                                <Tooltip title="Tạo cửa hàng">
-                                  <IconButton
-                                    size="small"
-                                    color="warning"
-                                    onClick={() =>
-                                      handleOpenCreateRestaurant(u)
-                                    }
-                                  >
-                                    <AddBusinessIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              )}
-                              {u.role === "brand" && u.hasRestaurant && (
-                                <Chip
-                                  icon={<CheckCircleIcon />}
-                                  label="Đã có CH"
-                                  color="success"
-                                  size="small"
-                                  variant="outlined"
-                                />
-                              )}
+                              {(() => {
+                                const hasRes = restaurantsList.some(
+                                  (r) => (r.owner?._id || r.owner) === u._id,
+                                );
+                                return (
+                                  <>
+                                    {u.role === "brand" && !hasRes && (
+                                      <Tooltip title="Tạo cửa hàng">
+                                        <IconButton
+                                          size="small"
+                                          color="warning"
+                                          onClick={() =>
+                                            handleOpenCreateRestaurant(u)
+                                          }
+                                        >
+                                          <AddBusinessIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    )}
+                                    {u.role === "brand" && hasRes && (
+                                      <Chip
+                                        icon={<CheckCircleIcon />}
+                                        label="Đã có CH"
+                                        color="success"
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{ mr: 1 }}
+                                      />
+                                    )}
+                                  </>
+                                );
+                              })()}
                               <Tooltip title="Chỉnh sửa">
                                 <IconButton
                                   size="small"
