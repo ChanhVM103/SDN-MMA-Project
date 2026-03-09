@@ -88,24 +88,43 @@ function App() {
     });
   };
 
-  const handlePlaceOrder = async (deliveryAddress, note) => {
+  const handlePlaceOrder = async (deliveryAddress, note, paymentMethod) => {
     if (!auth?.user) { navigate("/sign-in"); return; }
     if (!cart.items.length) return;
+    const subtotal = cart.items.reduce((s, i) => s + i.price * i.quantity, 0);
     try {
-      await createOrder({
+      const order = await createOrder({
         restaurantId: cart.restaurantId,
         items: cart.items,
         deliveryAddress,
         note,
-        subtotal: cart.items.reduce((s, i) => s + i.price * i.quantity, 0),
-        total: cart.items.reduce((s, i) => s + i.price * i.quantity, 0),
-        paymentMethod: "cash",
+        subtotal,
+        total: subtotal,
+        paymentMethod,
       });
       setCart(EMPTY_CART);
       setCartOpen(false);
-      setOrderMsg("🎉 Đặt hàng thành công! Nhà hàng sẽ xác nhận sớm.");
-      setTimeout(() => setOrderMsg(null), 4000);
-      navigate("/orders");
+
+      if (paymentMethod === "vnpay") {
+        // Lấy VNPay URL rồi redirect
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+        const { token } = parseStoredAuth();
+        const res = await fetch(`${API_BASE}/create-vnpay-url`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ orderId: order._id, orderInfo: `Thanh toan don hang FoodieHub` }),
+        });
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error("Không lấy được URL thanh toán");
+        }
+      } else {
+        setOrderMsg("🎉 Đặt hàng thành công! Nhà hàng sẽ xác nhận sớm.");
+        setTimeout(() => setOrderMsg(null), 4000);
+        navigate("/orders");
+      }
     } catch (err) {
       alert("Lỗi đặt hàng: " + err.message);
     }
@@ -144,6 +163,7 @@ function App() {
   const isAdminScreen = path === "/admin" && auth?.user?.role === "admin";
   const isBrandScreen = path === "/brand-dashboard" && auth?.user?.role === "brand";
   const isRestaurantDetail = path.startsWith("/restaurant/");
+  const isPaymentResult = path === "/payment-result";
   const hideNav = isAuthScreen || isAdminScreen || isBrandScreen;
 
   const restaurantId = isRestaurantDetail ? path.split("/restaurant/")[1] : null;
@@ -152,6 +172,7 @@ function App() {
   const screen = useMemo(() => {
     if (path === "/sign-in") return <SignInPage onSubmit={handleSignIn} onGoogleSignIn={handleGoogleAuth} onFacebookSignIn={handleFacebookAuth} navigate={navigate} />;
     if (path === "/sign-up") return <SignUpPage onSubmit={handleSignUp} onGoogleSignIn={handleGoogleAuth} onFacebookSignIn={handleFacebookAuth} navigate={navigate} />;
+    if (path === "/payment-result") return <PaymentResultPage navigate={navigate} />;
     if (path === "/orders") return <OrdersPage user={auth.user} navigate={navigate} />;
     if (path === "/favorites") return <FavoritesPage user={auth.user} navigate={navigate} />;
     if (path === "/notifications") return <NotificationsPage user={auth.user} navigate={navigate} />;
@@ -221,10 +242,13 @@ function App() {
   );
 }
 
+
 // ─── Cart Drawer Component ─────────────────────────
 function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate }) {
+  const [step, setStep] = useState("cart"); // "cart" | "checkout"
   const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
   const [placing, setPlacing] = useState(false);
 
   const subtotal = cart.items.reduce((s, i) => s + i.price * i.quantity, 0);
@@ -233,21 +257,29 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate }
     if (!user) { onClose(); navigate("/sign-in"); return; }
     if (!address.trim()) { alert("Vui lòng nhập địa chỉ giao hàng!"); return; }
     setPlacing(true);
-    await onPlaceOrder(address, note);
+    await onPlaceOrder(address, note, paymentMethod);
     setPlacing(false);
   };
+
+  const PAYMENT_METHODS = [
+    { id: "cash", label: "Tiền mặt", desc: "Thanh toán khi nhận hàng", icon: "💵" },
+    { id: "vnpay", label: "VNPay", desc: "Thanh toán online an toàn", icon: "🏦" },
+  ];
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 500 }}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
-      <div style={{
-        position: "absolute", right: 0, top: 0, bottom: 0, width: "min(420px, 100vw)",
-        background: "#fff", display: "flex", flexDirection: "column",
-        boxShadow: "-4px 0 20px rgba(0,0,0,0.15)",
-      }}>
+      <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "min(420px, 100vw)", background: "#fff", display: "flex", flexDirection: "column", boxShadow: "-4px 0 20px rgba(0,0,0,0.15)" }}>
         {/* Header */}
         <div style={{ padding: "16px 20px", borderBottom: "1px solid #f0f0f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>🛒 Giỏ hàng</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {step === "checkout" && (
+              <button onClick={() => setStep("cart")} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#666", padding: 0 }}>←</button>
+            )}
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
+              {step === "cart" ? "🛒 Giỏ hàng" : "📋 Xác nhận đơn hàng"}
+            </h2>
+          </div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-muted)" }}>✕</button>
         </div>
 
@@ -256,14 +288,12 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate }
             <div style={{ fontSize: 48, marginBottom: 12 }}>🛒</div>
             <p>Giỏ hàng trống</p>
           </div>
-        ) : (
+        ) : step === "cart" ? (
           <>
-            <div style={{ padding: "12px 20px", borderBottom: "1px solid #f0f0f0", background: "#fafafa" }}>
+            <div style={{ padding: "10px 20px", borderBottom: "1px solid #f0f0f0", background: "#fafafa" }}>
               <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Từ nhà hàng: </span>
               <span style={{ fontWeight: 600 }}>{cart.restaurantName}</span>
             </div>
-
-            {/* Items */}
             <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
               {cart.items.map(item => (
                 <div key={item.productId} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: "1px solid #f9f9f9" }}>
@@ -280,40 +310,150 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate }
                 </div>
               ))}
             </div>
+            <div style={{ padding: "16px 20px", borderTop: "1px solid #f0f0f0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
+                <span style={{ color: "var(--text-muted)" }}>Tạm tính</span>
+                <span style={{ fontWeight: 700, fontSize: 16 }}>{subtotal.toLocaleString("vi-VN")}đ</span>
+              </div>
+              <button onClick={() => setStep("checkout")} style={{ width: "100%", background: "var(--shopee-orange)", color: "#fff", border: "none", borderRadius: 10, padding: "14px", fontSize: 16, fontWeight: 700, cursor: "pointer" }}>
+                Tiếp tục → Đặt hàng
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {/* Summary */}
+              <div style={{ padding: "14px 20px", borderBottom: "1px solid #f0f0f0", background: "#fafafa" }}>
+                <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px" }}>Tóm tắt đơn hàng</p>
+                {cart.items.map(item => (
+                  <div key={item.productId} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "3px 0", color: "#555" }}>
+                    <span>{item.emoji} {item.name} x{item.quantity}</span>
+                    <span style={{ fontWeight: 600 }}>{(item.price * item.quantity).toLocaleString("vi-VN")}đ</span>
+                  </div>
+                ))}
+              </div>
 
-            {/* Address + Note */}
-            <div style={{ padding: "12px 20px", borderTop: "1px solid #f0f0f0" }}>
-              <input
-                placeholder="📍 Địa chỉ giao hàng *"
-                value={address}
-                onChange={e => setAddress(e.target.value)}
-                style={{ width: "100%", border: "1px solid #ddd", borderRadius: 8, padding: "10px 12px", fontSize: 14, marginBottom: 8, boxSizing: "border-box" }}
-              />
-              <input
-                placeholder="📝 Ghi chú cho nhà hàng (tuỳ chọn)"
-                value={note}
-                onChange={e => setNote(e.target.value)}
-                style={{ width: "100%", border: "1px solid #ddd", borderRadius: 8, padding: "10px 12px", fontSize: 14, boxSizing: "border-box" }}
-              />
+              {/* Address */}
+              <div style={{ padding: "16px 20px", borderBottom: "1px solid #f0f0f0" }}>
+                <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#333" }}>📍 Địa chỉ giao hàng</p>
+                <input
+                  placeholder="Nhập địa chỉ giao hàng..."
+                  value={address}
+                  onChange={e => setAddress(e.target.value)}
+                  style={{ width: "100%", border: "1.5px solid #ddd", borderRadius: 8, padding: "10px 12px", fontSize: 14, marginBottom: 8, boxSizing: "border-box", outline: "none" }}
+                />
+                <textarea
+                  placeholder="📝 Ghi chú cho nhà hàng (tuỳ chọn)"
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                  rows={2}
+                  style={{ width: "100%", border: "1.5px solid #ddd", borderRadius: 8, padding: "10px 12px", fontSize: 14, boxSizing: "border-box", resize: "none", outline: "none", fontFamily: "inherit" }}
+                />
+              </div>
+
+              {/* Payment method */}
+              <div style={{ padding: "16px 20px" }}>
+                <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 700, color: "#333" }}>💳 Phương thức thanh toán</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {PAYMENT_METHODS.map(pm => (
+                    <div key={pm.id} onClick={() => setPaymentMethod(pm.id)} style={{
+                      display: "flex", alignItems: "center", gap: 14,
+                      padding: "14px 16px", borderRadius: 10, cursor: "pointer",
+                      border: paymentMethod === pm.id ? "2px solid #ee4d2d" : "1.5px solid #eee",
+                      background: paymentMethod === pm.id ? "#fff5f4" : "#fff",
+                      transition: "all 0.15s",
+                    }}>
+                      <span style={{ fontSize: 26 }}>{pm.icon}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{pm.label}</div>
+                        <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{pm.desc}</div>
+                      </div>
+                      <div style={{ width: 20, height: 20, borderRadius: "50%", border: paymentMethod === pm.id ? "6px solid #ee4d2d" : "2px solid #ccc", transition: "all 0.15s", flexShrink: 0 }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Footer */}
             <div style={{ padding: "16px 20px", borderTop: "1px solid #f0f0f0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                <span style={{ color: "var(--text-muted)" }}>Tổng cộng</span>
-                <span style={{ fontWeight: 700, fontSize: 18, color: "var(--shopee-orange)" }}>{subtotal.toLocaleString("vi-VN")}đ</span>
+                <span style={{ color: "var(--text-muted)", fontSize: 14 }}>Tổng cộng</span>
+                <span style={{ fontWeight: 800, fontSize: 20, color: "var(--shopee-orange)" }}>{subtotal.toLocaleString("vi-VN")}đ</span>
               </div>
-              <button
-                onClick={handleOrder}
-                disabled={placing}
-                style={{ width: "100%", background: "var(--shopee-orange)", color: "#fff", border: "none", borderRadius: 10, padding: "14px", fontSize: 16, fontWeight: 700, cursor: "pointer", opacity: placing ? 0.7 : 1 }}
-              >
-                {placing ? "Đang đặt hàng..." : "🛍️ Đặt hàng"}
+              <button onClick={handleOrder} disabled={placing} style={{
+                width: "100%", border: "none", borderRadius: 10, padding: "14px",
+                fontSize: 16, fontWeight: 700, cursor: placing ? "not-allowed" : "pointer",
+                background: placing ? "#ccc" : paymentMethod === "vnpay" ? "linear-gradient(135deg,#0060af,#0078d4)" : "linear-gradient(135deg,#ee4d2d,#ff6b35)",
+                color: "#fff", transition: "all 0.2s",
+              }}>
+                {placing ? "Đang xử lý..." : paymentMethod === "vnpay" ? "🏦 Thanh toán qua VNPay →" : "🛍️ Đặt hàng (Tiền mặt)"}
               </button>
             </div>
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Payment Result Page ────────────────────────────
+function PaymentResultPage({ navigate }) {
+  const [status, setStatus] = useState("loading"); // loading | success | fail
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+    const query = params.toString();
+
+    fetch(`${API_BASE}/check-payment-vnpay?${query}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setStatus("success");
+          setMessage("Thanh toán VNPay thành công! 🎉");
+        } else {
+          setStatus("fail");
+          setMessage(data.message || "Thanh toán thất bại hoặc bị hủy.");
+        }
+      })
+      .catch(() => {
+        setStatus("fail");
+        setMessage("Không thể xác minh kết quả thanh toán.");
+      });
+  }, []);
+
+  return (
+    <div style={{ minHeight: "60vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center" }}>
+      {status === "loading" && (
+        <>
+          <div style={{ width: 48, height: 48, border: "4px solid #f0f0f0", borderTop: "4px solid #ee4d2d", borderRadius: "50%", animation: "spin 0.8s linear infinite", marginBottom: 20 }} />
+          <p style={{ color: "#888" }}>Đang xác minh thanh toán...</p>
+        </>
+      )}
+      {status === "success" && (
+        <>
+          <div style={{ fontSize: 72, marginBottom: 16 }}>🎉</div>
+          <h2 style={{ color: "#10b981", fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Thanh toán thành công!</h2>
+          <p style={{ color: "#666", marginBottom: 28 }}>{message}</p>
+          <button onClick={() => navigate("/orders")} style={{ background: "#10b981", color: "#fff", border: "none", borderRadius: 10, padding: "12px 32px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>
+            Xem đơn hàng →
+          </button>
+        </>
+      )}
+      {status === "fail" && (
+        <>
+          <div style={{ fontSize: 72, marginBottom: 16 }}>😞</div>
+          <h2 style={{ color: "#ef4444", fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Thanh toán thất bại</h2>
+          <p style={{ color: "#666", marginBottom: 28 }}>{message}</p>
+          <button onClick={() => navigate("/orders")} style={{ background: "#ee4d2d", color: "#fff", border: "none", borderRadius: 10, padding: "12px 32px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>
+            Xem đơn hàng
+          </button>
+        </>
+      )}
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
