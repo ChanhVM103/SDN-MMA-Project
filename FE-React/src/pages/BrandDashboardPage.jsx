@@ -10,6 +10,7 @@ import {
   getRestaurantStats,
   updateOrderStatusByBrand,
 } from "../services/brand-api";
+import { brandHandoverToShipper, brandConfirmDelivered } from "../services/order-api";
 
 // MUI Components
 import {
@@ -75,6 +76,22 @@ import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import DoneAllIcon from "@mui/icons-material/DoneAll";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import CancelIcon from "@mui/icons-material/Cancel";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RTooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 
 const DRAWER_WIDTH = 260;
 const CUSTOM_CATEGORY_VALUE = "__custom_category__";
@@ -303,6 +320,32 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
         cancelled: "❌ Đã từ chối đơn hàng.",
       };
       showSnack(statusMessages[newStatus] || "Đã cập nhật trạng thái");
+      fetchOrders(false);
+    } catch (error) {
+      showSnack("Lỗi: " + error.message, "error");
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
+  const handleBrandHandover = async (orderId) => {
+    setUpdatingOrderId(orderId);
+    try {
+      await brandHandoverToShipper(orderId);
+      showSnack("📦 Đã bàn giao cho shipper! Chờ shipper đến lấy.");
+      fetchOrders(false);
+    } catch (error) {
+      showSnack("Lỗi: " + error.message, "error");
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
+  const handleBrandConfirmDelivered = async (orderId) => {
+    setUpdatingOrderId(orderId);
+    try {
+      await brandConfirmDelivered(orderId);
+      showSnack("🎉 Xác nhận giao hàng thành công! Đơn hàng đã hoàn tất.");
       fetchOrders(false);
     } catch (error) {
       showSnack("Lỗi: " + error.message, "error");
@@ -912,72 +955,136 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
               const stats = restaurantStats;
               const vnpayRevenue = stats?.vnpayRevenue || 0;
               const cashRevenue = stats?.cashRevenue || 0;
-              const totalRevenue = stats?.totalRevenue || 0;
               const pendingOrders = stats?.countByStatus
                 ? (["pending","confirmed","preparing","delivering"].reduce((s, k) => s + (stats.countByStatus[k] || 0), 0))
                 : allOrders.filter(o => ["pending","confirmed","preparing","delivering"].includes(o.status)).length;
               const completedOrders = stats?.countByStatus?.delivered || allOrders.filter(o => o.status === "delivered").length;
               const cancelledOrders = stats?.countByStatus?.cancelled || allOrders.filter(o => o.status === "cancelled").length;
-              const vnpayOrders = allOrders.filter(o => o.isPaid && o.paymentMethod === "vnpay");
-
-              const StatCard = ({ icon, label, value, sub, color, bg }) => (
-                <Box sx={{ flex: 1, minWidth: 160, background: bg, borderRadius: 3, p: 2.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
-                  <Box sx={{ fontSize: 28 }}>{icon}</Box>
-                  <Box sx={{ fontSize: 12, color: "#888", fontWeight: 500, mt: 0.5 }}>{label}</Box>
-                  <Box sx={{ fontSize: 22, fontWeight: 800, color }}>{value}</Box>
-                  {sub && <Box sx={{ fontSize: 12, color: "#aaa" }}>{sub}</Box>}
-                </Box>
-              );
 
               return (
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                  {/* Revenue cards */}
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                      💰 Doanh thu
-                    </Typography>
-                    <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                      <StatCard icon="🏦" label="Doanh thu VNPay (đã thu)" value={`${vnpayRevenue.toLocaleString("vi-VN")}đ`} sub={`${stats?.vnpayCount || vnpayOrders.length} đơn VNPay`} color="#0060af" bg="#e8f0fe" />
-                      <StatCard icon="💵" label="Doanh thu tiền mặt" value={`${cashRevenue.toLocaleString("vi-VN")}đ`} sub={`${completedOrders} đơn giao thành công`} color="#16a34a" bg="#dcfce7" />
-                      <StatCard icon="💰" label="Tổng doanh thu" value={`${(vnpayRevenue + cashRevenue).toLocaleString("vi-VN")}đ`} sub="VNPay + tiền mặt" color="#7c3aed" bg="#ede9fe" />
-                      <StatCard icon="📦" label="Tổng đơn tích lũy" value={restaurant?.totalOrders || 0} sub="Từ khi mở cửa (VNPay)" color="#0ea5e9" bg="#e0f2fe" />
-                    </Box>
-                  </Box>
-
-                  {/* Order status breakdown */}
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                      📋 Đơn hàng hiện tại
-                    </Typography>
-                    <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                      <StatCard icon="⏳" label="Đang xử lý" value={pendingOrders} color="#f59e0b" bg="#fef3c7" />
-                      <StatCard icon="✅" label="Hoàn thành" value={completedOrders} color="#10b981" bg="#d1fae5" />
-                      <StatCard icon="❌" label="Đã hủy" value={cancelledOrders} color="#ef4444" bg="#fee2e2" />
-                    </Box>
-                  </Box>
-
-                  {/* Recent paid orders */}
-                  {vnpayOrders.length > 0 && (
-                    <Box>
-                      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                        🏦 Đơn VNPay gần đây
+                <Box>
+                  {/* Welcome Card */}
+                  <Card
+                    sx={{
+                      mb: 3,
+                      background:
+                        "linear-gradient(135deg, #ee4d2d 0%, #ff7337 100%)",
+                      color: "#fff",
+                    }}
+                    elevation={0}
+                  >
+                    <CardContent sx={{ py: 3 }}>
+                      <Typography variant="h5">
+                        Chào mừng trở lại, {user?.fullName || "Quản lý"}! 👋
                       </Typography>
-                      <Paper elevation={0} sx={{ border: "1px solid #f0f0f0", borderRadius: 2, overflow: "hidden" }}>
-                        {vnpayOrders.slice(0, 5).map((order, idx) => (
-                          <Box key={order._id} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2.5, py: 1.5, borderBottom: idx < Math.min(vnpayOrders.length, 5) - 1 ? "1px solid #f5f5f5" : "none", "&:hover": { background: "#fafafa" } }}>
-                            <Box>
-                              <Typography sx={{ fontSize: 14, fontWeight: 600 }}>#{order._id?.slice(-6).toUpperCase()}</Typography>
-                              <Typography sx={{ fontSize: 12, color: "#888" }}>{new Date(order.paidAt || order.createdAt).toLocaleString("vi-VN")}</Typography>
-                            </Box>
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                              <Box sx={{ background: "#e8f0fe", color: "#0060af", px: 1.5, py: 0.5, borderRadius: 2, fontSize: 12, fontWeight: 700 }}>VNPay ✓</Box>
-                              <Typography sx={{ fontWeight: 800, color: "#0060af", fontSize: 15 }}>{(order.paidAmount || order.total || 0).toLocaleString("vi-VN")}đ</Typography>
-                            </Box>
+                      <Typography variant="body2" sx={{ mt: 1, opacity: 0.85 }}>
+                        Theo dõi và quản lý mọi hoạt động trên cửa hàng của bạn một cách nhanh chóng.
+                      </Typography>
+                    </CardContent>
+                  </Card>
+
+                  {/* Summary Cards */}
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(5, 1fr)" }, gap: 3 }}>
+                    {[
+                      { icon: <ReceiptLongIcon />, label: "Đơn đang xử lý", value: pendingOrders, color: "#f59e0b", bg: "#fef3c7" },
+                      { icon: <DoneAllIcon />, label: "Đơn hoàn thành", value: completedOrders, color: "#10b981", bg: "#d1fae5" },
+                      { icon: <BarChartIcon />, label: "Tổng doanh thu", value: `${(vnpayRevenue + cashRevenue).toLocaleString("vi-VN")}đ`, color: "#ee4d2d", bg: "#fff0eb" },
+                      { icon: <StorefrontIcon />, label: "Doanh thu VNPay", value: `${vnpayRevenue.toLocaleString("vi-VN")}đ`, color: "#2aa1ff", bg: "#e6f4ff" },
+                      { icon: <AttachMoneyIcon />, label: "Doanh thu tiền mặt", value: `${cashRevenue.toLocaleString("vi-VN")}đ`, color: "#16a34a", bg: "#dcfce7" },
+                    ].map((s, i) => (
+                      <Card key={i} elevation={0} sx={{ border: "1px solid #f0f0f0" }}>
+                        <CardContent sx={{ display: "flex", alignItems: "center", gap: 2, py: 2.5 }}>
+                          <Avatar sx={{ bgcolor: s.bg, color: s.color, width: 52, height: 52 }}>
+                            {s.icon}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" color="text.secondary">{s.label}</Typography>
+                            <Typography variant="h5" fontWeight={700}>{s.value}</Typography>
                           </Box>
-                        ))}
-                      </Paper>
-                    </Box>
-                  )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </Box>
+
+                  {/* Charts Row */}
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "1fr 1fr" }, gap: 3, mt: 3 }}>
+                    {/* Donut: Order Status */}
+                    <Card elevation={0} sx={{ border: "1px solid rgba(0,0,0,0.06)", overflow: "hidden" }}>
+                      <CardContent>
+                        <Typography variant="h6" sx={{ mb: 1 }}>📊 Phân bổ trạng thái đơn</Typography>
+                        <Typography variant="caption" color="text.secondary">Tổng: {allOrders.length} đơn hàng</Typography>
+                        <Box sx={{ height: 280, mt: 2 }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={[
+                                  { name: "Hoàn thành", value: completedOrders, color: "#10b981" },
+                                  { name: "Đang xử lý", value: pendingOrders, color: "#f59e0b" },
+                                  { name: "Đã hủy", value: cancelledOrders, color: "#ef4444" },
+                                ].filter((d) => d.value > 0)}
+                                cx="50%" cy="50%" innerRadius={65} outerRadius={100} paddingAngle={4} dataKey="value" stroke="none"
+                              >
+                                {[
+                                  { name: "Hoàn thành", value: completedOrders, color: "#10b981" },
+                                  { name: "Đang xử lý", value: pendingOrders, color: "#f59e0b" },
+                                  { name: "Đã hủy", value: cancelledOrders, color: "#ef4444" },
+                                ].filter((d) => d.value > 0).map((entry, index) => (
+                                  <Cell key={index} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <RTooltip formatter={(value, name) => [`${value} đơn`, name]} />
+                              <Legend verticalAlign="bottom" iconType="circle" iconSize={10} formatter={(value) => (<span style={{ color: "#666", fontSize: 13, fontWeight: 500 }}>{value}</span>)} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </Box>
+                      </CardContent>
+                    </Card>
+
+                    {/* Area: Orders Timeline */}
+                    <Card elevation={0} sx={{ border: "1px solid rgba(0,0,0,0.06)", overflow: "hidden" }}>
+                      <CardContent>
+                        <Typography variant="h6" sx={{ mb: 1 }}>📈 Thống kê đơn hàng</Typography>
+                        <Typography variant="caption" color="text.secondary">Lượng đơn hàng trong 6 tháng qua</Typography>
+                        <Box sx={{ height: 280, mt: 2 }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart
+                              data={(() => {
+                                const months = {};
+                                const monthNames = ["Th1", "Th2", "Th3", "Th4", "Th5", "Th6", "Th7", "Th8", "Th9", "Th10", "Th11", "Th12"];
+                                const now = new Date();
+                                for (let i = 5; i >= 0; i--) {
+                                  const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                                  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+                                  months[key] = { month: monthNames[d.getMonth()] + " " + d.getFullYear(), orders: 0 };
+                                }
+                                allOrders.forEach((o) => {
+                                  if (!o.createdAt) return;
+                                  const d = new Date(o.createdAt);
+                                  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+                                  if (months[key]) months[key].orders++;
+                                });
+                                return Object.values(months);
+                              })()}
+                              margin={{ top: 10, right: 30, left: -10, bottom: 0 }}
+                            >
+                              <defs>
+                                <linearGradient id="gradOrders" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#ee4d2d" stopOpacity={0.25} />
+                                  <stop offset="95%" stopColor="#ee4d2d" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                              <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#999" }} axisLine={false} tickLine={false} />
+                              <YAxis tick={{ fontSize: 12, fill: "#999" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                              <RTooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }} />
+                              <Legend verticalAlign="top" align="right" iconType="circle" iconSize={10} formatter={(value) => (<span style={{ color: "#666", fontSize: 13, fontWeight: 500 }}>{value}</span>)} />
+                              <Area type="monotone" dataKey="orders" name="Đơn hàng" stroke="#ee4d2d" strokeWidth={2.5} fillOpacity={1} fill="url(#gradOrders)" dot={{ r: 4, fill: "#ee4d2d", strokeWidth: 2, stroke: "#fff" }} />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Box>
                 </Box>
               );
             })()}
@@ -1210,19 +1317,20 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
             {/* ═══ ORDERS TAB ═══ */}
             {activeTab === "orders" && (() => {
               const STATUS_CONFIG = {
-                pending:    { label: "Chờ xác nhận", color: "#f59e0b", bg: "#fef3c7", icon: <HourglassEmptyIcon sx={{ fontSize: 16 }} /> },
-                confirmed:  { label: "Đã xác nhận",  color: "#3b82f6", bg: "#dbeafe", icon: <CheckCircleIcon sx={{ fontSize: 16 }} /> },
-                preparing:  { label: "Đang chuẩn bị", color: "#8b5cf6", bg: "#ede9fe", icon: <InventoryIcon sx={{ fontSize: 16 }} /> },
-                delivering: { label: "Đang giao",     color: "#0ea5e9", bg: "#e0f2fe", icon: <LocalShippingIcon sx={{ fontSize: 16 }} /> },
-                delivered:  { label: "Thành công",    color: "#10b981", bg: "#d1fae5", icon: <DoneAllIcon sx={{ fontSize: 16 }} /> },
-                cancelled:  { label: "Đã hủy",        color: "#ef4444", bg: "#fee2e2", icon: <CancelIcon sx={{ fontSize: 16 }} /> },
+                pending:           { label: "Chờ xác nhận",          color: "#f59e0b", bg: "#fef3c7", icon: <HourglassEmptyIcon sx={{ fontSize: 16 }} /> },
+                confirmed:         { label: "Đã xác nhận",            color: "#3b82f6", bg: "#dbeafe", icon: <CheckCircleIcon sx={{ fontSize: 16 }} /> },
+                preparing:         { label: "Đang chuẩn bị",         color: "#8b5cf6", bg: "#ede9fe", icon: <InventoryIcon sx={{ fontSize: 16 }} /> },
+                ready_for_pickup:  { label: "Chờ Shipper đến lấy",   color: "#f97316", bg: "#ffedd5", icon: <LocalShippingIcon sx={{ fontSize: 16 }} /> },
+                shipper_accepted:  { label: "Shipper đã nhận đơn",   color: "#06b6d4", bg: "#cffafe", icon: <LocalShippingIcon sx={{ fontSize: 16 }} /> },
+                delivering:        { label: "Đang giao hàng",         color: "#0ea5e9", bg: "#e0f2fe", icon: <LocalShippingIcon sx={{ fontSize: 16 }} /> },
+                shipper_delivered: { label: "Shipper báo giao xong", color: "#84cc16", bg: "#ecfccb", icon: <DoneAllIcon sx={{ fontSize: 16 }} /> },
+                delivered:         { label: "Thành công",             color: "#10b981", bg: "#d1fae5", icon: <DoneAllIcon sx={{ fontSize: 16 }} /> },
+                cancelled:         { label: "Đã hủy",                 color: "#ef4444", bg: "#fee2e2", icon: <CancelIcon sx={{ fontSize: 16 }} /> },
               };
 
               const NEXT_ACTION = {
-                pending:    { status: "confirmed",  label: "✅ Xác nhận đơn" },
-                confirmed:  { status: "preparing",  label: "👨‍🍳 Bắt đầu chuẩn bị" },
-                preparing:  { status: "delivering", label: "🚀 Bàn giao shipper" },
-                delivering: { status: "delivered",  label: "🎉 Xác nhận đã giao" },
+                pending:   { status: "confirmed",  label: "✅ Xác nhận đơn" },
+                confirmed: { status: "preparing",  label: "👨‍🍳 Bắt đầu chuẩn bị" },
               };
 
               const filterTabs = [
@@ -1230,7 +1338,10 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
                 { value: "pending", label: "Chờ xác nhận" },
                 { value: "confirmed", label: "Đã xác nhận" },
                 { value: "preparing", label: "Đang chuẩn bị" },
+                { value: "ready_for_pickup", label: "Chờ shipper" },
+                { value: "shipper_accepted", label: "Shipper đã nhận" },
                 { value: "delivering", label: "Đang giao" },
+                { value: "shipper_delivered", label: "Báo giao xong" },
                 { value: "delivered", label: "Hoàn thành" },
                 { value: "cancelled", label: "Đã hủy" },
               ];
@@ -1346,30 +1457,72 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
                             )}
 
                             {/* Actions */}
-                            {nextAction && (
-                              <Box sx={{ px: 2.5, py: 1.5, bgcolor: "#fafafa", borderTop: "1px solid #f0f0f0", display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
-                                {order.status === "pending" && (
-                                  <Button
-                                    variant="outlined"
-                                    color="error"
-                                    size="small"
-                                    disabled={isUpdating}
-                                    onClick={() => handleUpdateOrderStatus(order._id, "cancelled")}
-                                  >
-                                    ❌ Từ chối
-                                  </Button>
-                                )}
+                            <Box sx={{ px: 2.5, py: 1.5, bgcolor: "#fafafa", borderTop: "1px solid #f0f0f0", display: "flex", justifyContent: "flex-end", gap: 1.5, flexWrap: "wrap" }}>
+                              {/* Cancel button for pending */}
+                              {order.status === "pending" && (
+                                <Button
+                                  variant="outlined"
+                                  color="error"
+                                  size="small"
+                                  disabled={isUpdating}
+                                  onClick={() => handleUpdateOrderStatus(order._id, "cancelled")}
+                                >
+                                  ❌ Từ chối
+                                </Button>
+                              )}
+
+                              {/* Standard flow: pending → confirmed → preparing */}
+                              {NEXT_ACTION[order.status] && (
                                 <Button
                                   variant="contained"
                                   size="small"
                                   disabled={isUpdating}
                                   startIcon={isUpdating ? <CircularProgress size={16} color="inherit" /> : null}
-                                  onClick={() => handleUpdateOrderStatus(order._id, nextAction.status)}
+                                  onClick={() => handleUpdateOrderStatus(order._id, NEXT_ACTION[order.status].status)}
                                 >
-                                  {isUpdating ? "Đang cập nhật..." : nextAction.label}
+                                  {isUpdating ? "Đang cập nhật..." : NEXT_ACTION[order.status].label}
                                 </Button>
-                              </Box>
-                            )}
+                              )}
+
+                              {/* Brand: bàn giao cho shipper (preparing → ready_for_pickup) */}
+                              {order.status === "preparing" && (
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  disabled={isUpdating}
+                                  sx={{ bgcolor: "#f97316", "&:hover": { bgcolor: "#ea6c0a" } }}
+                                  startIcon={isUpdating ? <CircularProgress size={16} color="inherit" /> : <LocalShippingIcon />}
+                                  onClick={() => handleBrandHandover(order._id)}
+                                >
+                                  {isUpdating ? "Đang xử lý..." : "📦 Bàn giao cho Shipper"}
+                                </Button>
+                              )}
+
+                              {/* Status info for read-only states */}
+                              {order.status === "ready_for_pickup" && (
+                                <Chip label="⏳ Chờ shipper đến lấy" color="warning" size="small" variant="outlined" />
+                              )}
+                              {order.status === "shipper_accepted" && (
+                                <Chip label="🛥 Shipper đang trên đường" color="info" size="small" variant="outlined" />
+                              )}
+                              {order.status === "delivering" && (
+                                <Chip label="🚀 Shipper đang giao" color="info" size="small" variant="outlined" />
+                              )}
+
+                              {/* Brand: xác nhận giao thành công (shipper_delivered → delivered) */}
+                              {order.status === "shipper_delivered" && (
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  color="success"
+                                  disabled={isUpdating}
+                                  startIcon={isUpdating ? <CircularProgress size={16} color="inherit" /> : <DoneAllIcon />}
+                                  onClick={() => handleBrandConfirmDelivered(order._id)}
+                                >
+                                  {isUpdating ? "Đang xử lý..." : "🎉 Xác nhận giao thành công"}
+                                </Button>
+                              )}
+                            </Box>
                           </Paper>
                         );
                       })}

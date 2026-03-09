@@ -11,6 +11,7 @@ import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import BrandDashboardPage from "./pages/BrandDashboardPage";
+import ShipperDashboardPage from "./pages/ShipperDashboardPage";
 import RestaurantDetailPage from "./pages/RestaurantDetailPage";
 import { signInApi, signUpApi, socialLoginApi } from "./services/auth-api";
 import { clearStoredAuth, parseStoredAuth, persistAuth } from "./services/auth-storage";
@@ -39,9 +40,20 @@ function App() {
 
   useEffect(() => {
     if (!auth?.user) return;
-    if (auth.user.role === "admin" && path !== "/admin") navigate("/admin");
-    else if (auth.user.role === "brand" && (path === "/sign-in" || path === "/sign-up")) navigate("/brand-dashboard");
-    else if (auth.user.role !== "admin" && auth.user.role !== "brand" && (path === "/admin" || path === "/brand-dashboard" || path === "/sign-in" || path === "/sign-up")) navigate("/home");
+    const role = auth.user.role;
+    if (role === "admin" && path !== "/admin") {
+      navigate("/admin");
+    } else if (role === "brand" && path !== "/brand-dashboard" && (path === "/sign-in" || path === "/sign-up")) {
+      navigate("/brand-dashboard");
+    } else if (role === "shipper" && path !== "/shipper-dashboard") {
+      // Shipper phải luôn ở trang shipper dashboard
+      navigate("/shipper-dashboard");
+    } else if (role !== "admin" && role !== "brand" && role !== "shipper") {
+      // User thường bị chặn khỏi các trang admin/brand/shipper
+      if (path === "/admin" || path === "/brand-dashboard" || path === "/shipper-dashboard" || path === "/sign-in" || path === "/sign-up") {
+        navigate("/home");
+      }
+    }
   }, [auth, path]);
 
   const navigate = (to) => {
@@ -162,9 +174,10 @@ function App() {
   const isAuthScreen = path === "/sign-in" || path === "/sign-up";
   const isAdminScreen = path === "/admin" && auth?.user?.role === "admin";
   const isBrandScreen = path === "/brand-dashboard" && auth?.user?.role === "brand";
+  const isShipperScreen = path === "/shipper-dashboard" && auth?.user?.role === "shipper";
   const isRestaurantDetail = path.startsWith("/restaurant/");
   const isPaymentResult = path === "/payment-result";
-  const hideNav = isAuthScreen || isAdminScreen || isBrandScreen;
+  const hideNav = isAuthScreen || isAdminScreen || isBrandScreen || isShipperScreen;
 
   const restaurantId = isRestaurantDetail ? path.split("/restaurant/")[1] : null;
   const cartCount = cart.items.reduce((s, i) => s + i.quantity, 0);
@@ -185,6 +198,7 @@ function App() {
     }} />;
     if (path === "/admin" && auth?.user?.role === "admin") return <AdminDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
     if (path === "/brand-dashboard" && auth?.user?.role === "brand") return <BrandDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
+    if (path === "/shipper-dashboard" && auth?.user?.role === "shipper") return <ShipperDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
     if (isRestaurantDetail) return (
       <RestaurantDetailPage
         restaurantId={restaurantId}
