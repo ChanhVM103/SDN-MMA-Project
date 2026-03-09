@@ -176,7 +176,13 @@ function App() {
     if (path === "/orders") return <OrdersPage user={auth.user} navigate={navigate} />;
     if (path === "/favorites") return <FavoritesPage user={auth.user} navigate={navigate} />;
     if (path === "/notifications") return <NotificationsPage user={auth.user} navigate={navigate} />;
-    if (path === "/profile") return <ProfilePage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
+    if (path === "/profile") return <ProfilePage user={auth.user} onLogout={handleLogout} navigate={navigate} onUpdateUser={(newUser) => {
+      setAuth(prev => {
+        const updatedAuth = { ...prev, user: newUser };
+        persistAuth(updatedAuth.user, updatedAuth.token);
+        return updatedAuth;
+      });
+    }} />;
     if (path === "/admin" && auth?.user?.role === "admin") return <AdminDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
     if (path === "/brand-dashboard" && auth?.user?.role === "brand") return <BrandDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
     if (isRestaurantDetail) return (

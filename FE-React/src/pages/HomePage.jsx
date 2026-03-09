@@ -113,6 +113,17 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
     fetchRestaurants();
   }, [activeType, activeCountry, activeCategory, globalSearchTerm]);
 
+  const isDefaultView = activeType === "all-type" && activeCountry === "all-country" && !activeCategory && !globalSearchTerm;
+
+  const flashSaleRestaurants = restaurants.filter(r => r.isFlashSale);
+  const topRatedRestaurants = [...restaurants]
+    .filter(r => r.rating >= 4.5)
+    .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+    .slice(0, 10);
+  const mostOrderedRestaurants = [...restaurants]
+    .sort((a, b) => (b.totalOrders || 0) - (a.totalOrders || 0))
+    .slice(0, 10);
+
   return (
     <div
       style={{
@@ -291,40 +302,8 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
         </div>
       </section>
 
-      {/* General Restaurant Grid */}
+      {/* Dynamic Sections */}
       <section className="view-port" style={{ paddingTop: "20px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            borderBottom: "4px solid var(--shopee-orange)",
-            marginBottom: "10px",
-            paddingBottom: "10px",
-          }}
-        >
-          <h2
-            style={{
-              fontSize: "16px",
-              fontWeight: "500",
-              letterSpacing: "1px",
-              margin: 0,
-              color: "var(--text-main)",
-            }}
-          >
-            NHÀ HÀNG NỔI BẬT
-          </h2>
-          <span
-            style={{
-              fontSize: "12px",
-              color: "var(--text-muted)",
-              cursor: "pointer",
-            }}
-          >
-            Xem thêm &gt;
-          </span>
-        </div>
-
         {loading ? (
           <div
             style={{
@@ -348,16 +327,172 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
             Đang tải nhà hàng...
             <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
           </div>
+        ) : isDefaultView ? (
+          <>
+            <style>{`
+              .restaurant-section {
+                margin-bottom: 25px;
+              }
+              .section-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 4px solid var(--shopee-orange);
+                margin-bottom: 15px;
+                padding-bottom: 8px;
+              }
+              .section-header h2 {
+                font-size: 16px;
+                font-weight: 600;
+                letter-spacing: 1px;
+                margin: 0;
+                color: var(--text-main);
+                text-transform: uppercase;
+              }
+              .see-more {
+                font-size: 13px;
+                color: var(--shopee-orange);
+                cursor: pointer;
+                font-weight: 500;
+              }
+              .horizontal-scroll {
+                display: flex;
+                overflow-x: auto;
+                gap: 15px;
+                padding-bottom: 15px;
+              }
+              .horizontal-scroll::-webkit-scrollbar {
+                height: 6px;
+              }
+              .horizontal-scroll::-webkit-scrollbar-track {
+                background: #f1f1f1;
+                border-radius: 4px;
+              }
+              .horizontal-scroll::-webkit-scrollbar-thumb {
+                background: #ccc;
+                border-radius: 4px;
+              }
+              .horizontal-scroll::-webkit-scrollbar-thumb:hover {
+                background: #aaa;
+              }
+              .horizontal-scroll > div {
+                min-width: 190px;
+                flex: 0 0 190px;
+              }
+            `}</style>
+
+            {/* Flash Sale Section */}
+            {flashSaleRestaurants.length > 0 && (
+              <div className="restaurant-section">
+                <div className="section-header">
+                  <h2>⚡ FLASH SALE</h2>
+                  <span className="see-more">Xem thêm &gt;</span>
+                </div>
+                <div className="horizontal-scroll">
+                  {flashSaleRestaurants.map((restaurant) => (
+                    <div key={restaurant._id || restaurant.id}>
+                      <RestaurantCard
+                        restaurant={restaurant}
+                        navigate={navigate}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Top Rated Section */}
+            {topRatedRestaurants.length > 0 && (
+              <div className="restaurant-section">
+                <div className="section-header">
+                  <h2>⭐ QUÁN RATING 5 SAO</h2>
+                  <span className="see-more">Xem thêm &gt;</span>
+                </div>
+                <div className="horizontal-scroll">
+                  {topRatedRestaurants.map((restaurant) => (
+                    <div key={restaurant._id || restaurant.id}>
+                      <RestaurantCard
+                        restaurant={restaurant}
+                        navigate={navigate}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Most Ordered Section */}
+            {mostOrderedRestaurants.length > 0 && (
+              <div className="restaurant-section">
+                <div className="section-header">
+                  <h2>🏆 ĐẶT NHIỀU NHẤT</h2>
+                  <span className="see-more">Xem thêm &gt;</span>
+                </div>
+                <div className="horizontal-scroll">
+                  {mostOrderedRestaurants.map((restaurant) => (
+                    <div key={restaurant._id || restaurant.id}>
+                      <RestaurantCard
+                        restaurant={restaurant}
+                        navigate={navigate}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Default State Fallback */}
+            {flashSaleRestaurants.length === 0 && topRatedRestaurants.length === 0 && mostOrderedRestaurants.length === 0 && restaurants.length > 0 && (
+              <div className="restaurant-section">
+                <div className="section-header">
+                  <h2>TẤT CẢ NHÀ HÀNG</h2>
+                </div>
+                <div className="product-grid">
+                  {restaurants.map((restaurant) => (
+                    <RestaurantCard
+                      key={restaurant._id || restaurant.id}
+                      restaurant={restaurant}
+                      navigate={navigate}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         ) : restaurants.length > 0 ? (
-          <div className="product-grid">
-            {restaurants.map((restaurant) => (
-              <RestaurantCard
-                key={restaurant._id || restaurant.id}
-                restaurant={restaurant}
-                navigate={navigate}
-              />
-            ))}
-          </div>
+          <>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderBottom: "4px solid var(--shopee-orange)",
+                marginBottom: "10px",
+                paddingBottom: "10px",
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: "16px",
+                  fontWeight: "500",
+                  letterSpacing: "1px",
+                  margin: 0,
+                  color: "var(--text-main)",
+                }}
+              >
+                KẾT QUẢ TÌM KIẾM
+              </h2>
+            </div>
+            <div className="product-grid">
+              {restaurants.map((restaurant) => (
+                <RestaurantCard
+                  key={restaurant._id || restaurant.id}
+                  restaurant={restaurant}
+                  navigate={navigate}
+                />
+              ))}
+            </div>
+          </>
         ) : (
           <div
             style={{

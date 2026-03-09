@@ -10,6 +10,12 @@ function RestaurantCard({ restaurant, navigate }) {
   const deliveryTime = restaurant.deliveryTime || 0;
   const isFlashSale = restaurant.isFlashSale;
   const discountPercent = restaurant.discountPercent || 0;
+  const totalOrders = restaurant.totalOrders || 0;
+
+  const formatOrders = (num) => {
+    if (num >= 1000) return (num / 1000).toFixed(1) + "k";
+    return num;
+  };
 
   const getFlashSaleEndTime = () => {
     const tomorrow = new Date();
@@ -51,11 +57,14 @@ function RestaurantCard({ restaurant, navigate }) {
         </div>
         <div className="product-meta" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: "12px", color: "#ffb500" }}>★ {rating.toFixed(1)} <span style={{ color: "var(--text-muted)" }}>({reviews}+)</span></span>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{distance}</span>
+            <span style={{ fontSize: "12px", color: "#ffb500", display: "flex", gap: "4px", alignItems: "center" }}>
+              ★ {rating.toFixed(1)}
+              <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>({formatOrders(totalOrders)}+ đã đặt)</span>
+            </span>
           </div>
-          <div style={{ borderTop: "1px dashed #eee", paddingTop: "4px", marginTop: "2px", fontSize: "12px", color: "var(--text-muted)" }}>
-            Giao hàng: {deliveryTime} phút
+          <div style={{ borderTop: "1px dashed #eee", paddingTop: "4px", marginTop: "2px", fontSize: "12px", color: "var(--text-muted)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>{deliveryTime} phút</span>
+            <span>{distance}</span>
           </div>
         </div>
       </div>

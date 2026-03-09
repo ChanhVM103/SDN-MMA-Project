@@ -34,3 +34,17 @@ export const socialLoginApi = ({ provider, accessToken }) =>
     method: "POST",
     body: JSON.stringify({ accessToken }),
   });
+
+export const updateAvatarApi = (token, avatarBase64) =>
+  apiRequest("/auth/avatar", {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ avatar: avatarBase64 }),
+  });
+
+export const updateProfileApi = (token, data) =>
+  apiRequest("/auth/profile", {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });

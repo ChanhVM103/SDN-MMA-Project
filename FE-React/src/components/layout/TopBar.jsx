@@ -252,22 +252,35 @@ function TopBar({ user, navigate, onLogout, onSearch, searchTerm }) {
                 }}
               >
                 {/* User avatar circle */}
-                <span
-                  style={{
-                    width: "26px",
-                    height: "26px",
-                    borderRadius: "50%",
-                    backgroundColor: "rgba(255,255,255,0.3)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "12px",
-                    fontWeight: "700",
-                    color: "#fff",
-                  }}
-                >
-                  {(user.fullName || "U").charAt(0).toUpperCase()}
-                </span>
+                {user.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt="avatar"
+                    style={{
+                      width: "26px",
+                      height: "26px",
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  <span
+                    style={{
+                      width: "26px",
+                      height: "26px",
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(255,255,255,0.3)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "12px",
+                      fontWeight: "700",
+                      color: "#fff",
+                    }}
+                  >
+                    {(user.fullName || "U").charAt(0).toUpperCase()}
+                  </span>
+                )}
                 <span
                   style={{
                     maxWidth: "100px",
