@@ -42,6 +42,11 @@ const restaurantSchema = new mongoose.Schema(
       default: 0,
       min: [0, "Total orders cannot be negative"],
     },
+    totalRevenue: {
+      type: Number,
+      default: 0,
+      min: [0, "Total revenue cannot be negative"],
+    },
     distance: {
       type: String,
       default: "",

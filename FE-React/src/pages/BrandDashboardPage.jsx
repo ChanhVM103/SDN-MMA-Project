@@ -7,6 +7,7 @@ import {
   deleteProductForRestaurant,
   updateMyRestaurant,
   getRestaurantOrders,
+  getRestaurantStats,
   updateOrderStatusByBrand,
 } from "../services/brand-api";
 
@@ -57,6 +58,7 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 // MUI Icons
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import InventoryIcon from "@mui/icons-material/Inventory";
+import BarChartIcon from "@mui/icons-material/BarChart";
 import LogoutIcon from "@mui/icons-material/Logout";
 import SearchIcon from "@mui/icons-material/Search";
 import EditIcon from "@mui/icons-material/Edit";
@@ -158,6 +160,8 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
 
   // Orders state
   const [ordersList, setOrdersList] = useState([]);
+  const [allOrders, setAllOrders] = useState([]); // dùng cho overview, không filter
+  const [restaurantStats, setRestaurantStats] = useState(null); // stats từ DB aggregate
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
@@ -226,6 +230,10 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
     if (restaurant && activeTab === "orders") {
       fetchOrders();
     }
+    if (restaurant && activeTab === "overview") {
+      fetchAllOrders();
+      fetchStats();
+    }
   }, [restaurant, activeTab]);
 
   // Auto refresh orders every 15 seconds when on orders tab
@@ -260,6 +268,26 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
       showSnack("Lỗi tải đơn hàng: " + error.message, "error");
     } finally {
       if (showLoader) setOrdersLoading(false);
+    }
+  };
+
+  const fetchAllOrders = async () => {
+    if (!restaurant) return;
+    try {
+      const data = await getRestaurantOrders(restaurant._id, {});
+      setAllOrders(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Lỗi tải tất cả đơn:", error.message);
+    }
+  };
+
+  const fetchStats = async () => {
+    if (!restaurant) return;
+    try {
+      const data = await getRestaurantStats(restaurant._id);
+      setRestaurantStats(data);
+    } catch (error) {
+      console.error("Lỗi tải stats:", error.message);
     }
   };
 
@@ -489,6 +517,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
 
   // ─── Sidebar Nav Items ──────────────────────
   const navItems = [
+    { key: "overview", label: "Tổng quan", icon: <BarChartIcon /> },
     {
       key: "restaurant",
       label: "Thông tin cửa hàng",
@@ -647,7 +676,9 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
                 color="text.primary"
                 sx={{ minWidth: 200 }}
               >
-                {activeTab === "restaurant"
+                {activeTab === "overview"
+                  ? "Tổng quan doanh thu"
+                  : activeTab === "restaurant"
                   ? "Thông tin cửa hàng"
                   : activeTab === "orders"
                   ? "Quản lý đơn hàng"
@@ -875,6 +906,81 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
                 )}
               </Paper>
             )}
+
+            {/* ═══ OVERVIEW TAB ═══ */}
+            {activeTab === "overview" && (() => {
+              const stats = restaurantStats;
+              const vnpayRevenue = stats?.vnpayRevenue || 0;
+              const cashRevenue = stats?.cashRevenue || 0;
+              const totalRevenue = stats?.totalRevenue || 0;
+              const pendingOrders = stats?.countByStatus
+                ? (["pending","confirmed","preparing","delivering"].reduce((s, k) => s + (stats.countByStatus[k] || 0), 0))
+                : allOrders.filter(o => ["pending","confirmed","preparing","delivering"].includes(o.status)).length;
+              const completedOrders = stats?.countByStatus?.delivered || allOrders.filter(o => o.status === "delivered").length;
+              const cancelledOrders = stats?.countByStatus?.cancelled || allOrders.filter(o => o.status === "cancelled").length;
+              const vnpayOrders = allOrders.filter(o => o.isPaid && o.paymentMethod === "vnpay");
+
+              const StatCard = ({ icon, label, value, sub, color, bg }) => (
+                <Box sx={{ flex: 1, minWidth: 160, background: bg, borderRadius: 3, p: 2.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
+                  <Box sx={{ fontSize: 28 }}>{icon}</Box>
+                  <Box sx={{ fontSize: 12, color: "#888", fontWeight: 500, mt: 0.5 }}>{label}</Box>
+                  <Box sx={{ fontSize: 22, fontWeight: 800, color }}>{value}</Box>
+                  {sub && <Box sx={{ fontSize: 12, color: "#aaa" }}>{sub}</Box>}
+                </Box>
+              );
+
+              return (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  {/* Revenue cards */}
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                      💰 Doanh thu
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                      <StatCard icon="🏦" label="Doanh thu VNPay (đã thu)" value={`${vnpayRevenue.toLocaleString("vi-VN")}đ`} sub={`${stats?.vnpayCount || vnpayOrders.length} đơn VNPay`} color="#0060af" bg="#e8f0fe" />
+                      <StatCard icon="💵" label="Doanh thu tiền mặt" value={`${cashRevenue.toLocaleString("vi-VN")}đ`} sub={`${completedOrders} đơn giao thành công`} color="#16a34a" bg="#dcfce7" />
+                      <StatCard icon="💰" label="Tổng doanh thu" value={`${(vnpayRevenue + cashRevenue).toLocaleString("vi-VN")}đ`} sub="VNPay + tiền mặt" color="#7c3aed" bg="#ede9fe" />
+                      <StatCard icon="📦" label="Tổng đơn tích lũy" value={restaurant?.totalOrders || 0} sub="Từ khi mở cửa (VNPay)" color="#0ea5e9" bg="#e0f2fe" />
+                    </Box>
+                  </Box>
+
+                  {/* Order status breakdown */}
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                      📋 Đơn hàng hiện tại
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                      <StatCard icon="⏳" label="Đang xử lý" value={pendingOrders} color="#f59e0b" bg="#fef3c7" />
+                      <StatCard icon="✅" label="Hoàn thành" value={completedOrders} color="#10b981" bg="#d1fae5" />
+                      <StatCard icon="❌" label="Đã hủy" value={cancelledOrders} color="#ef4444" bg="#fee2e2" />
+                    </Box>
+                  </Box>
+
+                  {/* Recent paid orders */}
+                  {vnpayOrders.length > 0 && (
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        🏦 Đơn VNPay gần đây
+                      </Typography>
+                      <Paper elevation={0} sx={{ border: "1px solid #f0f0f0", borderRadius: 2, overflow: "hidden" }}>
+                        {vnpayOrders.slice(0, 5).map((order, idx) => (
+                          <Box key={order._id} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2.5, py: 1.5, borderBottom: idx < Math.min(vnpayOrders.length, 5) - 1 ? "1px solid #f5f5f5" : "none", "&:hover": { background: "#fafafa" } }}>
+                            <Box>
+                              <Typography sx={{ fontSize: 14, fontWeight: 600 }}>#{order._id?.slice(-6).toUpperCase()}</Typography>
+                              <Typography sx={{ fontSize: 12, color: "#888" }}>{new Date(order.paidAt || order.createdAt).toLocaleString("vi-VN")}</Typography>
+                            </Box>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                              <Box sx={{ background: "#e8f0fe", color: "#0060af", px: 1.5, py: 0.5, borderRadius: 2, fontSize: 12, fontWeight: 700 }}>VNPay ✓</Box>
+                              <Typography sx={{ fontWeight: 800, color: "#0060af", fontSize: 15 }}>{(order.paidAmount || order.total || 0).toLocaleString("vi-VN")}đ</Typography>
+                            </Box>
+                          </Box>
+                        ))}
+                      </Paper>
+                    </Box>
+                  )}
+                </Box>
+              );
+            })()}
 
             {/* ═══ PRODUCTS TAB ═══ */}
             {activeTab === "products" && (

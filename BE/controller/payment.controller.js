@@ -6,13 +6,14 @@ const {
   dateFormat,
 } = require("vnpay");
 const Order = require("../models/order.model");
+const Restaurant = require("../models/restaurant.model");
 
 const TMN_CODE = process.env.VNP_TMNCODE || "AS6J2VJB";
 const HASH_SECRET =
   process.env.VNP_HASH_SECRET || "J5UYCZUI6U6HB2OOQPN7YEB815IWL1ZG";
 const VNPAY_HOST = process.env.VNP_URL || "https://sandbox.vnpayment.vn";
 const RETURN_URL =
-  process.env.VNP_RETURN_URL || "http://localhost:3000/payment-confirm";
+  process.env.VNP_RETURN_URL || "http://localhost:5173/payment-result";
 
 const vnpay = new VNPay({
   tmnCode: TMN_CODE,
@@ -98,26 +99,27 @@ const buildVnpayPaymentUrl = async (req) => {
 
 const updateOrderPaymentStatus = async (verify) => {
   const txnRef = String(verify?.vnp_TxnRef || "").trim();
-  if (!txnRef) {
-    return;
-  }
+  if (!txnRef) return;
 
   const order = await Order.findById(txnRef);
-  if (!order) {
-    return;
-  }
+  if (!order) return;
+
+  // Tránh cộng 2 lần nếu IPN và returnUrl đều gọi
+  if (order.isPaid) return;
 
   const paidAmount = Number(verify.vnp_Amount) / 100;
-  if (!Number.isFinite(paidAmount) || paidAmount <= 0) {
-    return;
-  }
+  if (!Number.isFinite(paidAmount) || paidAmount <= 0) return;
 
   order.paymentMethod = "vnpay";
   order.isPaid = true;
   order.paidAmount = paidAmount;
   order.paidAt = new Date();
-
   await order.save();
+
+  // Cộng doanh thu vào nhà hàng
+  await Restaurant.findByIdAndUpdate(order.restaurant, {
+    $inc: { totalRevenue: paidAmount, totalOrders: 1 },
+  });
 };
 
 const createVnpayUrl = async (req, res) => {

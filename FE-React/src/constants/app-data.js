@@ -10,6 +10,7 @@ export const VALID_PATHS = new Set([
   "/sign-up",
   "/admin",
   "/brand-dashboard",
+  "/payment-result",
 ]);
 
 export const tabs = [

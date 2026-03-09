@@ -82,3 +82,7 @@ export const updateOrderStatusByBrand = (orderId, status, note = "") =>
     method: "PATCH",
     body: JSON.stringify({ status, note }),
   });
+
+// Thống kê doanh thu nhà hàng
+export const getRestaurantStats = (restaurantId) =>
+  brandApiRequest(`/orders/restaurant/${restaurantId}/stats`);

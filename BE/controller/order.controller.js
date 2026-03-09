@@ -7,6 +7,12 @@ const incrementRestaurantOrders = async (restaurantId) => {
   });
 };
 
+const addRestaurantRevenue = async (restaurantId, amount) => {
+  await Restaurant.findByIdAndUpdate(restaurantId, {
+    $inc: { totalRevenue: amount },
+  });
+};
+
 const decrementRestaurantOrders = async (restaurantId) => {
   await Restaurant.updateOne(
     { _id: restaurantId, totalOrders: { $gt: 0 } },
@@ -303,6 +309,7 @@ const updateOrderStatus = async (req, res) => {
       order.isPaid = true;
       order.paidAmount = order.total;
       order.paidAt = new Date();
+      await addRestaurantRevenue(order.restaurant, order.total);
     }
 
     order.statusHistory.push({
@@ -396,6 +403,72 @@ const BRAND_STATUS_FLOW = {
 
 // ── GET /api/orders/restaurant/:restaurantId ──────
 // Brand: Lấy danh sách đơn hàng của nhà hàng mình
+// ── GET /api/orders/restaurant/:restaurantId/stats ─
+// Brand: Thống kê doanh thu nhà hàng từ DB
+const getRestaurantStats = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const RestaurantModel = require("../models/restaurant.model");
+    const restaurant = await RestaurantModel.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy nhà hàng" });
+    }
+    if (restaurant.owner && restaurant.owner.toString() !== req.userId && req.userRole !== "admin") {
+      return res.status(403).json({ success: false, message: "Không có quyền truy cập" });
+    }
+
+    const [revenueAgg, statusAgg] = await Promise.all([
+      // Doanh thu đã thu (isPaid = true)
+      Order.aggregate([
+        { $match: { restaurant: restaurant._id, isPaid: true } },
+        { $group: {
+          _id: "$paymentMethod",
+          total: { $sum: "$paidAmount" },
+          count: { $sum: 1 },
+        }},
+      ]),
+      // Đếm theo trạng thái
+      Order.aggregate([
+        { $match: { restaurant: restaurant._id } },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    // Đơn VNPay delivered nhưng isPaid chưa được set (fallback)
+    const vnpayDeliveredAgg = await Order.aggregate([
+      { $match: { restaurant: restaurant._id, paymentMethod: "vnpay", status: "delivered" } },
+      { $group: { _id: null, total: { $sum: "$total" }, count: { $sum: 1 } } },
+    ]);
+
+    const revenueByMethod = {};
+    revenueAgg.forEach(r => { revenueByMethod[r._id] = { total: r.total, count: r.count }; });
+
+    const countByStatus = {};
+    statusAgg.forEach(s => { countByStatus[s._id] = s.count; });
+
+    // Nếu isPaid chưa được set đúng, dùng fallback từ delivered orders
+    const vnpayRevenuePaid = revenueByMethod["vnpay"]?.total || 0;
+    const vnpayRevenueFallback = vnpayDeliveredAgg[0]?.total || 0;
+    const vnpayRevenue = Math.max(vnpayRevenuePaid, vnpayRevenueFallback);
+    const vnpayCount = Math.max(revenueByMethod["vnpay"]?.count || 0, vnpayDeliveredAgg[0]?.count || 0);
+    const cashRevenue = revenueByMethod["cash"]?.total || 0;
+
+    return res.json({
+      success: true,
+      data: {
+        vnpayRevenue,
+        vnpayCount,
+        cashRevenue,
+        totalRevenue: vnpayRevenue + cashRevenue,
+        countByStatus,
+        totalOrders: restaurant.totalOrders || 0,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 const getRestaurantOrders = async (req, res) => {
   try {
     const { restaurantId } = req.params;
@@ -471,6 +544,7 @@ const updateOrderStatusByBrand = async (req, res) => {
       order.isPaid = true;
       order.paidAmount = order.total;
       order.paidAt = new Date();
+      await addRestaurantRevenue(order.restaurant._id, order.total);
     }
 
     const statusLabels = {
@@ -511,6 +585,7 @@ module.exports = {
   getAllOrders,
   updateOrderStatus,
   getOrderStats,
+  getRestaurantStats,
   getRestaurantOrders,
   updateOrderStatusByBrand,
 };
