@@ -6,6 +6,8 @@ import {
   updateProductForRestaurant,
   deleteProductForRestaurant,
   updateMyRestaurant,
+  getRestaurantOrders,
+  updateOrderStatusByBrand,
 } from "../services/brand-api";
 
 // MUI Components
@@ -66,6 +68,11 @@ import BlockIcon from "@mui/icons-material/Block";
 import StarIcon from "@mui/icons-material/Star";
 import HomeIcon from "@mui/icons-material/Home";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
+import DoneAllIcon from "@mui/icons-material/DoneAll";
+import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
+import CancelIcon from "@mui/icons-material/Cancel";
 
 const DRAWER_WIDTH = 260;
 const CUSTOM_CATEGORY_VALUE = "__custom_category__";
@@ -149,6 +156,12 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Orders state
+  const [ordersList, setOrdersList] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderStatusFilter, setOrderStatusFilter] = useState("all");
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
+
   // Modals
   const [isCreateProductModalOpen, setIsCreateProductModalOpen] =
     useState(false);
@@ -210,7 +223,19 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
     if (restaurant && activeTab === "products") {
       fetchProducts();
     }
+    if (restaurant && activeTab === "orders") {
+      fetchOrders();
+    }
   }, [restaurant, activeTab]);
+
+  // Auto refresh orders every 15 seconds when on orders tab
+  useEffect(() => {
+    if (activeTab !== "orders" || !restaurant) return;
+    const interval = setInterval(() => {
+      fetchOrders(false);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [activeTab, restaurant, orderStatusFilter]);
 
   const fetchRestaurant = async () => {
     setLoading(true);
@@ -221,6 +246,40 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
       showSnack("Lỗi tải thông tin cửa hàng: " + error.message, "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchOrders = async (showLoader = true) => {
+    if (!restaurant) return;
+    if (showLoader) setOrdersLoading(true);
+    try {
+      const params = orderStatusFilter !== "all" ? { status: orderStatusFilter } : {};
+      const data = await getRestaurantOrders(restaurant._id, params);
+      setOrdersList(Array.isArray(data) ? data : []);
+    } catch (error) {
+      showSnack("Lỗi tải đơn hàng: " + error.message, "error");
+    } finally {
+      if (showLoader) setOrdersLoading(false);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    setUpdatingOrderId(orderId);
+    try {
+      await updateOrderStatusByBrand(orderId, newStatus);
+      const statusMessages = {
+        confirmed: "✅ Đã xác nhận đơn hàng!",
+        preparing: "👨‍🍳 Đang chuẩn bị hàng...",
+        delivering: "🚀 Đã bàn giao cho shipper!",
+        delivered: "🎉 Giao hàng thành công!",
+        cancelled: "❌ Đã từ chối đơn hàng.",
+      };
+      showSnack(statusMessages[newStatus] || "Đã cập nhật trạng thái");
+      fetchOrders(false);
+    } catch (error) {
+      showSnack("Lỗi: " + error.message, "error");
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -436,6 +495,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
       icon: <StorefrontIcon />,
     },
     { key: "products", label: "Quản lý sản phẩm", icon: <InventoryIcon /> },
+    { key: "orders", label: "Đơn hàng", icon: <ReceiptLongIcon /> },
   ];
 
   // ═══════════════════════════════════════════════
@@ -589,6 +649,8 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
               >
                 {activeTab === "restaurant"
                   ? "Thông tin cửa hàng"
+                  : activeTab === "orders"
+                  ? "Quản lý đơn hàng"
                   : "Quản lý sản phẩm"}
               </Typography>
 
@@ -1039,6 +1101,177 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
                 </TableContainer>
               </Paper>
             )}
+            {/* ═══ ORDERS TAB ═══ */}
+            {activeTab === "orders" && (() => {
+              const STATUS_CONFIG = {
+                pending:    { label: "Chờ xác nhận", color: "#f59e0b", bg: "#fef3c7", icon: <HourglassEmptyIcon sx={{ fontSize: 16 }} /> },
+                confirmed:  { label: "Đã xác nhận",  color: "#3b82f6", bg: "#dbeafe", icon: <CheckCircleIcon sx={{ fontSize: 16 }} /> },
+                preparing:  { label: "Đang chuẩn bị", color: "#8b5cf6", bg: "#ede9fe", icon: <InventoryIcon sx={{ fontSize: 16 }} /> },
+                delivering: { label: "Đang giao",     color: "#0ea5e9", bg: "#e0f2fe", icon: <LocalShippingIcon sx={{ fontSize: 16 }} /> },
+                delivered:  { label: "Thành công",    color: "#10b981", bg: "#d1fae5", icon: <DoneAllIcon sx={{ fontSize: 16 }} /> },
+                cancelled:  { label: "Đã hủy",        color: "#ef4444", bg: "#fee2e2", icon: <CancelIcon sx={{ fontSize: 16 }} /> },
+              };
+
+              const NEXT_ACTION = {
+                pending:    { status: "confirmed",  label: "✅ Xác nhận đơn" },
+                confirmed:  { status: "preparing",  label: "👨‍🍳 Bắt đầu chuẩn bị" },
+                preparing:  { status: "delivering", label: "🚀 Bàn giao shipper" },
+                delivering: { status: "delivered",  label: "🎉 Xác nhận đã giao" },
+              };
+
+              const filterTabs = [
+                { value: "all", label: "Tất cả" },
+                { value: "pending", label: "Chờ xác nhận" },
+                { value: "confirmed", label: "Đã xác nhận" },
+                { value: "preparing", label: "Đang chuẩn bị" },
+                { value: "delivering", label: "Đang giao" },
+                { value: "delivered", label: "Hoàn thành" },
+                { value: "cancelled", label: "Đã hủy" },
+              ];
+
+              const pendingCount = ordersList.filter(o => o.status === "pending").length;
+
+              return (
+                <Box>
+                  {/* Filter tabs */}
+                  <Paper elevation={0} sx={{ border: "1px solid #f0f0f0", mb: 2, p: 1.5, display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                      {filterTabs.map(tab => (
+                        <Chip
+                          key={tab.value}
+                          label={tab.value === "pending" && pendingCount > 0 ? `${tab.label} (${pendingCount})` : tab.label}
+                          onClick={() => { setOrderStatusFilter(tab.value); setTimeout(() => fetchOrders(), 100); }}
+                          color={orderStatusFilter === tab.value ? "primary" : "default"}
+                          variant={orderStatusFilter === tab.value ? "filled" : "outlined"}
+                          sx={{ fontWeight: 600, cursor: "pointer" }}
+                        />
+                      ))}
+                    </Box>
+                    <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => fetchOrders()} disabled={ordersLoading} size="small">
+                      {ordersLoading ? "Đang tải..." : "Làm mới"}
+                    </Button>
+                  </Paper>
+
+                  {/* Orders list */}
+                  {ordersLoading ? (
+                    <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+                      <CircularProgress color="primary" />
+                    </Box>
+                  ) : ordersList.length === 0 ? (
+                    <Paper elevation={0} sx={{ border: "1px solid #f0f0f0", py: 8, textAlign: "center", color: "text.secondary" }}>
+                      <ReceiptLongIcon sx={{ fontSize: 64, mb: 2, opacity: 0.3 }} />
+                      <Typography>Chưa có đơn hàng nào</Typography>
+                    </Paper>
+                  ) : (
+                    <Stack spacing={2}>
+                      {ordersList.map(order => {
+                        const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
+                        const nextAction = NEXT_ACTION[order.status];
+                        const isUpdating = updatingOrderId === order._id;
+
+                        return (
+                          <Paper key={order._id} elevation={0} sx={{ border: "1px solid #f0f0f0", borderRadius: 2, overflow: "hidden" }}>
+                            {/* Header */}
+                            <Box sx={{ px: 2.5, py: 1.5, bgcolor: "#fafafa", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #f0f0f0" }}>
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "monospace" }}>
+                                  #{order._id.slice(-8).toUpperCase()}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {new Date(order.createdAt).toLocaleString("vi-VN")}
+                                </Typography>
+                              </Box>
+                              <Chip
+                                icon={cfg.icon}
+                                label={cfg.label}
+                                size="small"
+                                sx={{ bgcolor: cfg.bg, color: cfg.color, fontWeight: 700, border: `1px solid ${cfg.color}30` }}
+                              />
+                            </Box>
+
+                            <Box sx={{ px: 2.5, py: 2, display: "flex", gap: 3, flexWrap: "wrap" }}>
+                              {/* Customer info */}
+                              <Box sx={{ minWidth: 160 }}>
+                                <Typography variant="caption" color="text.secondary" fontWeight={700}>KHÁCH HÀNG</Typography>
+                                <Typography variant="body2" fontWeight={600} sx={{ mt: 0.5 }}>
+                                  {order.user?.fullName || "Khách"}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">{order.user?.phone || ""}</Typography>
+                              </Box>
+
+                              {/* Address */}
+                              <Box sx={{ flex: 1, minWidth: 200 }}>
+                                <Typography variant="caption" color="text.secondary" fontWeight={700}>ĐỊA CHỈ GIAO</Typography>
+                                <Typography variant="body2" sx={{ mt: 0.5 }}>{order.deliveryAddress}</Typography>
+                              </Box>
+
+                              {/* Items */}
+                              <Box sx={{ minWidth: 200 }}>
+                                <Typography variant="caption" color="text.secondary" fontWeight={700}>MÓN ĐẶT ({order.items?.length})</Typography>
+                                <Stack spacing={0.3} sx={{ mt: 0.5 }}>
+                                  {order.items?.slice(0, 3).map((item, idx) => (
+                                    <Typography key={idx} variant="body2">
+                                      {item.emoji} {item.name} x{item.quantity}
+                                    </Typography>
+                                  ))}
+                                  {order.items?.length > 3 && (
+                                    <Typography variant="caption" color="text.secondary">+{order.items.length - 3} món khác</Typography>
+                                  )}
+                                </Stack>
+                              </Box>
+
+                              {/* Total */}
+                              <Box sx={{ textAlign: "right" }}>
+                                <Typography variant="caption" color="text.secondary" fontWeight={700}>TỔNG TIỀN</Typography>
+                                <Typography variant="h6" color="primary.main" fontWeight={700} sx={{ mt: 0.5 }}>
+                                  {order.total?.toLocaleString("vi-VN")}đ
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {order.paymentMethod?.toUpperCase()}
+                                </Typography>
+                              </Box>
+                            </Box>
+
+                            {/* Note */}
+                            {order.note && (
+                              <Box sx={{ px: 2.5, pb: 1.5 }}>
+                                <Typography variant="caption" color="text.secondary">📝 Ghi chú: {order.note}</Typography>
+                              </Box>
+                            )}
+
+                            {/* Actions */}
+                            {nextAction && (
+                              <Box sx={{ px: 2.5, py: 1.5, bgcolor: "#fafafa", borderTop: "1px solid #f0f0f0", display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
+                                {order.status === "pending" && (
+                                  <Button
+                                    variant="outlined"
+                                    color="error"
+                                    size="small"
+                                    disabled={isUpdating}
+                                    onClick={() => handleUpdateOrderStatus(order._id, "cancelled")}
+                                  >
+                                    ❌ Từ chối
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  disabled={isUpdating}
+                                  startIcon={isUpdating ? <CircularProgress size={16} color="inherit" /> : null}
+                                  onClick={() => handleUpdateOrderStatus(order._id, nextAction.status)}
+                                >
+                                  {isUpdating ? "Đang cập nhật..." : nextAction.label}
+                                </Button>
+                              </Box>
+                            )}
+                          </Paper>
+                        );
+                      })}
+                    </Stack>
+                  )}
+                </Box>
+              );
+            })()}
           </Box>
         </Box>
       </Box>

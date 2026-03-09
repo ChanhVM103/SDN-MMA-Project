@@ -41,3 +41,7 @@ export const getRestaurantsByTags = async (tags) => {
 export const getTopRatedRestaurants = async () => {
   return apiRequest("/restaurants/special/top-rated");
 };
+
+// Lấy chi tiết 1 nhà hàng
+export const getRestaurantById = (id) => apiRequest(`/restaurants/${id}`);
+

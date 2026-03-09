@@ -380,6 +380,129 @@ const getOrderStats = async (req, res) => {
   }
 };
 
+// ════════════════════════════════════════════════
+// BRAND (NHÀ HÀNG) ROUTES
+// ════════════════════════════════════════════════
+
+// Luồng trạng thái hợp lệ cho Brand (nhà hàng chỉ được xác nhận → chuẩn bị → giao)
+const BRAND_STATUS_FLOW = {
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["preparing", "cancelled"],
+  preparing: ["delivering"],
+  delivering: ["delivered"],
+  delivered: [],
+  cancelled: [],
+};
+
+// ── GET /api/orders/restaurant/:restaurantId ──────
+// Brand: Lấy danh sách đơn hàng của nhà hàng mình
+const getRestaurantOrders = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { page = 1, limit = 20, status } = req.query;
+
+    // Kiểm tra nhà hàng thuộc về brand này
+    const Restaurant = require("../models/restaurant.model");
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy nhà hàng" });
+    }
+    if (restaurant.owner && restaurant.owner.toString() !== req.userId && req.userRole !== "admin") {
+      return res.status(403).json({ success: false, message: "Bạn không có quyền xem đơn hàng này" });
+    }
+
+    const filter = { restaurant: restaurantId };
+    if (status) filter.status = status;
+
+    const total = await Order.countDocuments(filter);
+    const orders = await Order.find(filter)
+      .populate("user", "fullName email phone")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    return res.json({
+      success: true,
+      data: orders,
+      pagination: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── PATCH /api/orders/:id/brand-status ───────────
+// Brand: Cập nhật trạng thái đơn hàng (confirmed → preparing → delivering → delivered)
+const updateOrderStatusByBrand = async (req, res) => {
+  try {
+    const { status, note } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ success: false, message: "Vui lòng cung cấp trạng thái mới" });
+    }
+
+    const order = await Order.findById(req.params.id).populate("restaurant");
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+    }
+
+    // Kiểm tra brand có quyền với đơn hàng này không
+    const restaurant = order.restaurant;
+    if (restaurant.owner && restaurant.owner.toString() !== req.userId && req.userRole !== "admin") {
+      return res.status(403).json({ success: false, message: "Bạn không có quyền cập nhật đơn hàng này" });
+    }
+
+    // Kiểm tra luồng trạng thái hợp lệ
+    const allowedNext = BRAND_STATUS_FLOW[order.status] || [];
+    if (!allowedNext.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Không thể chuyển từ "${order.status}" sang "${status}". Cho phép: ${allowedNext.join(", ") || "không có"}`,
+      });
+    }
+
+    order.status = status;
+    if (status === "delivered" && order.paymentMethod === "cash") {
+      order.isPaid = true;
+      order.paidAmount = order.total;
+      order.paidAt = new Date();
+    }
+
+    const statusLabels = {
+      confirmed: "Nhà hàng đã xác nhận đơn",
+      preparing: "Đang chuẩn bị hàng",
+      delivering: "Đang giao hàng",
+      delivered: "Giao hàng thành công",
+      cancelled: "Nhà hàng từ chối đơn",
+    };
+
+    order.statusHistory.push({
+      status,
+      changedBy: req.userId,
+      note: note || statusLabels[status] || `Cập nhật sang ${status}`,
+    });
+
+    await order.save();
+
+    if (status === "cancelled") {
+      await decrementRestaurantOrders(order.restaurant._id);
+    }
+
+    return res.json({
+      success: true,
+      message: `Đã cập nhật trạng thái thành "${status}"`,
+      data: order,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -388,4 +511,6 @@ module.exports = {
   getAllOrders,
   updateOrderStatus,
   getOrderStats,
+  getRestaurantOrders,
+  updateOrderStatusByBrand,
 };
