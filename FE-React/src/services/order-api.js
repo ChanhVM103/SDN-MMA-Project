@@ -40,3 +40,11 @@ export const createOrder = async (orderData) => {
         body: JSON.stringify(orderData)
     });
 };
+
+// Hủy đơn hàng
+export const cancelOrder = async (orderId, reason = "") => {
+    return apiRequest(`/orders/${orderId}/cancel`, {
+        method: 'PATCH',
+        body: JSON.stringify({ reason })
+    });
+};

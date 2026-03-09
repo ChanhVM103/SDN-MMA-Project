@@ -69,3 +69,16 @@ export const updateMyRestaurant = (restaurantId, restaurantData) =>
     method: "PUT",
     body: JSON.stringify(restaurantData),
   });
+
+// Lấy danh sách đơn hàng của nhà hàng
+export const getRestaurantOrders = (restaurantId, params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  return brandApiRequest(`/orders/restaurant/${restaurantId}${query ? `?${query}` : ""}`);
+};
+
+// Brand cập nhật trạng thái đơn hàng
+export const updateOrderStatusByBrand = (orderId, status, note = "") =>
+  brandApiRequest(`/orders/${orderId}/brand-status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, note }),
+  });
