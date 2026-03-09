@@ -591,13 +591,20 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
           {/* Bottom Area */}
           <Box sx={{ mt: "auto", p: 2 }}>
             <Divider sx={{ mb: 2 }} />
-            <ListItemButton sx={{ borderRadius: 2 }} disabled>
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <SettingsIcon />
+            <ListItemButton
+              sx={{
+                borderRadius: 2,
+                color: "error.main",
+                "&:hover": { bgcolor: alpha("#ff424e", 0.08) },
+              }}
+              onClick={onLogout}
+            >
+              <ListItemIcon sx={{ minWidth: 40, color: "error.main" }}>
+                <LogoutIcon />
               </ListItemIcon>
               <ListItemText
-                primary="Cài đặt"
-                primaryTypographyProps={{ fontSize: "0.9rem" }}
+                primary="Đăng xuất"
+                primaryTypographyProps={{ fontSize: "0.9rem", fontWeight: 600 }}
               />
             </ListItemButton>
           </Box>
@@ -654,23 +661,6 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
               )}
 
               <Box sx={{ flexGrow: 1 }} />
-
-              <Button
-                variant="outlined"
-                color="inherit"
-                startIcon={<LogoutIcon />}
-                onClick={onLogout}
-                sx={{
-                  borderColor: "#ddd",
-                  color: "text.secondary",
-                  "&:hover": {
-                    borderColor: "primary.main",
-                    color: "primary.main",
-                  },
-                }}
-              >
-                Đăng xuất
-              </Button>
 
               <Tooltip title={user?.fullName || "Admin"}>
                 <Avatar
@@ -1210,7 +1200,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
                     <Tab value="all" label="Tất cả" />
                     <Tab value="user" label="Khách hàng" />
                     <Tab value="brand" label="Thương hiệu" />
-                    <Tab value="admin" label="Quản trị viên" />
+    
                   </Tabs>
                 </Box>
 
@@ -1833,36 +1823,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
               }
               sx={{ mb: 2 }}
             />
-            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-              <TextField
-                fullWidth
-                label="Thời gian giao (Phút)"
-                type="number"
-                required
-                inputProps={{ min: 0 }}
-                value={restaurantForm.deliveryTime}
-                onChange={(e) =>
-                  setRestaurantForm({
-                    ...restaurantForm,
-                    deliveryTime: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-              />
-              <TextField
-                fullWidth
-                label="Phí vận chuyển (VND)"
-                type="number"
-                required
-                inputProps={{ min: 0 }}
-                value={restaurantForm.deliveryFee}
-                onChange={(e) =>
-                  setRestaurantForm({
-                    ...restaurantForm,
-                    deliveryFee: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-              />
-            </Stack>
+
             <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
               <TextField
                 fullWidth
@@ -2146,7 +2107,9 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
                   .filter(
                     (u) =>
                       u.role === "brand" &&
-                      !u.hasRestaurant &&
+                      !restaurantsList.some(
+                        (r) => (r.owner?._id || r.owner) === u._id,
+                      ) &&
                       u._id !== selectedRestaurant?.owner?._id,
                   )
                   .map((brand) => (
@@ -2163,36 +2126,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
                 * Chỉ hiển thị tài khoản Brand chưa sở hữu cửa hàng.
               </Typography>
             </FormControl>
-            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-              <TextField
-                fullWidth
-                label="Thời gian giao (Phút)"
-                type="number"
-                required
-                inputProps={{ min: 0 }}
-                value={restaurantForm.deliveryTime}
-                onChange={(e) =>
-                  setRestaurantForm({
-                    ...restaurantForm,
-                    deliveryTime: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-              />
-              <TextField
-                fullWidth
-                label="Phí vận chuyển (VND)"
-                type="number"
-                required
-                inputProps={{ min: 0 }}
-                value={restaurantForm.deliveryFee}
-                onChange={(e) =>
-                  setRestaurantForm({
-                    ...restaurantForm,
-                    deliveryFee: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-              />
-            </Stack>
+
             <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
               <TextField
                 fullWidth

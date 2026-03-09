@@ -1991,50 +1991,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
               }
               sx={{ mb: 2 }}
             />
-            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-              <TextField
-                fullWidth
-                label="Thời gian giao (Phút)"
-                type="number"
-                required
-                inputProps={{ min: 0, step: 1 }}
-                value={restaurantForm.deliveryTime}
-                onChange={(e) =>
-                  setRestaurantForm({
-                    ...restaurantForm,
-                    deliveryTime: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-                onBlur={(e) => {
-                  const cleaned = parseInt(e.target.value, 10) || 0;
-                  setRestaurantForm({
-                    ...restaurantForm,
-                    deliveryTime: cleaned,
-                  });
-                }}
-              />
-              <TextField
-                fullWidth
-                label="Phí vận chuyển (VND)"
-                type="number"
-                required
-                inputProps={{ min: 0, step: 1000 }}
-                value={restaurantForm.deliveryFee}
-                onChange={(e) =>
-                  setRestaurantForm({
-                    ...restaurantForm,
-                    deliveryFee: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-                onBlur={(e) => {
-                  const cleaned = parseInt(e.target.value, 10) || 0;
-                  setRestaurantForm({
-                    ...restaurantForm,
-                    deliveryFee: cleaned,
-                  });
-                }}
-              />
-            </Stack>
+
             <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
               <FormControl fullWidth required>
                 <InputLabel>Trạng thái mở cửa</InputLabel>
