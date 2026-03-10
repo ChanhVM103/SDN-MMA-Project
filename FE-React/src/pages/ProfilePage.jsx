@@ -5,6 +5,7 @@ import { parseStoredAuth } from "../services/auth-storage";
 function ProfilePage({ user, onLogout, navigate, onUpdateUser }) {
   const [fullName, setFullName] = useState(user?.fullName || "");
   const [phone, setPhone] = useState(user?.phone || "");
+  const [address, setAddress] = useState(user?.address || "");
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar || "");
   const [avatarFile, setAvatarFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -54,8 +55,8 @@ function ProfilePage({ user, onLogout, navigate, onUpdateUser }) {
         if (result.user) updatedUser = result.user;
       }
 
-      if (fullName !== user.fullName || phone !== user.phone) {
-        const result = await updateProfileApi(token, { fullName, phone });
+      if (fullName !== user.fullName || phone !== user.phone || address !== user.address) {
+        const result = await updateProfileApi(token, { fullName, phone, address });
         if (result.user) updatedUser = result.user;
       }
 
@@ -137,6 +138,12 @@ function ProfilePage({ user, onLogout, navigate, onUpdateUser }) {
                 <div style={{ width: "20%", textAlign: "right", color: "rgba(85,85,85,.8)", paddingRight: "20px" }}>Số điện thoại</div>
                 <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "10px" }}>
                   <input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Nhập số điện thoại" style={{ width: "100%", padding: "10px", border: "1px solid rgba(0,0,0,.14)", borderRadius: "2px", outline: "none" }} />
+                </div>
+              </div>
+              <div style={{ display: "flex", marginBottom: "30px", alignItems: "center" }}>
+                <div style={{ width: "20%", textAlign: "right", color: "rgba(85,85,85,.8)", paddingRight: "20px" }}>Địa chỉ</div>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "10px" }}>
+                  <input type="text" value={address} onChange={e => setAddress(e.target.value)} placeholder="Nhập địa chỉ" style={{ width: "100%", padding: "10px", border: "1px solid rgba(0,0,0,.14)", borderRadius: "2px", outline: "none" }} />
                 </div>
               </div>
               <div style={{ display: "flex", marginBottom: "30px", alignItems: "center" }}>
