@@ -126,68 +126,80 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
         )}
 
         {/* Product list */}
-        <main style={{ flex: 1, minWidth: 0 }}>
+        <main style={{ flex: 1, minWidth: 0, padding: "16px 16px 100px" }}>
           {filtered.length === 0 ? (
             <div style={{ padding: 60, textAlign: "center", color: "#bbb" }}>
               <div style={{ fontSize: 40, marginBottom: 8 }}>🍽️</div>
               <p>Chưa có món nào</p>
             </div>
           ) : (
-            <div style={{ padding: "8px 0" }}>
-              {filtered.map((product, idx) => {
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+              gap: 14,
+            }}>
+              {filtered.map((product) => {
                 const qty = getQty(product._id);
                 const isAdded = addedId === product._id;
                 return (
                   <div key={product._id}
                     onClick={() => setSelectedProduct(product)}
                     style={{
-                      display: "flex", gap: 0,
                       background: "#fff",
-                      borderBottom: "1px solid #f0f0f0",
+                      borderRadius: 16,
+                      overflow: "hidden",
                       cursor: "pointer",
-                      transition: "background 0.15s",
+                      boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
+                      border: "1px solid #f0f0f0",
+                      transition: "transform 0.18s, box-shadow 0.18s",
+                      display: "flex",
+                      flexDirection: "column",
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#fafafa"}
-                    onMouseLeave={e => e.currentTarget.style.background = "#fff"}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.13)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,0.07)"; }}
                   >
-                    {/* Image */}
-                    <div style={{ width: 110, height: 110, flexShrink: 0, position: "relative", overflow: "hidden" }}>
-                      <img src={product.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop"}
+                    {/* Square image */}
+                    <div style={{ position: "relative", paddingBottom: "75%", overflow: "hidden" }}>
+                      <img
+                        src={product.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop"}
                         alt={product.name}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.3s" }}
+                        onMouseEnter={e => e.currentTarget.style.transform = "scale(1.06)"}
+                        onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                      />
                       {product.isBestSeller && (
-                        <div style={{ position: "absolute", top: 6, left: 6, background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 8 }}>
-                          ⭐ Hot
+                        <div style={{ position: "absolute", top: 8, left: 8, background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 8, boxShadow: "0 2px 8px rgba(245,158,11,0.4)" }}>
+                          Hot
                         </div>
                       )}
                     </div>
 
                     {/* Info */}
-                    <div style={{ flex: 1, padding: "14px 14px 14px 16px", display: "flex", flexDirection: "column", justifyContent: "space-between", minWidth: 0 }}>
+                    <div style={{ padding: "12px 12px 10px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                       <div>
-                        <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#1a1a1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        <h3 style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 700, color: "#1a1a1a", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.4 }}>
                           {product.name}
                         </h3>
                         {product.description && (
-                          <p style={{ margin: "0 0 8px", fontSize: 12.5, color: "#888", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                          <p style={{ margin: "0 0 8px", fontSize: 11.5, color: "#aaa", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                             {product.description}
                           </p>
                         )}
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: 16, fontWeight: 800, color: "#ee4d2d" }}>
+
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
+                        <span style={{ fontSize: 15, fontWeight: 800, color: "#ee4d2d" }}>
                           {product.price?.toLocaleString("vi-VN")}đ
                         </span>
 
-                        {/* Qty control */}
                         {qty === 0 ? (
                           <button onClick={e => handleAdd(e, product)} style={{
-                            width: 34, height: 34, borderRadius: "50%",
+                            width: 32, height: 32, borderRadius: "50%",
                             background: isAdded ? "#10b981" : "#ee4d2d",
-                            color: "#fff", border: "none", fontSize: 22, fontWeight: 700,
+                            color: "#fff", border: "none", fontSize: 20, fontWeight: 700,
                             cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                            boxShadow: "0 3px 10px rgba(238,77,45,0.35)",
-                            transform: isAdded ? "scale(1.2)" : "scale(1)",
+                            boxShadow: isAdded ? "0 3px 10px rgba(16,185,129,0.4)" : "0 3px 10px rgba(238,77,45,0.35)",
+                            transform: isAdded ? "scale(1.2) rotate(20deg)" : "scale(1)",
                             transition: "all 0.2s ease",
                             flexShrink: 0,
                           }}>
@@ -195,21 +207,19 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
                           </button>
                         ) : (
                           <div onClick={e => e.stopPropagation()} style={{
-                            display: "flex", alignItems: "center", gap: 6,
-                            background: "#fff", border: "1.5px solid #ee4d2d",
-                            borderRadius: 20, padding: "3px 6px",
-                            flexShrink: 0,
+                            display: "flex", alignItems: "center", gap: 4,
+                            background: "#fff5f4", border: "1.5px solid #ee4d2d",
+                            borderRadius: 20, padding: "2px 5px", flexShrink: 0,
                           }}>
                             <button onClick={() => onUpdateQty(product._id, qty - 1)} style={{
-                              width: 26, height: 26, borderRadius: "50%", border: "none",
-                              background: qty === 1 ? "#fee2e2" : "#fff3f2",
-                              cursor: "pointer", fontSize: 16, fontWeight: 700,
+                              width: 24, height: 24, borderRadius: "50%", border: "none",
+                              background: "#fff3f2", cursor: "pointer", fontSize: 15, fontWeight: 700,
                               color: "#ee4d2d", display: "flex", alignItems: "center", justifyContent: "center",
                             }}>−</button>
-                            <span style={{ fontSize: 14, fontWeight: 700, minWidth: 18, textAlign: "center", color: "#1a1a1a" }}>{qty}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, minWidth: 16, textAlign: "center", color: "#1a1a1a" }}>{qty}</span>
                             <button onClick={() => onUpdateQty(product._id, qty + 1)} style={{
-                              width: 26, height: 26, borderRadius: "50%", border: "none",
-                              background: "#ee4d2d", cursor: "pointer", fontSize: 16, fontWeight: 700,
+                              width: 24, height: 24, borderRadius: "50%", border: "none",
+                              background: "#ee4d2d", cursor: "pointer", fontSize: 15, fontWeight: 700,
                               color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
                             }}>+</button>
                           </div>

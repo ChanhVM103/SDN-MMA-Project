@@ -161,13 +161,27 @@ const paymentConfirm = async (req, res) => {
   }
 };
 
-const checkPaymentVnpay = (req, res) => {
+const checkPaymentVnpay = async (req, res) => {
   try {
     const result = vnpay.verifyReturnUrl(req.query);
+    const responseCode = req.query.vnp_ResponseCode;
+
+    // Chữ ký hợp lệ VÀ mã phản hồi = "00" mới là thành công
+    const isSuccess = result.isVerified && responseCode === "00";
+
+    if (isSuccess) {
+      // Cập nhật isPaid cho đơn hàng
+      await updateOrderPaymentStatus(result);
+    }
 
     return res.status(200).json({
-      success: result.isVerified,
-      message: result.message,
+      success: isSuccess,
+      responseCode,
+      message: isSuccess
+        ? "Thanh toán thành công"
+        : responseCode === "24"
+          ? "Giao dịch bị hủy bởi người dùng"
+          : `Thanh toán thất bại (mã: ${responseCode})`,
       data: result,
     });
   } catch (error) {
@@ -200,10 +214,48 @@ const vnpayIpn = async (req, res) => {
   }
 };
 
+// ── POST /api/payments/cancel-vnpay-order ────────────
+// Hủy đơn hàng khi VNPay thất bại / user bấm quay lại
+const cancelFailedVnpayOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    if (!orderId) return res.status(400).json({ success: false, message: "Thiếu orderId" });
+
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+
+    // Chỉ hủy nếu chưa thanh toán và đang pending
+    if (order.isPaid) return res.json({ success: true, message: "Đơn đã thanh toán, không hủy" });
+    if (order.status === "cancelled") return res.json({ success: true, message: "Đơn đã bị hủy rồi" });
+    if (!["pending", "confirmed"].includes(order.status)) {
+      return res.status(400).json({ success: false, message: "Không thể hủy đơn ở trạng thái này" });
+    }
+
+    order.status = "cancelled";
+    order.statusHistory.push({
+      status: "cancelled",
+      changedBy: order.user,
+      note: "Thanh toán VNPay thất bại hoặc bị hủy",
+    });
+    await order.save();
+
+    // Giảm totalOrders của nhà hàng
+    await Restaurant.updateOne(
+      { _id: order.restaurant, totalOrders: { $gt: 0 } },
+      { $inc: { totalOrders: -1 } }
+    );
+
+    return res.json({ success: true, message: "Đã hủy đơn hàng VNPay thất bại" });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   createVnpayUrl,
   createQr,
   paymentConfirm,
   checkPaymentVnpay,
   vnpayIpn,
+  cancelFailedVnpayOrder,
 };

@@ -2,15 +2,18 @@ import { useState, useEffect, useCallback } from "react";
 import { getMyOrders, cancelOrder } from "../services/order-api";
 
 const STATUS_CONFIG = {
-  pending:    { label: "Chờ xác nhận",   emoji: "⏳", color: "#f59e0b", bg: "#fef3c7", desc: "Đơn hàng đang chờ nhà hàng xác nhận" },
-  confirmed:  { label: "Đã xác nhận",    emoji: "✅", color: "#3b82f6", bg: "#dbeafe", desc: "Nhà hàng đã xác nhận, sắp chuẩn bị" },
-  preparing:  { label: "Đang chuẩn bị",  emoji: "👨‍🍳", color: "#8b5cf6", bg: "#ede9fe", desc: "Nhà hàng đang chuẩn bị món của bạn" },
-  delivering: { label: "Đang giao hàng", emoji: "🚀", color: "#0ea5e9", bg: "#e0f2fe", desc: "Shipper đang trên đường giao đến bạn" },
-  delivered:  { label: "Thành công",     emoji: "🎉", color: "#10b981", bg: "#d1fae5", desc: "Đơn hàng đã được giao thành công!" },
-  cancelled:  { label: "Đã hủy",         emoji: "❌", color: "#ef4444", bg: "#fee2e2", desc: "Đơn hàng đã bị hủy" },
+  pending:           { label: "Chờ xác nhận",            emoji: "⏳", color: "#f59e0b", bg: "#fef3c7", desc: "Đơn hàng đang chờ nhà hàng xác nhận" },
+  confirmed:         { label: "Đã xác nhận",              emoji: "✅", color: "#3b82f6", bg: "#dbeafe", desc: "Nhà hàng đã xác nhận, sắp chuẩn bị" },
+  preparing:         { label: "Đang chuẩn bị",            emoji: "👨‍🍳", color: "#8b5cf6", bg: "#ede9fe", desc: "Nhà hàng đang chuẩn bị món của bạn" },
+  ready_for_pickup:  { label: "Chờ shipper lấy hàng",     emoji: "📦", color: "#f97316", bg: "#ffedd5", desc: "Đơn đã sẵn sàng, shipper đang đến lấy" },
+  shipper_accepted:  { label: "Shipper đã nhận đơn",      emoji: "🛵", color: "#06b6d4", bg: "#cffafe", desc: "Shipper đang trên đường đến lấy hàng" },
+  delivering:        { label: "Đang giao hàng",           emoji: "🚀", color: "#0ea5e9", bg: "#e0f2fe", desc: "Shipper đang trên đường giao đến bạn" },
+  shipper_delivered: { label: "Shipper đã giao",          emoji: "📬", color: "#84cc16", bg: "#ecfccb", desc: "Shipper báo đã giao, đang chờ xác nhận" },
+  delivered:         { label: "Đã giao thành công",       emoji: "🎉", color: "#10b981", bg: "#d1fae5", desc: "Đơn hàng đã được giao thành công!" },
+  cancelled:         { label: "Đã hủy",                   emoji: "❌", color: "#ef4444", bg: "#fee2e2", desc: "Đơn hàng đã bị hủy" },
 };
 
-const STATUS_STEPS = ["pending", "confirmed", "preparing", "delivering", "delivered"];
+const STATUS_STEPS = ["pending", "confirmed", "preparing", "ready_for_pickup", "delivering", "delivered"];
 
 function OrderStatusBar({ status }) {
   if (status === "cancelled") {
@@ -68,7 +71,7 @@ function OrderStatusBar({ status }) {
 
 const TAB_FILTERS = [
   { label: "Tất cả", status: null },
-  { label: "Đang xử lý", status: ["pending", "confirmed", "preparing", "delivering"] },
+  { label: "Đang xử lý", status: ["pending", "confirmed", "preparing", "ready_for_pickup", "shipper_accepted", "delivering", "shipper_delivered"] },
   { label: "Hoàn thành", status: ["delivered"] },
   { label: "Đã hủy", status: ["cancelled"] },
 ];
@@ -79,15 +82,27 @@ function OrdersPage({ user, navigate }) {
   const [activeTab, setActiveTab] = useState(0);
   const [expandedId, setExpandedId] = useState(null);
   const [cancellingId, setCancellingId] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [confirmCancel, setConfirmCancel] = useState(null); // orderId to cancel
+
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const handleCancel = async (orderId) => {
-    if (!window.confirm("Bạn có chắc muốn hủy đơn hàng này không?")) return;
+    setConfirmCancel(orderId);
+  };
+
+  const doCancel = async (orderId) => {
+    setConfirmCancel(null);
     setCancellingId(orderId);
     try {
       await cancelOrder(orderId, "Khách hàng hủy đơn");
+      showToast("Đã hủy đơn hàng thành công", "success");
       await fetchOrders(false);
     } catch (err) {
-      alert("Lỗi hủy đơn: " + err.message);
+      showToast("Lỗi hủy đơn: " + err.message, "error");
     } finally {
       setCancellingId(null);
     }
@@ -135,7 +150,7 @@ function OrdersPage({ user, navigate }) {
     return filter.includes(order.status);
   });
 
-  const activeCount = orders.filter(o => ["pending","confirmed","preparing","delivering"].includes(o.status)).length;
+  const activeCount = orders.filter(o => ["pending","confirmed","preparing","ready_for_pickup","shipper_accepted","delivering","shipper_delivered"].includes(o.status)).length;
 
   return (
     <div className="view-port">
@@ -262,6 +277,46 @@ function OrdersPage({ user, navigate }) {
               </div>
             );
           })}
+        </div>
+      )}
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)",
+          background: toast.type === "error" ? "#ef4444" : toast.type === "warning" ? "#f59e0b" : "#10b981",
+          color: "#fff", padding: "14px 22px", borderRadius: 14, fontWeight: 600,
+          fontSize: 14, zIndex: 99999, boxShadow: "0 8px 32px rgba(0,0,0,0.22)",
+          display: "flex", alignItems: "center", gap: 10, whiteSpace: "nowrap",
+          animation: "toastIn 0.35s cubic-bezier(.175,.885,.32,1.275)",
+        }}>
+          <span style={{ fontSize: 18 }}>{toast.type === "error" ? "❌" : toast.type === "warning" ? "⚠️" : "✅"}</span>
+          <span>{toast.msg}</span>
+          <button onClick={() => setToast(null)} style={{ marginLeft: 8, background: "rgba(255,255,255,0.25)", border: "none", color: "#fff", borderRadius: 8, width: 22, height: 22, cursor: "pointer", fontWeight: 700 }}>✕</button>
+        </div>
+      )}
+
+      {/* Confirm Cancel Modal */}
+      {confirmCancel && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 99998, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div onClick={() => setConfirmCancel(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
+          <div style={{
+            position: "relative", background: "#fff", borderRadius: 18, padding: "28px 28px 22px",
+            maxWidth: 360, width: "90vw", boxShadow: "0 24px 64px rgba(0,0,0,0.2)",
+            animation: "confirmIn 0.3s cubic-bezier(.175,.885,.32,1.275)",
+          }}>
+            <div style={{ fontSize: 44, textAlign: "center", marginBottom: 12 }}>🗑️</div>
+            <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, textAlign: "center", color: "#1a1a1a" }}>Hủy đơn hàng?</h3>
+            <p style={{ margin: "0 0 22px", fontSize: 14, color: "#666", textAlign: "center", lineHeight: 1.6 }}>Bạn có chắc muốn hủy đơn này không? Hành động này không thể hoàn tác.</p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setConfirmCancel(null)} style={{ flex: 1, padding: "12px", borderRadius: 10, border: "1.5px solid #e5e7eb", background: "#fff", color: "#555", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+                Giữ đơn
+              </button>
+              <button onClick={() => doCancel(confirmCancel)} style={{ flex: 1, padding: "12px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ef4444,#dc2626)", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+                Hủy đơn
+              </button>
+            </div>
+          </div>
+          <style>{`@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px) scale(0.9)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}} @keyframes confirmIn{from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:scale(1)}}`}</style>
         </div>
       )}
     </div>
