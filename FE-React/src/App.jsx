@@ -92,14 +92,18 @@ function App() {
         );
         return prev;
       }
-      const existing = prev.items.find(i => i.productId === product._id);
+      // Dùng toppingKey để phân biệt cùng sản phẩm nhưng khác topping
+      const variantKey = product._toppingKey != null
+        ? `${product._id}__${product._toppingKey}`
+        : product._id;
+      const existing = prev.items.find(i => i.variantKey === variantKey);
       return {
         ...prev,
         restaurantId: restaurant._id || restaurant.id,
         restaurantName: restaurant.name,
         items: existing
-          ? prev.items.map(i => i.productId === product._id ? { ...i, quantity: i.quantity + 1 } : i)
-          : [...prev.items, { productId: product._id, name: product.name, price: product.price, quantity: 1, emoji: product.emoji || "🍽️" }],
+          ? prev.items.map(i => i.variantKey === variantKey ? { ...i, quantity: i.quantity + 1 } : i)
+          : [...prev.items, { productId: product._id, variantKey, name: product.name, price: product.price, quantity: 1, emoji: product.emoji || "🍽️" }],
       };
     });
   };
@@ -107,8 +111,8 @@ function App() {
   const handleUpdateQty = (productId, newQty) => {
     setCart(prev => {
       const items = newQty <= 0
-        ? prev.items.filter(i => i.productId !== productId)
-        : prev.items.map(i => i.productId === productId ? { ...i, quantity: newQty } : i);
+        ? prev.items.filter(i => i.variantKey !== productId && i.productId !== productId)
+        : prev.items.map(i => (i.variantKey === productId || i.productId === productId) ? { ...i, quantity: newQty } : i);
       return { ...prev, items };
     });
   };
@@ -120,7 +124,7 @@ function App() {
     try {
       const order = await createOrder({
         restaurantId: cart.restaurantId,
-        items: cart.items,
+        items: cart.items.map(({ variantKey, ...rest }) => rest),
         deliveryAddress,
         note,
         subtotal,

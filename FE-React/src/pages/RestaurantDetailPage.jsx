@@ -10,6 +10,8 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
   const [activeCategory, setActiveCategory] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [addedId, setAddedId] = useState(null); // animation trigger
+  const [toppingModal, setToppingModal] = useState(null); // { product }
+  const [selectedToppings, setSelectedToppings] = useState([]); // [{name, extraPrice}]
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -32,15 +34,44 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
   const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
   const filtered = activeCategory ? products.filter(p => p.category === activeCategory) : products;
 
-  const getQty = (id) => cart?.items?.find(i => i.productId === id)?.quantity || 0;
+  const getQty = (id) => cart?.items?.filter(i => i.productId === id).reduce((s, i) => s + i.quantity, 0) || 0;
   const cartCount = cart?.items?.reduce((s, i) => s + i.quantity, 0) || 0;
   const cartTotal = cart?.items?.reduce((s, i) => s + i.price * i.quantity, 0) || 0;
 
   const handleAdd = (e, product) => {
     e.stopPropagation();
+    if (product.allowToppings && product.toppings?.length > 0) {
+      setSelectedToppings([]);
+      setToppingModal({ product });
+      return;
+    }
     onAddToCart(restaurant, product);
     setAddedId(product._id);
     setTimeout(() => setAddedId(null), 600);
+  };
+
+  const handleConfirmTopping = () => {
+    const { product } = toppingModal;
+    const extraPrice = selectedToppings.reduce((s, t) => s + (t.extraPrice || 0), 0);
+    const toppingNames = selectedToppings.map(t => t.name).join(", ");
+    const enriched = {
+      ...product,
+      price: product.price + extraPrice,
+      name: toppingNames ? `${product.name} (${toppingNames})` : product.name,
+      _toppingKey: toppingNames, // để phân biệt variant trong cart
+    };
+    onAddToCart(restaurant, enriched);
+    setAddedId(product._id);
+    setTimeout(() => setAddedId(null), 600);
+    setToppingModal(null);
+    setSelectedToppings([]);
+  };
+
+  const toggleTopping = (topping) => {
+    setSelectedToppings(prev => {
+      const exists = prev.find(t => t.name === topping.name);
+      return exists ? prev.filter(t => t.name !== topping.name) : [...prev, topping];
+    });
   };
 
   if (loading) return (
@@ -263,78 +294,163 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
       {selectedProduct && (
         <div onClick={() => setSelectedProduct(null)} style={{
           position: "fixed", inset: 0, zIndex: 400,
-          background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
-          display: "flex", alignItems: "flex-end",
+          background: "rgba(15,15,15,0.65)", backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "20px 16px",
           animation: "fadeIn 0.2s ease",
         }}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: "#fff", borderRadius: "24px 24px 0 0", width: "100%",
-            maxWidth: 560, margin: "0 auto",
-            padding: "0 0 32px", overflow: "hidden",
-            animation: "slideUp 0.25s ease",
-            maxHeight: "85vh", overflowY: "auto",
+            background: "#fff",
+            borderRadius: 24,
+            width: "100%", maxWidth: 780,
+            overflow: "hidden",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.28)",
+            animation: "modalPop 0.3s cubic-bezier(.175,.885,.32,1.2)",
+            display: "flex",
+            maxHeight: "90vh",
           }}>
-            {/* Modal image */}
-            <div style={{ position: "relative", height: 200 }}>
-              <img src={selectedProduct.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=300&fit=crop"}
+            {/* Left: Image */}
+            <div style={{ width: 340, flexShrink: 0, position: "relative", overflow: "hidden" }}>
+              <img
+                src={selectedProduct.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=600&fit=crop"}
                 alt={selectedProduct.name}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              <button onClick={() => setSelectedProduct(null)} style={{
-                position: "absolute", top: 14, right: 14,
-                width: 34, height: 34, borderRadius: "50%",
-                background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
-                border: "none", color: "#fff", fontSize: 18, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>✕</button>
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+              {/* Gradient overlay bottom */}
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 80, background: "linear-gradient(to top, rgba(0,0,0,0.5), transparent)" }} />
               {selectedProduct.isBestSeller && (
-                <div style={{ position: "absolute", bottom: 12, left: 16, background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 10 }}>
+                <div style={{
+                  position: "absolute", top: 16, left: 16,
+                  background: "linear-gradient(135deg,#f59e0b,#fbbf24)",
+                  color: "#fff", fontSize: 12, fontWeight: 800,
+                  padding: "5px 12px", borderRadius: 20,
+                  boxShadow: "0 2px 10px rgba(245,158,11,0.5)",
+                  display: "flex", alignItems: "center", gap: 4,
+                }}>
                   ⭐ Best Seller
+                </div>
+              )}
+              {/* Category tag */}
+              {selectedProduct.category && (
+                <div style={{
+                  position: "absolute", bottom: 14, left: 14,
+                  background: "rgba(255,255,255,0.18)", backdropFilter: "blur(8px)",
+                  color: "#fff", fontSize: 11, fontWeight: 600,
+                  padding: "4px 10px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.3)",
+                }}>
+                  {selectedProduct.category}
                 </div>
               )}
             </div>
 
-            {/* Modal content */}
-            <div style={{ padding: "20px 24px 0" }}>
-              <h2 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 800, color: "#1a1a1a" }}>
-                {selectedProduct.name}
-              </h2>
-              {selectedProduct.description && (
-                <p style={{ margin: "0 0 16px", fontSize: 14, color: "#666", lineHeight: 1.6 }}>{selectedProduct.description}</p>
-              )}
-
-              {/* Toppings */}
-              {selectedProduct.allowToppings && selectedProduct.toppings?.length > 0 && (
-                <div style={{ marginBottom: 16, padding: 14, background: "#fafafa", borderRadius: 12 }}>
-                  <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#555" }}>Topping có thể thêm:</p>
-                  {selectedProduct.toppings.map((t, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0", borderBottom: i < selectedProduct.toppings.length - 1 ? "1px solid #eee" : "none" }}>
-                      <span style={{ color: "#333" }}>{t.name}</span>
-                      <span style={{ color: "#ee4d2d", fontWeight: 600 }}>+{t.extraPrice?.toLocaleString("vi-VN")}đ</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-                <div>
-                  <div style={{ fontSize: 12, color: "#999", marginBottom: 2 }}>Giá</div>
-                  <div style={{ fontSize: 26, fontWeight: 900, color: "#ee4d2d" }}>{selectedProduct.price?.toLocaleString("vi-VN")}đ</div>
+            {/* Right: Info */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              {/* Header */}
+              <div style={{ padding: "24px 28px 20px", borderBottom: "1px solid #f5f5f5" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                  <div style={{ flex: 1, paddingRight: 12 }}>
+                    <h2 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 900, color: "#1a1a1a", lineHeight: 1.3 }}>
+                      {selectedProduct.name}
+                    </h2>
+                    {selectedProduct.description && (
+                      <p style={{ margin: 0, fontSize: 14, color: "#888", lineHeight: 1.6 }}>
+                        {selectedProduct.description}
+                      </p>
+                    )}
+                  </div>
+                  <button onClick={() => setSelectedProduct(null)} style={{
+                    width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                    background: "#f5f5f5", border: "none", cursor: "pointer",
+                    fontSize: 16, color: "#999", display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "background 0.15s",
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#ffe8e4"}
+                    onMouseLeave={e => e.currentTarget.style.background = "#f5f5f5"}
+                  >✕</button>
                 </div>
 
-                {getQty(selectedProduct._id) === 0 ? (
-                  <button onClick={e => { handleAdd(e, selectedProduct); setSelectedProduct(null); }} style={{
-                    background: "linear-gradient(135deg, #ee4d2d, #ff6b35)",
-                    color: "#fff", border: "none", borderRadius: 14,
-                    padding: "13px 28px", fontWeight: 800, fontSize: 16, cursor: "pointer",
-                    boxShadow: "0 4px 14px rgba(238,77,45,0.4)",
+                {/* Price + type badges */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
+                  <span style={{ fontSize: 28, fontWeight: 900, color: "#ee4d2d" }}>
+                    {selectedProduct.price?.toLocaleString("vi-VN")}đ
+                  </span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+                    background: selectedProduct.type === "drink" ? "#e0f2fe" : "#fef3c7",
+                    color: selectedProduct.type === "drink" ? "#0369a1" : "#92400e",
                   }}>
-                    + Thêm vào giỏ
+                    {selectedProduct.type === "drink" ? "🧋 Đồ uống" : "🍽️ Đồ ăn"}
+                  </span>
+                  {!selectedProduct.isAvailable && (
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#fee2e2", color: "#ef4444" }}>
+                      Hết hàng
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Toppings info */}
+              {selectedProduct.allowToppings && selectedProduct.toppings?.length > 0 && (
+                <div style={{ padding: "16px 28px", borderBottom: "1px solid #f5f5f5" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#555", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ background: "#fff0eb", color: "#ee4d2d", padding: "2px 8px", borderRadius: 6, fontSize: 11 }}>Tuỳ chọn</span>
+                    Topping có thể thêm
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                    {selectedProduct.toppings.map((t, i) => (
+                      <div key={i} style={{
+                        display: "flex", alignItems: "center", gap: 6,
+                        padding: "6px 12px", borderRadius: 20,
+                        background: "#fafafa", border: "1px solid #eee",
+                        fontSize: 13,
+                      }}>
+                        <span style={{ color: "#333", fontWeight: 500 }}>{t.name}</span>
+                        <span style={{ color: "#ee4d2d", fontWeight: 700, fontSize: 12 }}>
+                          {t.extraPrice > 0 ? `+${t.extraPrice.toLocaleString("vi-VN")}đ` : "free"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Spacer */}
+              <div style={{ flex: 1 }} />
+
+              {/* Action footer */}
+              <div style={{ padding: "20px 28px", borderTop: "1px solid #f5f5f5", background: "#fafafa" }}>
+                {getQty(selectedProduct._id) === 0 ? (
+                  <button
+                    onClick={e => { handleAdd(e, selectedProduct); setSelectedProduct(null); }}
+                    disabled={!selectedProduct.isAvailable}
+                    style={{
+                      width: "100%", padding: "15px", borderRadius: 14, border: "none",
+                      background: selectedProduct.isAvailable
+                        ? "linear-gradient(135deg, #ee4d2d, #ff6b35)"
+                        : "#e5e7eb",
+                      color: selectedProduct.isAvailable ? "#fff" : "#9ca3af",
+                      fontWeight: 800, fontSize: 16, cursor: selectedProduct.isAvailable ? "pointer" : "not-allowed",
+                      boxShadow: selectedProduct.isAvailable ? "0 6px 20px rgba(238,77,45,0.35)" : "none",
+                      transition: "transform 0.1s, box-shadow 0.1s",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    }}
+                    onMouseEnter={e => { if (selectedProduct.isAvailable) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(238,77,45,0.45)"; }}}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = selectedProduct.isAvailable ? "0 6px 20px rgba(238,77,45,0.35)" : "none"; }}
+                  >
+                    {selectedProduct.isAvailable ? (
+                      <>{selectedProduct.allowToppings && selectedProduct.toppings?.length > 0 ? "🧋 Chọn topping & Thêm vào giỏ" : "🛒 Thêm vào giỏ hàng"}</>
+                    ) : "Tạm hết hàng"}
                   </button>
                 ) : (
-                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <button onClick={() => onUpdateQty(selectedProduct._id, getQty(selectedProduct._id) - 1)} style={{ width: 40, height: 40, borderRadius: "50%", border: "1.5px solid #ddd", background: "#fff", cursor: "pointer", fontSize: 22, fontWeight: 700, color: "#ee4d2d", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                    <span style={{ fontSize: 20, fontWeight: 800, minWidth: 28, textAlign: "center" }}>{getQty(selectedProduct._id)}</span>
-                    <button onClick={() => onUpdateQty(selectedProduct._id, getQty(selectedProduct._id) + 1)} style={{ width: 40, height: 40, borderRadius: "50%", border: "none", background: "#ee4d2d", cursor: "pointer", fontSize: 22, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 14, color: "#888", fontWeight: 500 }}>Đã thêm vào giỏ</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#fff", border: "2px solid #ee4d2d", borderRadius: 50, padding: "4px 8px" }}>
+                      <button onClick={() => onUpdateQty(selectedProduct._id, getQty(selectedProduct._id) - 1)}
+                        style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: getQty(selectedProduct._id) === 1 ? "#fee2e2" : "#fff3f2", cursor: "pointer", fontSize: 20, fontWeight: 700, color: "#ee4d2d", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                      <span style={{ fontSize: 18, fontWeight: 800, minWidth: 24, textAlign: "center", color: "#1a1a1a" }}>{getQty(selectedProduct._id)}</span>
+                      <button onClick={() => onUpdateQty(selectedProduct._id, getQty(selectedProduct._id) + 1)}
+                        style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: "#ee4d2d", cursor: "pointer", fontSize: 20, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -343,9 +459,174 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
         </div>
       )}
 
+      {/* ── TOPPING MODAL ──────────────────────── */}
+      {toppingModal && (() => {
+        const { product } = toppingModal;
+        const extraTotal = selectedToppings.reduce((s, t) => s + (t.extraPrice || 0), 0);
+        const finalPrice = product.price + extraTotal;
+        return (
+          <div onClick={() => setToppingModal(null)} style={{
+            position: "fixed", inset: 0, zIndex: 500,
+            background: "rgba(15,15,15,0.65)", backdropFilter: "blur(8px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "20px 16px",
+            animation: "fadeIn 0.2s ease",
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              background: "#fff", borderRadius: 24,
+              width: "100%", maxWidth: 780,
+              overflow: "hidden",
+              boxShadow: "0 32px 80px rgba(0,0,0,0.28)",
+              animation: "modalPop 0.3s cubic-bezier(.175,.885,.32,1.2)",
+              display: "flex",
+              maxHeight: "90vh",
+            }}>
+              {/* Left: Image */}
+              <div style={{ width: 340, flexShrink: 0, position: "relative", overflow: "hidden" }}>
+                <img src={product.image} alt={product.name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 55%)" }} />
+                {product.isBestSeller && (
+                  <div style={{
+                    position: "absolute", top: 16, left: 16,
+                    background: "linear-gradient(135deg,#f59e0b,#fbbf24)",
+                    color: "#fff", fontSize: 12, fontWeight: 800,
+                    padding: "5px 12px", borderRadius: 20,
+                    boxShadow: "0 2px 10px rgba(245,158,11,0.5)",
+                  }}>⭐ Best Seller</div>
+                )}
+                {/* Bottom info on image */}
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 20px 22px" }}>
+                  <div style={{ color: "#fff", fontWeight: 900, fontSize: 20, marginBottom: 4, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
+                    {product.name}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: "rgba(255,255,255,0.75)", fontSize: 13 }}>Giá gốc:</span>
+                    <span style={{ color: "#ffd580", fontWeight: 800, fontSize: 15 }}>{product.price.toLocaleString("vi-VN")}đ</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Topping selector */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                {/* Header */}
+                <div style={{ padding: "24px 28px 18px", borderBottom: "1px solid #f5f5f5", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "#1a1a1a", marginBottom: 4 }}>
+                      Chọn topping
+                    </div>
+                    <div style={{ fontSize: 13, color: "#aaa" }}>Tuỳ chọn • Có thể chọn nhiều</div>
+                  </div>
+                  <button onClick={() => setToppingModal(null)} style={{
+                    width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                    background: "#f5f5f5", border: "none", cursor: "pointer",
+                    fontSize: 16, color: "#999", display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "background 0.15s",
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#ffe8e4"}
+                    onMouseLeave={e => e.currentTarget.style.background = "#f5f5f5"}
+                  >✕</button>
+                </div>
+
+                {/* Topping list */}
+                <div style={{ flex: 1, overflowY: "auto", padding: "16px 28px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {product.toppings.map((topping, i) => {
+                      const isSelected = selectedToppings.some(t => t.name === topping.name);
+                      return (
+                        <div key={i} onClick={() => toggleTopping(topping)} style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          padding: "14px 18px", borderRadius: 14, cursor: "pointer",
+                          border: isSelected ? "2px solid #ee4d2d" : "1.5px solid #eee",
+                          background: isSelected ? "#fff5f4" : "#fafafa",
+                          transition: "all 0.15s",
+                          userSelect: "none",
+                        }}
+                          onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = "#f5f5f5"; }}
+                          onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = "#fafafa"; }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            {/* Custom checkbox */}
+                            <div style={{
+                              width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                              border: isSelected ? "none" : "2px solid #d1d5db",
+                              background: isSelected ? "#ee4d2d" : "#fff",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              transition: "all 0.15s",
+                              boxShadow: isSelected ? "0 2px 8px rgba(238,77,45,0.35)" : "none",
+                            }}>
+                              {isSelected && <span style={{ color: "#fff", fontSize: 13, fontWeight: 900, lineHeight: 1 }}>✓</span>}
+                            </div>
+                            <span style={{ fontSize: 14, fontWeight: isSelected ? 700 : 500, color: "#1a1a1a" }}>
+                              {topping.name}
+                            </span>
+                          </div>
+                          <span style={{
+                            fontSize: 13, fontWeight: 700,
+                            color: topping.extraPrice > 0 ? "#ee4d2d" : "#10b981",
+                            background: topping.extraPrice > 0 ? "#fff0eb" : "#f0fdf4",
+                            padding: "3px 10px", borderRadius: 20,
+                          }}>
+                            {topping.extraPrice > 0 ? `+${topping.extraPrice.toLocaleString("vi-VN")}đ` : "Miễn phí"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div style={{ padding: "18px 28px", borderTop: "1px solid #f5f5f5", background: "#fafafa" }}>
+                  {/* Price summary */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div>
+                      <div style={{ fontSize: 12, color: "#aaa", marginBottom: 2 }}>Tổng tiền</div>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                        <span style={{ fontSize: 26, fontWeight: 900, color: "#ee4d2d" }}>
+                          {finalPrice.toLocaleString("vi-VN")}đ
+                        </span>
+                        {extraTotal > 0 && (
+                          <span style={{ fontSize: 12, color: "#aaa", fontWeight: 500 }}>
+                            ({product.price.toLocaleString("vi-VN")} + {extraTotal.toLocaleString("vi-VN")}đ topping)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {selectedToppings.length > 0 && (
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "flex-end", maxWidth: 180 }}>
+                        {selectedToppings.map((t, i) => (
+                          <span key={i} style={{ fontSize: 11, background: "#ee4d2d", color: "#fff", padding: "2px 8px", borderRadius: 20, fontWeight: 600 }}>
+                            {t.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button onClick={handleConfirmTopping}
+                    style={{
+                      width: "100%", padding: "15px", borderRadius: 14, border: "none",
+                      background: "linear-gradient(135deg, #ee4d2d, #ff6b35)",
+                      color: "#fff", fontWeight: 800, fontSize: 16, cursor: "pointer",
+                      boxShadow: "0 6px 20px rgba(238,77,45,0.35)",
+                      transition: "transform 0.1s, box-shadow 0.1s",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(238,77,45,0.45)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(238,77,45,0.35)"; }}
+                  >
+                    🛒 Thêm vào giỏ hàng
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes modalPop { from { opacity: 0; transform: scale(0.92) translateY(16px); } to { opacity: 1; transform: scale(1) translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
