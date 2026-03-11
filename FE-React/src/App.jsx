@@ -295,12 +295,13 @@ function App() {
 // ─── Cart Drawer Component ─────────────────────────
 function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, showToast = () => {} }) {
   const [step, setStep] = useState("cart"); // "cart" | "checkout"
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState(user?.address || "");
   const [note, setNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [placing, setPlacing] = useState(false);
 
   const subtotal = cart.items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const itemCount = cart.items.reduce((s, i) => s + i.quantity, 0);
 
   const handleOrder = async () => {
     if (!user) { onClose(); navigate("/sign-in"); return; }
@@ -317,108 +318,209 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 500 }}>
-      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
-      <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "min(420px, 100vw)", background: "#fff", display: "flex", flexDirection: "column", boxShadow: "-4px 0 20px rgba(0,0,0,0.15)" }}>
-        {/* Header */}
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid #f0f0f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)" }} />
+      <div style={{
+        position: "absolute", right: 0, top: 0, bottom: 0,
+        width: "min(440px, 100vw)", background: "#fff",
+        display: "flex", flexDirection: "column",
+        boxShadow: "-8px 0 40px rgba(0,0,0,0.18)",
+        animation: "slideInRight 0.28s cubic-bezier(.25,.46,.45,.94)",
+      }}>
+
+        {/* ── Header ── */}
+        <div style={{ padding: "0 20px", borderBottom: "1px solid #f0f0f0", flexShrink: 0 }}>
+          {/* Step indicator */}
+          <div style={{ display: "flex", alignItems: "center", paddingTop: 16, paddingBottom: 12, gap: 8 }}>
             {step === "checkout" && (
-              <button onClick={() => setStep("cart")} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#666", padding: 0 }}>←</button>
+              <button onClick={() => setStep("cart")} style={{
+                width: 32, height: 32, borderRadius: "50%", border: "none",
+                background: "#f5f5f5", cursor: "pointer", fontSize: 16, color: "#555",
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              }}>←</button>
             )}
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
-              {step === "cart" ? "🛒 Giỏ hàng" : "📋 Xác nhận đơn hàng"}
-            </h2>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  {/* Step pills */}
+                  {["Giỏ hàng", "Đặt hàng"].map((s, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: 5,
+                        padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                        background: (i === 0 && step === "cart") || (i === 1 && step === "checkout") ? "#ee4d2d" : "#f0f0f0",
+                        color: (i === 0 && step === "cart") || (i === 1 && step === "checkout") ? "#fff" : "#999",
+                        transition: "all 0.2s",
+                      }}>
+                        <span>{i + 1}</span>
+                        <span>{s}</span>
+                      </div>
+                      {i === 0 && <span style={{ color: "#d1d5db", fontSize: 12 }}>›</span>}
+                    </div>
+                  ))}
+                </div>
+                <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#999" }}>✕</button>
+              </div>
+              {cart.restaurantName && (
+                <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
+                  📍 {cart.restaurantName} · {itemCount} món
+                </div>
+              )}
+            </div>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-muted)" }}>✕</button>
         </div>
 
+        {/* ── Empty state ── */}
         {cart.items.length === 0 ? (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>🛒</div>
-            <p>Giỏ hàng trống</p>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#9ca3af", gap: 12 }}>
+            <div style={{ fontSize: 56 }}>🛒</div>
+            <div style={{ fontWeight: 600, fontSize: 15, color: "#374151" }}>Giỏ hàng trống</div>
+            <div style={{ fontSize: 13 }}>Thêm món để tiếp tục</div>
           </div>
+
         ) : step === "cart" ? (
-          <>
-            <div style={{ padding: "10px 20px", borderBottom: "1px solid #f0f0f0", background: "#fafafa" }}>
-              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Từ nhà hàng: </span>
-              <span style={{ fontWeight: 600 }}>{cart.restaurantName}</span>
-            </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
-              {cart.items.map(item => (
-                <div key={item.productId} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: "1px solid #f9f9f9" }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{item.emoji} {item.name}</div>
-                    <div style={{ color: "var(--shopee-orange)", fontWeight: 700, fontSize: 14, marginTop: 2 }}>{item.price.toLocaleString("vi-VN")}đ</div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <button onClick={() => onUpdateQty(item.productId, item.quantity - 1)} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: 16, fontWeight: 700, color: "var(--shopee-orange)" }}>−</button>
-                    <span style={{ fontWeight: 700, minWidth: 20, textAlign: "center" }}>{item.quantity}</span>
-                    <button onClick={() => onUpdateQty(item.productId, item.quantity + 1)} style={{ width: 28, height: 28, borderRadius: "50%", border: "none", background: "var(--shopee-orange)", cursor: "pointer", fontSize: 16, fontWeight: 700, color: "#fff" }}>+</button>
-                  </div>
-                  <div style={{ fontWeight: 700, minWidth: 70, textAlign: "right", fontSize: 14 }}>{(item.price * item.quantity).toLocaleString("vi-VN")}đ</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ padding: "16px 20px", borderTop: "1px solid #f0f0f0" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-                <span style={{ color: "var(--text-muted)" }}>Tạm tính</span>
-                <span style={{ fontWeight: 700, fontSize: 16 }}>{subtotal.toLocaleString("vi-VN")}đ</span>
-              </div>
-              <button onClick={() => setStep("checkout")} style={{ width: "100%", background: "var(--shopee-orange)", color: "#fff", border: "none", borderRadius: 10, padding: "14px", fontSize: 16, fontWeight: 700, cursor: "pointer" }}>
-                Tiếp tục → Đặt hàng
-              </button>
-            </div>
-          </>
-        ) : (
+          // ─── STEP 1: Cart ───
           <>
             <div style={{ flex: 1, overflowY: "auto" }}>
-              {/* Summary */}
-              <div style={{ padding: "14px 20px", borderBottom: "1px solid #f0f0f0", background: "#fafafa" }}>
-                <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px" }}>Tóm tắt đơn hàng</p>
+              {cart.items.map((item, idx) => (
+                <div key={item.variantKey || item.productId} style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "14px 20px",
+                  borderBottom: idx < cart.items.length - 1 ? "1px solid #f5f5f5" : "none",
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {item.emoji} {item.name}
+                    </div>
+                    <div style={{ fontSize: 13, color: "#ee4d2d", fontWeight: 700, marginTop: 2 }}>
+                      {item.price.toLocaleString("vi-VN")}đ
+                    </div>
+                  </div>
+                  {/* Qty stepper */}
+                  <div style={{ display: "flex", alignItems: "center", border: "1.5px solid #e5e7eb", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
+                    <button onClick={() => onUpdateQty(item.variantKey || item.productId, item.quantity - 1)} style={{
+                      width: 32, height: 32, border: "none", background: "#fff",
+                      fontSize: 17, fontWeight: 700, color: "#ee4d2d", cursor: "pointer",
+                    }}>−</button>
+                    <span style={{ minWidth: 28, textAlign: "center", fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>{item.quantity}</span>
+                    <button onClick={() => onUpdateQty(item.variantKey || item.productId, item.quantity + 1)} style={{
+                      width: 32, height: 32, border: "none", background: "#fff",
+                      fontSize: 17, fontWeight: 700, color: "#ee4d2d", cursor: "pointer",
+                    }}>+</button>
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 14, minWidth: 72, textAlign: "right", color: "#1a1a1a" }}>
+                    {(item.price * item.quantity).toLocaleString("vi-VN")}đ
+                  </div>
+                </div>
+              ))}
+
+              {/* Promo / note teaser */}
+              <div style={{ margin: "12px 20px", padding: "12px 16px", background: "#fff8f5", borderRadius: 10, border: "1.5px dashed #fca5a5", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 18 }}>📝</span>
+                <span style={{ fontSize: 13, color: "#9ca3af" }}>Thêm ghi chú cho nhà hàng ở bước sau</span>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: "14px 20px 20px", borderTop: "1px solid #f0f0f0", flexShrink: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <div>
+                  <div style={{ fontSize: 12, color: "#9ca3af" }}>Tạm tính ({itemCount} món)</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1a1a" }}>{subtotal.toLocaleString("vi-VN")}đ</div>
+                </div>
+                <button onClick={() => setStep("checkout")} style={{
+                  padding: "13px 28px", borderRadius: 10, border: "none",
+                  background: "#ee4d2d", color: "#fff",
+                  fontWeight: 700, fontSize: 15, cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 8,
+                  boxShadow: "0 4px 16px rgba(238,77,45,0.3)",
+                }}>
+                  Đặt hàng <span style={{ fontSize: 16 }}>→</span>
+                </button>
+              </div>
+            </div>
+          </>
+
+        ) : (
+          // ─── STEP 2: Checkout ───
+          <>
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {/* Order summary */}
+              <div style={{ padding: "14px 20px", borderBottom: "1px solid #f5f5f5", background: "#fafafa" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 8 }}>
+                  Đơn hàng · {cart.restaurantName}
+                </div>
                 {cart.items.map(item => (
-                  <div key={item.productId} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "3px 0", color: "#555" }}>
-                    <span>{item.emoji} {item.name} x{item.quantity}</span>
+                  <div key={item.variantKey || item.productId} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "3px 0", color: "#374151" }}>
+                    <span>{item.emoji} {item.name} <span style={{ color: "#9ca3af" }}>x{item.quantity}</span></span>
                     <span style={{ fontWeight: 600 }}>{(item.price * item.quantity).toLocaleString("vi-VN")}đ</span>
                   </div>
                 ))}
               </div>
 
               {/* Address */}
-              <div style={{ padding: "16px 20px", borderBottom: "1px solid #f0f0f0" }}>
-                <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#333" }}>📍 Địa chỉ giao hàng</p>
-                <input
-                  placeholder="Nhập địa chỉ giao hàng..."
-                  value={address}
-                  onChange={e => setAddress(e.target.value)}
-                  style={{ width: "100%", border: "1.5px solid #ddd", borderRadius: 8, padding: "10px 12px", fontSize: 14, marginBottom: 8, boxSizing: "border-box", outline: "none" }}
-                />
+              <div style={{ padding: "16px 20px", borderBottom: "1px solid #f5f5f5" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  📍 Địa chỉ giao hàng
+                </div>
+                {address ? (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", background: "#f9fafb", borderRadius: 8, border: "1.5px solid #e5e7eb" }}>
+                    <span style={{ fontSize: 16, marginTop: 1 }}>📍</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, color: "#1a1a1a", lineHeight: 1.5 }}>{address}</div>
+                      <button onClick={() => setAddress("")} style={{ marginTop: 4, fontSize: 12, color: "#ee4d2d", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}>
+                        Đổi địa chỉ
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <input
+                    placeholder="Nhập địa chỉ giao hàng..."
+                    value={address}
+                    onChange={e => setAddress(e.target.value)}
+                    autoFocus
+                    style={{
+                      width: "100%", border: "1.5px solid #ee4d2d",
+                      borderRadius: 8, padding: "11px 14px", fontSize: 14,
+                      boxSizing: "border-box", outline: "none",
+                    }}
+                  />
+                )}
                 <textarea
-                  placeholder="📝 Ghi chú cho nhà hàng (tuỳ chọn)"
+                  placeholder="Ghi chú cho nhà hàng (tuỳ chọn)"
                   value={note}
                   onChange={e => setNote(e.target.value)}
                   rows={2}
-                  style={{ width: "100%", border: "1.5px solid #ddd", borderRadius: 8, padding: "10px 12px", fontSize: 14, boxSizing: "border-box", resize: "none", outline: "none", fontFamily: "inherit" }}
+                  style={{
+                    width: "100%", border: "1.5px solid #e5e7eb",
+                    borderRadius: 8, padding: "11px 14px", fontSize: 14,
+                    boxSizing: "border-box", resize: "none", outline: "none",
+                    fontFamily: "inherit", marginTop: 8,
+                  }}
                 />
               </div>
 
-              {/* Payment method */}
+              {/* Payment */}
               <div style={{ padding: "16px 20px" }}>
-                <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 700, color: "#333" }}>💳 Phương thức thanh toán</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 12 }}>💳 Thanh toán</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {PAYMENT_METHODS.map(pm => (
                     <div key={pm.id} onClick={() => setPaymentMethod(pm.id)} style={{
                       display: "flex", alignItems: "center", gap: 14,
-                      padding: "14px 16px", borderRadius: 10, cursor: "pointer",
-                      border: paymentMethod === pm.id ? "2px solid #ee4d2d" : "1.5px solid #eee",
-                      background: paymentMethod === pm.id ? "#fff5f4" : "#fff",
+                      padding: "13px 16px", borderRadius: 10, cursor: "pointer",
+                      border: paymentMethod === pm.id ? "2px solid #ee4d2d" : "1.5px solid #e5e7eb",
+                      background: paymentMethod === pm.id ? "#fff8f5" : "#fff",
                       transition: "all 0.15s",
                     }}>
-                      <span style={{ fontSize: 26 }}>{pm.icon}</span>
+                      <span style={{ fontSize: 24 }}>{pm.icon}</span>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{pm.label}</div>
-                        <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{pm.desc}</div>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>{pm.label}</div>
+                        <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 1 }}>{pm.desc}</div>
                       </div>
-                      <div style={{ width: 20, height: 20, borderRadius: "50%", border: paymentMethod === pm.id ? "6px solid #ee4d2d" : "2px solid #ccc", transition: "all 0.15s", flexShrink: 0 }} />
+                      <div style={{
+                        width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                        border: paymentMethod === pm.id ? "6px solid #ee4d2d" : "2px solid #d1d5db",
+                        transition: "all 0.15s",
+                      }} />
                     </div>
                   ))}
                 </div>
@@ -426,23 +528,32 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
             </div>
 
             {/* Footer */}
-            <div style={{ padding: "16px 20px", borderTop: "1px solid #f0f0f0" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                <span style={{ color: "var(--text-muted)", fontSize: 14 }}>Tổng cộng</span>
-                <span style={{ fontWeight: 800, fontSize: 20, color: "var(--shopee-orange)" }}>{subtotal.toLocaleString("vi-VN")}đ</span>
+            <div style={{ padding: "14px 20px 20px", borderTop: "1px solid #f0f0f0", flexShrink: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+                <span style={{ fontSize: 13, color: "#9ca3af" }}>Tổng thanh toán</span>
+                <span style={{ fontSize: 22, fontWeight: 800, color: "#ee4d2d" }}>{subtotal.toLocaleString("vi-VN")}đ</span>
               </div>
               <button onClick={handleOrder} disabled={placing} style={{
                 width: "100%", border: "none", borderRadius: 10, padding: "14px",
-                fontSize: 16, fontWeight: 700, cursor: placing ? "not-allowed" : "pointer",
-                background: placing ? "#ccc" : paymentMethod === "vnpay" ? "linear-gradient(135deg,#0060af,#0078d4)" : "linear-gradient(135deg,#ee4d2d,#ff6b35)",
-                color: "#fff", transition: "all 0.2s",
+                fontSize: 15, fontWeight: 700, cursor: placing ? "not-allowed" : "pointer",
+                background: placing ? "#e5e7eb"
+                  : paymentMethod === "vnpay" ? "linear-gradient(135deg,#0060af,#0078d4)"
+                  : "#ee4d2d",
+                color: placing ? "#9ca3af" : "#fff",
+                transition: "all 0.2s",
+                boxShadow: placing ? "none" : "0 4px 16px rgba(238,77,45,0.3)",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               }}>
-                {placing ? "Đang xử lý..." : paymentMethod === "vnpay" ? "🏦 Thanh toán qua VNPay →" : "🛍️ Đặt hàng (Tiền mặt)"}
+                {placing ? (
+                  <><span style={{ width: 16, height: 16, border: "2px solid #ccc", borderTop: "2px solid #fff", borderRadius: "50%", display: "inline-block", animation: "spin 0.8s linear infinite" }} /> Đang xử lý...</>
+                ) : paymentMethod === "vnpay" ? "🏦 Thanh toán VNPay →"
+                  : "🛍️ Đặt hàng"}
               </button>
             </div>
           </>
         )}
       </div>
+      <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}} @keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
