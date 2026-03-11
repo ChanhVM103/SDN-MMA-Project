@@ -36,7 +36,7 @@ app.set("view engine", "jade");
 // CORS - Allow requests from React Native / Expo
 app.use(
   cors({
-    origin: true, 
+    origin: true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
@@ -46,8 +46,8 @@ app.use(
 app.options("*", cors());
 
 app.use(logger("dev"));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 

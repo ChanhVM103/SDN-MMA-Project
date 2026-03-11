@@ -291,14 +291,15 @@ const updateAvatar = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Vui lòng cung cấp ảnh avatar' });
         }
 
-        const isValidBase64 = /^data:image\/(jpeg|jpg|png|gif|webp);base64,/.test(avatar);
-        if (!isValidBase64) {
-            return res.status(400).json({ success: false, message: 'Định dạng ảnh không hợp lệ (jpeg/png/webp)' });
+        const isValidBase64 = /^data:image\/(jpeg|jpg|png|gif|webp|svg\+xml);base64,/.test(avatar);
+        if (!isValidBase64 && !avatar.startsWith('http')) {
+            return res.status(400).json({ success: false, message: 'Định dạng ảnh không hợp lệ' });
         }
 
-        const sizeInBytes = Buffer.byteLength(avatar, 'utf8');
-        if (sizeInBytes > 2.5 * 1024 * 1024) {
-            return res.status(400).json({ success: false, message: 'Ảnh quá lớn, vui lòng chọn ảnh dưới 2MB' });
+        // Base64 length calculation (approximate)
+        const sizeInBytes = avatar.length * (3 / 4);
+        if (sizeInBytes > 5 * 1024 * 1024) {
+            return res.status(400).json({ success: false, message: 'Ảnh quá lớn, vui lòng chọn ảnh dưới 5MB' });
         }
 
         const user = await authService.updateUserProfile(req.userId, { avatar });

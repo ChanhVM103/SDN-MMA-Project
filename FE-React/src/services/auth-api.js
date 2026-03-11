@@ -48,3 +48,10 @@ export const updateProfileApi = (token, data) =>
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data),
   });
+
+export const changePasswordApi = (token, data) =>
+  apiRequest("/auth/change-password", {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
