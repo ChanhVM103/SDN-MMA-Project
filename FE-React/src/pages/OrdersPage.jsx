@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getMyOrders, cancelOrder } from "../services/order-api";
+import { submitBulkReviews, checkOrderReviewed, updateReview, deleteReview } from "../services/review-api";
 
 const STATUS_CONFIG = {
   pending:           { label: "Chờ xác nhận",            emoji: "⏳", color: "#f59e0b", bg: "#fef3c7", desc: "Đơn hàng đang chờ nhà hàng xác nhận" },
@@ -76,6 +77,238 @@ const TAB_FILTERS = [
   { label: "Đã hủy", status: ["cancelled"] },
 ];
 
+// ─── Star Rating Component ────────────────────────────────
+function StarRating({ value, onChange, size = 28 }) {
+  const [hovered, setHovered] = useState(0);
+  return (
+    <div style={{ display: "flex", gap: 4 }}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <span
+          key={star}
+          onClick={() => onChange && onChange(star)}
+          onMouseEnter={() => onChange && setHovered(star)}
+          onMouseLeave={() => onChange && setHovered(0)}
+          style={{
+            fontSize: size,
+            cursor: onChange ? "pointer" : "default",
+            color: star <= (hovered || value) ? "#f59e0b" : "#d1d5db",
+            transition: "color 0.15s, transform 0.15s",
+            transform: hovered === star ? "scale(1.2)" : "scale(1)",
+            display: "inline-block",
+          }}
+        >★</span>
+      ))}
+    </div>
+  );
+}
+
+const STAR_LABELS = ["", "Tệ", "Không hài lòng", "Bình thường", "Hài lòng", "Tuyệt vời"];
+
+// ─── Review Modal ─────────────────────────────────────────
+function ReviewModal({ order, onClose, onSuccess }) {
+  const buildInitialRatings = () => [
+    { key: "restaurant", label: order.restaurantName, emoji: "🏪", productId: null, productName: "", rating: 5 },
+    ...(order.items || []).map((item) => ({
+      key: item.productId || item.name,
+      label: item.name,
+      emoji: item.emoji || "🍽️",
+      productId: item.productId || null,
+      productName: item.name,
+      rating: 5,
+    })),
+  ];
+
+  const [ratings, setRatings] = useState(buildInitialRatings);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const setRating = (idx, value) =>
+    setRatings((prev) => prev.map((r, i) => (i === idx ? { ...r, rating: value } : r)));
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setErrorMsg("");
+    try {
+      const restaurantId = order.restaurant?._id || order.restaurant;
+      await submitBulkReviews(
+        order._id,
+        restaurantId,
+        ratings.map((r) => ({ rating: r.rating, comment: "", productId: r.productId, productName: r.productName }))
+      );
+      onSuccess();
+    } catch (err) {
+      setErrorMsg(err.message || "Gửi đánh giá thất bại");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 99998, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
+      <div style={{
+        position: "relative", background: "#fff", borderRadius: "20px 20px 0 0",
+        width: "100%", maxWidth: 520, maxHeight: "85vh",
+        display: "flex", flexDirection: "column",
+        boxShadow: "0 -8px 40px rgba(0,0,0,0.18)",
+        animation: "slideUp 0.3s cubic-bezier(.175,.885,.32,1.275)",
+      }}>
+        {/* Header */}
+        <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid #f0f0f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>⭐ Đánh giá đơn hàng</h3>
+            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#9ca3af" }}>{order.restaurantName} · #{order._id.slice(-8).toUpperCase()}</p>
+          </div>
+          <button onClick={onClose} style={{ background: "#f3f4f6", border: "none", borderRadius: 20, width: 32, height: 32, fontSize: 16, cursor: "pointer", color: "#6b7280" }}>✕</button>
+        </div>
+
+        {/* Items list */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px" }}>
+          {ratings.map((r, idx) => (
+            <div key={r.key} style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "12px 0",
+              borderBottom: idx < ratings.length - 1 ? "1px solid #f5f5f5" : "none",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: 24, flexShrink: 0 }}>{r.emoji}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {idx === 0 ? r.label : r.label}
+                </span>
+              </div>
+              <StarRating value={r.rating} onChange={(v) => setRating(idx, v)} size={30} />
+            </div>
+          ))}
+        </div>
+
+        {/* Error */}
+        {errorMsg && (
+          <div style={{ margin: "0 20px 8px", padding: "9px 14px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontSize: 13, display: "flex", gap: 8 }}>
+            <span>⚠️</span>{errorMsg}
+          </div>
+        )}
+
+        {/* Submit */}
+        <div style={{ padding: "12px 20px 20px" }}>
+          <button onClick={handleSubmit} disabled={submitting} style={{
+            width: "100%", padding: "14px", borderRadius: 12, border: "none",
+            background: submitting ? "#d1d5db" : "linear-gradient(135deg,#ee4d2d,#ff7337)",
+            color: "#fff", fontWeight: 700, fontSize: 15,
+            cursor: submitting ? "not-allowed" : "pointer",
+            boxShadow: submitting ? "none" : "0 4px 16px rgba(238,77,45,0.35)",
+          }}>
+            {submitting ? "Đang gửi..." : "🌟 Gửi đánh giá"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Edit Review Modal ────────────────────────────────────
+function EditReviewModal({ reviews, order, onClose, onSuccess }) {
+  // Map existing reviews by productId (null = restaurant)
+  const [ratings, setRatings] = useState(() => {
+    const items = [
+      { key: "restaurant", label: order.restaurantName, emoji: "🏪", productId: null },
+      ...(order.items || []).map((item) => ({
+        key: item.productId || item.name,
+        label: item.name,
+        emoji: item.emoji || "🍽️",
+        productId: item.productId || null,
+      })),
+    ];
+    return items.map((item) => {
+      const existing = reviews.find((r) =>
+        item.productId ? r.product === item.productId || r.product?._id === item.productId : !r.product
+      );
+      return { ...item, rating: existing?.rating || 5, reviewId: existing?._id || null };
+    });
+  });
+
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const setRating = (idx, value) =>
+    setRatings((prev) => prev.map((r, i) => (i === idx ? { ...r, rating: value } : r)));
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setErrorMsg("");
+    try {
+      await Promise.all(
+        ratings.map((r) => r.reviewId ? updateReview(r.reviewId, { rating: r.rating }) : null).filter(Boolean)
+      );
+      onSuccess();
+    } catch (err) {
+      setErrorMsg(err.message || "Cập nhật thất bại");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 99998, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
+      <div style={{
+        position: "relative", background: "#fff", borderRadius: "20px 20px 0 0",
+        width: "100%", maxWidth: 520, maxHeight: "85vh",
+        display: "flex", flexDirection: "column",
+        boxShadow: "0 -8px 40px rgba(0,0,0,0.18)",
+        animation: "slideUp 0.3s cubic-bezier(.175,.885,.32,1.275)",
+      }}>
+        {/* Header */}
+        <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid #f0f0f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>✏️ Sửa đánh giá</h3>
+            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#9ca3af" }}>{order.restaurantName} · #{order._id.slice(-8).toUpperCase()}</p>
+          </div>
+          <button onClick={onClose} style={{ background: "#f3f4f6", border: "none", borderRadius: 20, width: 32, height: 32, fontSize: 16, cursor: "pointer", color: "#6b7280" }}>✕</button>
+        </div>
+
+        {/* Items */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px" }}>
+          {ratings.map((r, idx) => (
+            <div key={r.key} style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "12px 0",
+              borderBottom: idx < ratings.length - 1 ? "1px solid #f5f5f5" : "none",
+              opacity: r.reviewId ? 1 : 0.4,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: 24, flexShrink: 0 }}>{r.emoji}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {r.label}
+                </span>
+                {!r.reviewId && <span style={{ fontSize: 11, color: "#9ca3af" }}>(chưa đánh giá)</span>}
+              </div>
+              <StarRating value={r.rating} onChange={r.reviewId ? (v) => setRating(idx, v) : null} size={30} />
+            </div>
+          ))}
+        </div>
+
+        {errorMsg && (
+          <div style={{ margin: "0 20px 8px", padding: "9px 14px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontSize: 13, display: "flex", gap: 8 }}>
+            <span>⚠️</span>{errorMsg}
+          </div>
+        )}
+
+        <div style={{ padding: "12px 20px 20px" }}>
+          <button onClick={handleSubmit} disabled={submitting} style={{
+            width: "100%", padding: "14px", borderRadius: 12, border: "none",
+            background: submitting ? "#d1d5db" : "linear-gradient(135deg,#3b82f6,#6366f1)",
+            color: "#fff", fontWeight: 700, fontSize: 15,
+            cursor: submitting ? "not-allowed" : "pointer",
+            boxShadow: submitting ? "none" : "0 4px 16px rgba(59,130,246,0.35)",
+          }}>
+            {submitting ? "Đang lưu..." : "💾 Lưu thay đổi"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OrdersPage({ user, navigate }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +317,9 @@ function OrdersPage({ user, navigate }) {
   const [cancellingId, setCancellingId] = useState(null);
   const [toast, setToast] = useState(null);
   const [confirmCancel, setConfirmCancel] = useState(null); // orderId to cancel
+  const [reviewOrder, setReviewOrder] = useState(null);
+  const [reviewedOrders, setReviewedOrders] = useState({}); // { orderId: [reviewObjects] }
+  const [editReview, setEditReview] = useState(null); // { review, orderId }
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -114,6 +350,19 @@ function OrdersPage({ user, navigate }) {
     try {
       const data = await getMyOrders();
       setOrders(data || []);
+
+      // Check which delivered orders have been reviewed
+      const delivered = (data || []).filter((o) => o.status === "delivered");
+      const reviewedMap = {};
+      await Promise.all(
+        delivered.map(async (o) => {
+          try {
+            const result = await checkOrderReviewed(o._id);
+            if (result?.reviewed) reviewedMap[o._id] = result.reviews || [];
+          } catch (_) {}
+        })
+      );
+      setReviewedOrders(reviewedMap);
     } catch (error) {
       console.error("Lỗi tải đơn hàng:", error);
     } finally {
@@ -274,11 +523,82 @@ function OrdersPage({ user, navigate }) {
                     </button>
                   </div>
                 )}
+
+                {/* Review button for delivered orders */}
+                {order.status === "delivered" && (
+                  <div style={{ padding: "10px 20px 14px", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, backgroundColor: "#fafafa", borderTop: "1px solid #f0f0f0" }}>
+                    {reviewedOrders[order._id] ? (
+                      <>
+                        <span style={{ fontSize: 12, color: "#10b981", fontWeight: 600, marginRight: 4 }}>✅ Đã đánh giá</span>
+                        <button
+                          onClick={() => setEditReview({ reviews: reviewedOrders[order._id], order })}
+                          style={{ padding: "7px 14px", borderRadius: 8, border: "1.5px solid #3b82f6", background: "#fff", color: "#3b82f6", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                        >✏️ Sửa</button>
+                        <button
+                          onClick={() => setConfirmCancel("delete-review:" + order._id)}
+                          style={{ padding: "7px 14px", borderRadius: 8, border: "1.5px solid #ef4444", background: "#fff", color: "#ef4444", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                        >🗑️ Xóa</button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setReviewOrder(order)}
+                        style={{
+                          padding: "8px 20px", borderRadius: 8, border: "none",
+                          background: "linear-gradient(135deg,#f59e0b,#ee4d2d)",
+                          color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: 6,
+                          boxShadow: "0 2px 8px rgba(238,77,45,0.3)",
+                        }}
+                      >⭐ Đánh giá món ăn</button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
+      {/* Review Modal */}
+      {reviewOrder && (
+        <ReviewModal
+          order={reviewOrder}
+          onClose={() => setReviewOrder(null)}
+          onSuccess={async () => {
+            setReviewOrder(null);
+            // Reload reviews for this order
+            try {
+              const result = await checkOrderReviewed(reviewOrder._id);
+              if (result?.reviewed) {
+                setReviewedOrders((prev) => ({ ...prev, [reviewOrder._id]: result.reviews || [] }));
+              }
+            } catch (_) {}
+            showToast("🌟 Cảm ơn bạn đã đánh giá!", "success");
+          }}
+        />
+      )}
+
+      {/* Edit Review Modal */}
+      {editReview && (
+        <EditReviewModal
+          reviews={editReview.reviews}
+          order={editReview.order}
+          onClose={() => setEditReview(null)}
+          onSuccess={async () => {
+            setEditReview(null);
+            try {
+              const result = await checkOrderReviewed(editReview.order._id);
+              setReviewedOrders((prev) => ({ ...prev, [editReview.order._id]: result?.reviews || [] }));
+            } catch (_) {}
+            showToast("✅ Đã cập nhật đánh giá!", "success");
+          }}
+          onDeleted={(orderId) => {
+            setEditReview(null);
+            setReviewedOrders((prev) => { const n = { ...prev }; delete n[orderId]; return n; });
+            showToast("🗑️ Đã xóa đánh giá", "success");
+          }}
+        />
+      )}
+
       {/* Toast */}
       {toast && (
         <div style={{
@@ -295,7 +615,7 @@ function OrdersPage({ user, navigate }) {
         </div>
       )}
 
-      {/* Confirm Cancel Modal */}
+      {/* Confirm Modal – dùng cho cả hủy đơn lẫn xóa review */}
       {confirmCancel && (
         <div style={{ position: "fixed", inset: 0, zIndex: 99998, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div onClick={() => setConfirmCancel(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
@@ -304,21 +624,57 @@ function OrdersPage({ user, navigate }) {
             maxWidth: 360, width: "90vw", boxShadow: "0 24px 64px rgba(0,0,0,0.2)",
             animation: "confirmIn 0.3s cubic-bezier(.175,.885,.32,1.275)",
           }}>
-            <div style={{ fontSize: 44, textAlign: "center", marginBottom: 12 }}>🗑️</div>
-            <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, textAlign: "center", color: "#1a1a1a" }}>Hủy đơn hàng?</h3>
-            <p style={{ margin: "0 0 22px", fontSize: 14, color: "#666", textAlign: "center", lineHeight: 1.6 }}>Bạn có chắc muốn hủy đơn này không? Hành động này không thể hoàn tác.</p>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setConfirmCancel(null)} style={{ flex: 1, padding: "12px", borderRadius: 10, border: "1.5px solid #e5e7eb", background: "#fff", color: "#555", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-                Giữ đơn
-              </button>
-              <button onClick={() => doCancel(confirmCancel)} style={{ flex: 1, padding: "12px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ef4444,#dc2626)", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-                Hủy đơn
-              </button>
-            </div>
+            {confirmCancel.startsWith("delete-review:") ? (
+              <>
+                <div style={{ fontSize: 44, textAlign: "center", marginBottom: 12 }}>⭐</div>
+                <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, textAlign: "center", color: "#1a1a1a" }}>Xóa đánh giá?</h3>
+                <p style={{ margin: "0 0 22px", fontSize: 14, color: "#666", textAlign: "center", lineHeight: 1.6 }}>Tất cả đánh giá của đơn này sẽ bị xóa. Bạn có thể đánh giá lại sau.</p>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => setConfirmCancel(null)} style={{ flex: 1, padding: "12px", borderRadius: 10, border: "1.5px solid #e5e7eb", background: "#fff", color: "#555", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Giữ lại</button>
+                  <button onClick={async () => {
+                    const orderId = confirmCancel.replace("delete-review:", "");
+                    const reviews = reviewedOrders[orderId] || [];
+                    try {
+                      await Promise.all(reviews.map(r => deleteReview(r._id)));
+                      setReviewedOrders((prev) => { const n = { ...prev }; delete n[orderId]; return n; });
+                      showToast("🗑️ Đã xóa đánh giá", "success");
+                    } catch (err) { showToast("Lỗi xóa: " + err.message, "error"); }
+                    setConfirmCancel(null);
+                  }} style={{ flex: 1, padding: "12px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ef4444,#dc2626)", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+                    Xóa
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 44, textAlign: "center", marginBottom: 12 }}>🗑️</div>
+                <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, textAlign: "center", color: "#1a1a1a" }}>Hủy đơn hàng?</h3>
+                <p style={{ margin: "0 0 22px", fontSize: 14, color: "#666", textAlign: "center", lineHeight: 1.6 }}>Bạn có chắc muốn hủy đơn này không? Hành động này không thể hoàn tác.</p>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => setConfirmCancel(null)} style={{ flex: 1, padding: "12px", borderRadius: 10, border: "1.5px solid #e5e7eb", background: "#fff", color: "#555", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Giữ đơn</button>
+                  <button onClick={() => doCancel(confirmCancel)} style={{ flex: 1, padding: "12px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ef4444,#dc2626)", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Hủy đơn</button>
+                </div>
+              </>
+            )}
           </div>
-          <style>{`@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px) scale(0.9)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}} @keyframes confirmIn{from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:scale(1)}}`}</style>
         </div>
       )}
+
+      {/* Global keyframe animations – rendered once, outside any conditional modal */}
+      <style>{`
+        @keyframes toastIn {
+          from { opacity: 0; transform: translateX(-50%) translateY(20px) scale(0.9); }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1);   }
+        }
+        @keyframes confirmIn {
+          from { opacity: 0; transform: scale(0.85); }
+          to   { opacity: 1; transform: scale(1);    }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(60px); }
+          to   { opacity: 1; transform: translateY(0);    }
+        }
+      `}</style>
     </div>
   );
 }
