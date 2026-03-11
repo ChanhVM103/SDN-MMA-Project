@@ -75,8 +75,8 @@ export default function ConfirmOrderScreen({
                 <View style={s.section}>
                     <Text style={s.sectionTitle}>Sản phẩm đã chọn</Text>
                     <View style={s.itemsList}>
-                        {cartItems.map((item, idx) => (
-                            <View key={item.id} style={s.cartItemContainer}>
+                        {cartItems.map((item: any, idx) => (
+                            <View key={item.lineId || item.id || `item-${idx}`} style={s.cartItemContainer}>
                                 <View style={s.cartItem}>
                                     <View style={s.itemHeader}>
                                         <Text style={s.itemQty}>{item.qty}x</Text>
@@ -86,8 +86,8 @@ export default function ConfirmOrderScreen({
                                             {item.size && (
                                                 <Text style={s.itemMeta}>Size: {item.size}</Text>
                                             )}
-                                            {item.toppings && item.toppings.length > 0 && (
-                                                <Text style={s.itemMeta}>+{item.toppings.length} topping</Text>
+                                            {item.toppings && item.toppings.length > 0 && item.toppings[0] && (
+                                                <Text style={s.itemMeta}>+ {item.toppings.join(', ')}</Text>
                                             )}
                                         </View>
                                         <Text style={s.itemPrice}>

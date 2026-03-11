@@ -7,6 +7,7 @@ var { authMiddleware, authorizeRole } = require("../middleware/auth.middleware")
 router.post("/", authMiddleware, orderController.createOrder);
 router.get("/my", authMiddleware, orderController.getMyOrders);
 router.patch("/:id/cancel", authMiddleware, orderController.cancelOrder);
+router.patch("/:id/confirm-received", authMiddleware, orderController.confirmOrderReceived);
 
 // ── Shipper routes ────────────────────────────────
 router.get("/shipper/available", authMiddleware, authorizeRole("shipper", "admin"), orderController.getAvailableOrders);

@@ -256,7 +256,7 @@ function CollectionSection({
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={s.hList}
-                keyExtractor={item => item.id}
+                keyExtractor={(item, index) => item._id || item.id || `hlist-${index}`}
                 renderItem={({ item }) => (
                     <RestaurantCard item={item} onPress={() => onPress(item)} />
                 )}
@@ -266,25 +266,49 @@ function CollectionSection({
 }
 
 // ── Main Screen ───────────────────────────────────
+import { restaurantAPI } from '@/constants/api';
+
 export default function ExploreScreen() {
     const router = useRouter();
     const [search, setSearch] = useState('');
-    const [bannerIdx, setBannerIdx] = useState(0);
     const [refreshing, setRefreshing] = useState(false);
     const [showAll, setShowAll] = useState(false);
+    const [realRestaurants, setRealRestaurants] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const handleRestaurantPress = (item: typeof RESTAURANTS[0]) => {
-        router.push({ pathname: '/restaurant/[id]', params: { id: item.id, data: JSON.stringify(item) } } as any);
+    const fetchRestaurants = async () => {
+        try {
+            setLoading(true);
+            const res = await restaurantAPI.getAllRestaurants({ limit: 50 });
+            if (res.success) {
+                setRealRestaurants(res.data || []);
+            }
+        } catch (error) {
+            console.error("Explore fetch error:", error);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    React.useEffect(() => {
+        fetchRestaurants();
+    }, []);
+
+    const handleRestaurantPress = (item: any) => {
+        router.push({ pathname: '/restaurant/[id]', params: { id: item._id || item.id, data: JSON.stringify(item) } } as any);
     };
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        setTimeout(() => setRefreshing(false), 1200);
+        fetchRestaurants();
     }, []);
 
+    const displayRestaurants = realRestaurants.length > 0 ? realRestaurants : RESTAURANTS;
+
     const filteredRestaurants = search.trim()
-        ? RESTAURANTS.filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
-        : RESTAURANTS;
+        ? displayRestaurants.filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
+        : displayRestaurants;
 
     return (
         <View style={s.container}>
@@ -330,22 +354,30 @@ export default function ExploreScreen() {
                             </TouchableOpacity>
                         </View>
                         <View style={s.allGrid}>
-                            {filteredRestaurants.map(item => (
-                                <RestaurantCard key={item.id} item={item} onPress={() => handleRestaurantPress(item)} />
+                            {filteredRestaurants.map((item, idx) => (
+                                <RestaurantCard key={item._id || item.id || `explore-${idx}`} item={item} onPress={() => handleRestaurantPress(item)} />
                             ))}
                         </View>
                     </View>
                 ) : (
                     <>
-                        {COLLECTIONS.map(col => (
-                            <CollectionSection
-                                key={col.id}
-                                title={col.title}
-                                subtitle={col.subtitle}
-                                data={col.data}
-                                onPress={handleRestaurantPress}
-                            />
-                        ))}
+                        {COLLECTIONS.map(col => {
+                            const collectionData = realRestaurants.length > 0
+                                ? (col.id === 'topRated' ? realRestaurants.filter(r => r.rating >= 4.5)
+                                    : col.id === 'new' ? realRestaurants.slice(0, 5)
+                                        : realRestaurants.filter(r => r.deliveryFee === 0))
+                                : col.data;
+
+                            return (
+                                <CollectionSection
+                                    key={col.id}
+                                    title={col.title}
+                                    subtitle={col.subtitle}
+                                    data={collectionData}
+                                    onPress={handleRestaurantPress}
+                                />
+                            );
+                        })}
 
                         {/* Show All Button */}
                         <TouchableOpacity style={s.showAllButton} onPress={() => setShowAll(true)} activeOpacity={0.85}>

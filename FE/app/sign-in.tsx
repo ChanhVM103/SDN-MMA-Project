@@ -298,7 +298,7 @@ const s = StyleSheet.create({
     bottomLink: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
     bottomLinkText: { fontSize: 14, color: AppColors.gray },
     bottomLinkAction: { fontSize: 14, fontWeight: '700', color: AppColors.primary },
-    toast: { position: 'absolute', top: 0, left: 20, right: 20, zIndex: 999, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16, paddingHorizontal: 20, borderRadius: 16, ...Platform.select({ ios: { top: 56, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12 }, android: { top: 36, elevation: 10 }, default: { top: 20 } }) },
+    toast: { position: 'absolute', left: 20, right: 20, zIndex: 999, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16, paddingHorizontal: 20, borderRadius: 16, ...Platform.select({ ios: { top: 56, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12 }, android: { top: 36, elevation: 10 }, default: { top: 20 } }) },
     toastSuccess: { backgroundColor: '#2D6A4F' },
     toastError: { backgroundColor: '#DC2626' },
     toastText: { flex: 1, color: '#fff', fontSize: 15, fontWeight: '600' },

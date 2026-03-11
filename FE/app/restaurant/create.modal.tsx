@@ -17,61 +17,93 @@ interface MenuItem {
     emoji: string;
     category: string;
     isBestSeller?: boolean;
-    isNew?: boolean;
+    addons?: any[];
 }
 
 interface CreateModalProps {
     visible: boolean;
     item: MenuItem | null;
     onClose: () => void;
-    onConfirm: (selectedSize: string, selectedToppings: string[]) => void;
+    onConfirm: (selectedOptions: Record<string, string[]>, qty: number) => void;
 }
 
-const SIZES = [
-    { id: 'S', label: 'Nhỏ (Small)', price: 0 },
-    { id: 'M', label: 'Vừa (Medium)', price: 5000 },
-    { id: 'L', label: 'Lớn (Large)', price: 10000 },
-];
-
-const TOPPINGS = [
-    { id: 'sugar', label: 'Đường', price: 2000 },
-    { id: 'boba', label: 'Trân Châu', price: 5000 },
-    { id: 'jelly', label: 'Thạch', price: 3000 },
-    { id: 'pudding', label: 'Pudding', price: 4000 },
-    { id: 'coconut', label: 'Nước Cốt Dừa', price: 3000 },
-    { id: 'aloe', label: 'Nha Đam', price: 2000 },
-];
-
 export default function CreateModalPage({ visible, item, onClose, onConfirm }: CreateModalProps) {
-    const [selectedSize, setSelectedSize] = useState('M');
-    const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
+    const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({});
+    const [qty, setQty] = useState(1);
 
-    const handleToppingToggle = (toppingId: string) => {
-        setSelectedToppings(prev =>
-            prev.includes(toppingId)
-                ? prev.filter(id => id !== toppingId)
-                : [...prev, toppingId]
-        );
+    // Reset default selections when modal opens
+    React.useEffect(() => {
+        if (visible && item && item.addons) {
+            const defaults: Record<string, string[]> = {};
+            item.addons.forEach(group => {
+                // Pre-select first option if required
+                if (group.isRequired && group.options && group.options.length > 0) {
+                    defaults[group.name] = [group.options[0].name];
+                } else {
+                    defaults[group.name] = [];
+                }
+            });
+            setSelectedOptions(defaults);
+            setQty(1); // Reset quantity when modal opens
+        }
+    }, [visible, item]);
+
+    const handleOptionToggle = (groupName: string, optionName: string, isSingleChoice: boolean) => {
+        setSelectedOptions(prev => {
+            const currentSelected = prev[groupName] || [];
+
+            if (isSingleChoice) {
+                // If single choice, replace the current selection
+                return { ...prev, [groupName]: [optionName] };
+            } else {
+                // Multi-select: toggle
+                const isSelected = currentSelected.includes(optionName);
+                if (isSelected) {
+                    return { ...prev, [groupName]: currentSelected.filter(n => n !== optionName) };
+                } else {
+                    return { ...prev, [groupName]: [...currentSelected, optionName] };
+                }
+            }
+        });
     };
 
     const handleConfirm = () => {
-        onConfirm(selectedSize, selectedToppings);
-        setSelectedSize('M');
-        setSelectedToppings([]);
+        // Validate required groups
+        if (item?.addons) {
+            for (const group of item.addons) {
+                if (group.isRequired) {
+                    const selected = selectedOptions[group.name] || [];
+                    if (selected.length === 0) {
+                        alert(`Vui lòng chọn ${group.name}`);
+                        return;
+                    }
+                }
+            }
+        }
+
+        onConfirm(selectedOptions, qty);
+        setSelectedOptions({});
+        setQty(1);
     };
 
     const handleClose = () => {
-        setSelectedSize('M');
-        setSelectedToppings([]);
+        setSelectedOptions({});
+        setQty(1);
         onClose();
     };
 
-    const sizePrice = SIZES.find(s => s.id === selectedSize)?.price || 0;
-    const toppingPrice = selectedToppings.reduce((total, toppingId) => {
-        const topping = TOPPINGS.find(t => t.id === toppingId);
-        return total + (topping?.price || 0);
-    }, 0);
-    const totalPrice = (item?.price || 0) + sizePrice + toppingPrice;
+    let addonsPrice = 0;
+    if (item?.addons) {
+        item.addons.forEach(group => {
+            const selected = selectedOptions[group.name] || [];
+            selected.forEach(optName => {
+                const optDef = group.options.find((o: any) => o.name === optName);
+                if (optDef && optDef.price) addonsPrice += optDef.price;
+            });
+        });
+    }
+
+    const totalPrice = ((item?.price || 0) + addonsPrice) * qty;
 
     if (!item) return null;
 
@@ -84,7 +116,7 @@ export default function CreateModalPage({ visible, item, onClose, onConfirm }: C
                         <TouchableOpacity onPress={handleClose}>
                             <Ionicons name="close" size={24} color={AppColors.charcoal} />
                         </TouchableOpacity>
-                        <Text style={s.headerTitle}>Tùy chỉnh đơn hàng</Text>
+                        <Text style={s.headerTitle}>Tùy chỉnh món</Text>
                         <View style={{ width: 24 }} />
                     </View>
 
@@ -95,69 +127,94 @@ export default function CreateModalPage({ visible, item, onClose, onConfirm }: C
                                 <Text style={s.emoji}>{item.emoji}</Text>
                             </View>
                             <Text style={s.productName}>{item.name}</Text>
-                            <Text style={s.productDesc}>{item.description}</Text>
+                            {!!item.description && (
+                                <Text style={s.productDesc}>{item.description}</Text>
+                            )}
                             <Text style={s.productPrice}>{item.price.toLocaleString('vi-VN')}đ</Text>
                         </View>
 
-                        {/* Size Selection */}
-                        <View style={s.section}>
-                            <Text style={s.sectionTitle}>Chọn Size</Text>
-                            <View style={s.optionsGroup}>
-                                {SIZES.map(size => (
-                                    <TouchableOpacity
-                                        key={size.id}
-                                        style={[
-                                            s.option,
-                                            selectedSize === size.id && s.optionSelected,
-                                        ]}
-                                        onPress={() => setSelectedSize(size.id)}
-                                    >
-                                        <View style={s.optionLeftContent}>
-                                            <Text style={[
-                                                s.optionLabel,
-                                                selectedSize === size.id && s.optionLabelSelected,
-                                            ]}>
-                                                {size.label}
-                                            </Text>
-                                        </View>
-                                        <Text style={[
-                                            s.optionPrice,
-                                            selectedSize === size.id && s.optionPriceSelected,
-                                        ]}>
-                                            +{size.price.toLocaleString('vi-VN')}đ
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        {/* Custom Addons */}
+                        {(item.addons || []).map((group: any, idx: number) => {
+                            const isSingleChoice = group.isRequired || group.maxOptions === 1;
+                            const isRequired = group.isRequired;
 
-                        {/* Toppings Selection */}
-                        <View style={s.section}>
-                            <Text style={s.sectionTitle}>Topping (Tùy chọn)</Text>
-                            <View style={s.toppingsGrid}>
-                                {TOPPINGS.map(topping => (
-                                    <TouchableOpacity
-                                        key={topping.id}
-                                        style={[
-                                            s.toppingItem,
-                                            selectedToppings.includes(topping.id) && s.toppingItemSelected,
-                                        ]}
-                                        onPress={() => handleToppingToggle(topping.id)}
-                                    >
-                                        <View style={s.checkbox}>
-                                            {selectedToppings.includes(topping.id) && (
-                                                <Ionicons name="checkmark" size={14} color="#fff" />
-                                            )}
-                                        </View>
-                                        <Text style={s.toppingLabel}>{topping.label}</Text>
-                                        <Text style={s.toppingPrice}>+{topping.price.toLocaleString('vi-VN')}đ</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                            return (
+                                <View key={idx} style={s.section}>
+                                    <View style={s.sectionHeader}>
+                                        <Text style={s.sectionTitle}>{group.name}</Text>
+                                        <Text style={s.sectionSubtext}>
+                                            {isRequired ? '(Bắt buộc)' : isSingleChoice ? '(Chọn 1)' : '(Tùy chọn)'}
+                                        </Text>
+                                    </View>
+
+                                    <View style={isSingleChoice ? s.optionsGroup : s.toppingsGrid}>
+                                        {(group.options || []).map((opt: any, optIdx: number) => {
+                                            const isSelected = (selectedOptions[group.name] || []).includes(opt.name);
+
+                                            if (isSingleChoice) {
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={optIdx}
+                                                        style={[s.option, isSelected && s.optionSelected]}
+                                                        onPress={() => handleOptionToggle(group.name, opt.name, true)}
+                                                    >
+                                                        <View style={s.optionLeftContent}>
+                                                            <Text style={[s.optionLabel, isSelected && s.optionLabelSelected]}>
+                                                                {opt.name}
+                                                            </Text>
+                                                        </View>
+                                                        <Text style={[s.optionPrice, isSelected && s.optionPriceSelected]}>
+                                                            {opt.price ? `+${opt.price.toLocaleString('vi-VN')}đ` : 'Miễn phí'}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            } else {
+                                                // Checkbox style
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={optIdx}
+                                                        style={[s.toppingItem, isSelected && s.toppingItemSelected]}
+                                                        onPress={() => handleOptionToggle(group.name, opt.name, false)}
+                                                    >
+                                                        <View style={s.checkbox}>
+                                                            {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+                                                        </View>
+                                                        <Text style={s.toppingLabel}>{opt.name}</Text>
+                                                        <Text style={s.toppingPrice}>
+                                                            {opt.price ? `+${opt.price.toLocaleString('vi-VN')}đ` : 'Miễn phí'}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            }
+                                        })}
+                                    </View>
+                                </View>
+                            );
+                        })}
 
                         <View style={{ height: 20 }} />
                     </ScrollView>
+
+                        {/* Quantity Selector */}
+                        <View style={s.qtySection}>
+                            <Text style={s.qtyLabel}>Số lượng</Text>
+                            <View style={s.qtyControls}>
+                                <TouchableOpacity
+                                    style={[s.qtyBtn, qty <= 1 && s.qtyBtnDisabled]}
+                                    onPress={() => setQty(Math.max(1, qty - 1))}
+                                    disabled={qty <= 1}
+                                >
+                                    <Ionicons name="remove" size={18} color={qty <= 1 ? '#ccc' : AppColors.primary} />
+                                </TouchableOpacity>
+                                <Text style={s.qtyText}>{qty}</Text>
+                                <TouchableOpacity
+                                    style={s.qtyBtn}
+                                    onPress={() => setQty(qty + 1)}
+                                >
+                                    <Ionicons name="add" size={18} color={AppColors.primary} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
 
                     {/* Footer */}
                     <View style={s.footer}>
@@ -166,13 +223,8 @@ export default function CreateModalPage({ visible, item, onClose, onConfirm }: C
                             <Text style={s.totalPrice}>{totalPrice.toLocaleString('vi-VN')}đ</Text>
                         </View>
                         <TouchableOpacity style={s.confirmBtn} onPress={handleConfirm}>
-                            <LinearGradient
-                                colors={['#FF6B35', '#E55A2B']}
-                                style={s.confirmBtnGradient}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                            >
-                                <Text style={s.confirmBtnText}>Thêm vào giỏ hàng</Text>
+                            <LinearGradient colors={['#FF6B35', '#E55A2B']} style={s.confirmBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                                <Text style={s.confirmBtnText}>Thêm {qty} vào giỏ hàng</Text>
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>
@@ -251,11 +303,21 @@ const s = StyleSheet.create({
     section: {
         marginBottom: 24,
     },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
     sectionTitle: {
         fontSize: 14,
         fontWeight: '700',
         color: AppColors.charcoal,
-        marginBottom: 12,
+    },
+    sectionSubtext: {
+        fontSize: 12,
+        color: AppColors.gray,
+        fontWeight: '500',
     },
     optionsGroup: {
         gap: 10,
@@ -369,5 +431,45 @@ const s = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         color: '#fff',
+    },
+    qtySection: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F9FAFB',
+        borderRadius: BorderRadius.md,
+        padding: 14,
+        marginBottom: 16,
+    },
+    qtyLabel: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: AppColors.charcoal,
+    },
+    qtyControls: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+    },
+    qtyBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#FFF3ED',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: AppColors.primary,
+    },
+    qtyBtnDisabled: {
+        borderColor: '#E5E7EB',
+        backgroundColor: '#F9FAFB',
+    },
+    qtyText: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: AppColors.charcoal,
+        minWidth: 28,
+        textAlign: 'center',
     },
 });

@@ -31,21 +31,28 @@ export default function ProfileScreen() {
     }, []);
 
     const handleLogout = () => {
-        Alert.alert(
-            'Đăng xuất',
-            'Bạn có chắc muốn đăng xuất?',
-            [
-                { text: 'Hủy', style: 'cancel' },
-                {
-                    text: 'Đăng xuất',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await logout();
-                        router.replace('/sign-in' as any);
+        if (Platform.OS === 'web') {
+            const confirmed = window.confirm('Bạn có chắc muốn đăng xuất?');
+            if (confirmed) {
+                logout().then(() => router.replace('/sign-in' as any));
+            }
+        } else {
+            Alert.alert(
+                'Đăng xuất',
+                'Bạn có chắc muốn đăng xuất?',
+                [
+                    { text: 'Hủy', style: 'cancel' },
+                    {
+                        text: 'Đăng xuất',
+                        style: 'destructive',
+                        onPress: async () => {
+                            await logout();
+                            router.replace('/sign-in' as any);
+                        },
                     },
-                },
-            ]
-        );
+                ]
+            );
+        }
     };
 
     const handlePickAvatar = async () => {
@@ -139,13 +146,14 @@ export default function ProfileScreen() {
     };
 
     const menuItems = [
+        ...(user?.role === 'brand' || user?.role === 'restaurant'
+            ? [{ icon: 'storefront-outline' as const, label: 'Shop của tôi', color: '#10B981', route: '/restaurant/dashboard' }]
+            : []),
         { icon: 'create-outline' as const, label: 'Chỉnh sửa hồ sơ', color: '#FF6B35', route: '/edit-profile' },
         { icon: 'key-outline' as const, label: 'Đổi mật khẩu', color: '#6C5CE7', route: '/change-password' },
         { icon: 'receipt-outline' as const, label: 'Lịch sử đơn hàng', color: '#FF6B35', route: '/(tabs)/orders' },
         { icon: 'heart-outline' as const, label: 'Yêu thích', color: '#EF4444', route: '/(tabs)/favorites' },
         { icon: 'location-outline' as const, label: 'Địa chỉ giao hàng', color: '#2D6A4F', route: undefined },
-        { icon: 'notifications-outline' as const, label: 'Thông báo', color: '#FFB627', route: undefined },
-        { icon: 'settings-outline' as const, label: 'Cài đặt', color: '#9CA3AF', route: undefined },
     ];
 
     return (

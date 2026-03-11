@@ -25,6 +25,7 @@ import MostOrderedSection from '@/components/home/MostOrderedSection';
 import FlashSaleSection from '@/components/home/FlashSaleSection';
 import SalePopup from '@/components/SalePopup';
 import BrandSection from '@/components/home/BrandSection';
+import NewArrivalsSection from '@/components/home/NewArrivalsSection';
 import { getRestaurantsByTags, getTopRatedRestaurants, getFlashSaleRestaurants } from '@/constants/restaurant-api';
 
 const { width } = Dimensions.get('window');
@@ -192,7 +193,7 @@ export default function HomeScreen() {
         const res = await getTopRatedRestaurants();
         if (res && Array.isArray(res) && res.length > 0) {
           let dishes: any[] = [];
-          const gradients = [
+          const gradients: readonly [string, string][] = [
             ['#FF6B35', '#FF8F65'], ['#2D6A4F', '#52B788'],
             ['#6C5CE7', '#A29BFE'], ['#E17055', '#FAB1A0']
           ];
@@ -207,7 +208,7 @@ export default function HomeScreen() {
                     rating: r.rating || 4.5,
                     time: r.deliveryTime ? `${r.deliveryTime} phút` : '20 phút',
                     emoji: m.emoji || '🍔',
-                    gradient: gradients[dishes.length % gradients.length] as readonly [string, string],
+                    gradient: gradients[dishes.length % gradients.length],
                   });
                 }
               });
@@ -583,7 +584,8 @@ export default function HomeScreen() {
               </ScrollView>
             </FadeInView>
 
-            {/* ── New Sections (separate components) ── */}
+            {/* ── New Sections ────────────────── */}
+            <NewArrivalsSection />
             <FlashSaleSection />
             <TopRatedSection />
             <NearbySection />

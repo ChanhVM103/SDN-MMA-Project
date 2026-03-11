@@ -1,18 +1,27 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
     View, Text, StyleSheet, SectionList, TouchableOpacity,
-    Animated, Platform, Dimensions, ScrollView, Image,
+    Animated, Platform, Dimensions, ScrollView, Image, Modal, FlatList,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { useOrder } from '@/constants/order-context';
+import { useAuth } from '@/constants/auth-context';
+import { orderAPI, restaurantAPI, productAPI, API_BASE_URL } from '@/constants/api';
 import CreateModalPage from './create.modal';
 import ConfirmOrderScreen from '@/components/ConfirmOrderScreen';
 
 const { width, height } = Dimensions.get('window');
 const HERO_HEIGHT = 240;
+
+const resolveImage = (image: string) => {
+    if (!image || typeof image !== 'string') return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80';
+    if (image.startsWith('http') || image.startsWith('data:image')) return image;
+    const base = API_BASE_URL.replace(/\/api$/, '');
+    return image.startsWith('/') ? `${base}${image}` : `${base}/${image}`;
+};
 
 interface MenuItem {
     id: string;
@@ -24,6 +33,8 @@ interface MenuItem {
     isBestSeller?: boolean;
     isNew?: boolean;
     isCustomizable?: boolean;
+    addons?: any[];
+    image?: string;
 }
 
 interface SectionData {
@@ -70,7 +81,15 @@ function MenuCard({ item, qty, onAdd, onRemove }: { item: MenuItem; qty: number;
     return (
         <View style={s.menuItem}>
             <View style={s.menuImgBox}>
-                <Text style={s.menuEmoji}>{item.emoji}</Text>
+                {item.image ? (
+                    <Image
+                        source={{ uri: resolveImage(item.image) }}
+                        style={s.menuImg}
+                        resizeMode="cover"
+                    />
+                ) : (
+                    <Text style={s.menuEmoji}>{item.emoji}</Text>
+                )}
                 {item.isBestSeller && (
                     <View style={s.bestTag}>
                         <Text style={s.bestTagText}>🔥 Bán chạy</Text>
@@ -110,73 +129,158 @@ function MenuCard({ item, qty, onAdd, onRemove }: { item: MenuItem; qty: number;
 }
 
 export default function RestaurantDetailScreen() {
-    const { id, data } = useLocalSearchParams<{ id: string; data: string }>();
+    const { id, data, highlightProduct } = useLocalSearchParams<{ id: string; data: string; highlightProduct: string }>();
     const router = useRouter();
     const { addOrder } = useOrder();
+    const { user, token } = useAuth();
 
     const [restaurant, setRestaurant] = useState<any>(null);
     const [sections, setSections] = useState<SectionData[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('');
-    const [cart, setCart] = useState<Record<string, number>>({});
-    const [cartDetails, setCartDetails] = useState<Record<string, { size: string, toppings: string[] }>>({});
+    const [cartLines, setCartLines] = useState<{
+        lineId: string;
+        itemId: string;
+        qty: number;
+        selectedOptions: Record<string, string[]>;
+    }[]>([]);
 
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
     const [showConfirmOrder, setShowConfirmOrder] = useState(false);
+    const [showCartDrawer, setShowCartDrawer] = useState(false);
 
     const scrollY = useRef(new Animated.Value(0)).current;
     const sectionListRef = useRef<SectionList>(null);
     const tabScrollRef = useRef<ScrollView>(null);
 
     useEffect(() => {
-        try {
-            const parsed = JSON.parse(data || '{}');
-            setRestaurant(parsed);
+        const loadRestaurantAndProducts = async () => {
+            try {
+                let fetchId = id;
 
-            const grouped: Record<string, MenuItem[]> = {};
-            (parsed.menu || []).forEach((item: MenuItem) => {
-                if (!grouped[item.category]) grouped[item.category] = [];
-                grouped[item.category].push(item);
-            });
-            const secs = Object.keys(grouped).map(cat => ({ title: cat, data: grouped[cat] }));
-            setSections(secs);
-            if (secs.length > 0) setActiveTab(secs[0].title);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setTimeout(() => setLoading(false), 800);
-        }
-    }, []);
+                // Fallback: try to extract ID from passed data if not in URL
+                if (!fetchId) {
+                    try {
+                        const parsed = JSON.parse(data || '{}');
+                        fetchId = parsed?._id || parsed?.id;
+                    } catch { }
+                }
+
+                if (!fetchId) {
+                    setLoading(false);
+                    return;
+                }
+
+                // Always fetch fresh restaurant info from the API
+                try {
+                    const restRes = await restaurantAPI.getRestaurantById(fetchId);
+                    if (restRes.success) {
+                        setRestaurant(restRes.data);
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch restaurant info", err);
+                    // Fallback to passed data if API fails
+                    try {
+                        setRestaurant(JSON.parse(data || '{}'));
+                    } catch { }
+                }
+
+                const res = await productAPI.getProductsByRestaurant(fetchId, { limit: 100 });
+                // Correct mapping: res.data is the array of products
+                const products = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+
+                const grouped: Record<string, MenuItem[]> = {};
+                products.forEach((product: any) => {
+                    if (product.isAvailable === false) return;
+
+                    const category = product.category || 'Thực đơn';
+                    if (!grouped[category]) grouped[category] = [];
+                    grouped[category].push({
+                        id: product._id,
+                        name: product.name,
+                        description: product.description || '',
+                        price: product.price || 0,
+                        emoji: product.emoji || '🍽️',
+                        image: product.image, // Keep raw image for resolution later
+                        category: category,
+                        addons: product.addons || [],
+                        isCustomizable: product.addons && product.addons.length > 0
+                    });
+                });
+
+                const secs = Object.keys(grouped).map(cat => ({ title: cat, data: grouped[cat] }));
+                setSections(secs);
+                if (secs.length > 0) setActiveTab(secs[0].title);
+
+                // Auto-highlight/open product if requested
+                if (highlightProduct) {
+                    const productToHighlight = products.find((p: any) => p._id === highlightProduct);
+                    if (productToHighlight) {
+                        const menuItemToHighlight: MenuItem = {
+                            id: productToHighlight._id,
+                            name: productToHighlight.name,
+                            description: productToHighlight.description || '',
+                            price: productToHighlight.price || 0,
+                            emoji: productToHighlight.emoji || '🍽️',
+                            image: productToHighlight.image,
+                            category: productToHighlight.category || 'Thực đơn',
+                            addons: productToHighlight.addons || [],
+                            isCustomizable: productToHighlight.addons && productToHighlight.addons.length > 0
+                        };
+
+                        if (menuItemToHighlight.isCustomizable) {
+                            setSelectedItem(menuItemToHighlight);
+                            setModalVisible(true);
+                        } else {
+                            setCartLines(prev => [...prev, {
+                                lineId: `${menuItemToHighlight.id}_${Date.now()}`,
+                                itemId: menuItemToHighlight.id,
+                                qty: 1,
+                                selectedOptions: {},
+                            }]);
+                        }
+                    }
+                }
+
+            } catch (e) {
+                console.error("Fetch products failed", e);
+            } finally {
+                setTimeout(() => setLoading(false), 500);
+            }
+        };
+
+        loadRestaurantAndProducts();
+    }, [id, data]);
 
     const navBg = scrollY.interpolate({ inputRange: [HERO_HEIGHT - 80, HERO_HEIGHT - 40], outputRange: [0, 1], extrapolate: 'clamp' });
     const heroOpacity = scrollY.interpolate({ inputRange: [0, HERO_HEIGHT - 60], outputRange: [1, 0], extrapolate: 'clamp' });
 
-    const getSizePrice = (size: string): number => {
-        const sizes: Record<string, number> = { 'S': 0, 'M': 5000, 'L': 10000 };
-        return sizes[size] || 0;
-    };
-
-    const getToppingPrice = (toppingId: string): number => {
-        const toppings: Record<string, number> = {
-            'sugar': 2000, 'boba': 5000, 'jelly': 3000,
-            'pudding': 4000, 'coconut': 3000, 'aloe': 2000,
-        };
-        return toppings[toppingId] || 0;
-    };
-
-    const calculateItemPrice = (itemId: string): number => {
-        const item = sections.flatMap(s => s.data).find(i => i.id === itemId);
-        const details = cartDetails[itemId] || { size: 'M', toppings: [] };
+    // Calculate price for a single cart line
+    const calculateLinePrice = (line: typeof cartLines[0]): number => {
+        const item = sections.flatMap(s => s.data).find(i => i.id === line.itemId);
         const basePrice = item?.price || 0;
-        const sizePrice = getSizePrice(details.size);
-        const toppingPrice = details.toppings.reduce((sum: number, t: string) => sum + getToppingPrice(t), 0);
-        return basePrice + sizePrice + toppingPrice;
+        if (!line.selectedOptions || !item?.addons) return basePrice;
+
+        let addonsPrice = 0;
+        item.addons.forEach(addonGroup => {
+            const selectedInGroup = line.selectedOptions[addonGroup.name] || [];
+            selectedInGroup.forEach(optName => {
+                const optionDef = addonGroup.options.find((o: any) => o.name === optName);
+                if (optionDef) addonsPrice += (optionDef.price || 0);
+            });
+        });
+        return basePrice + addonsPrice;
     };
 
-    const cartTotal = Object.values(cart).reduce((a, b) => a + b, 0);
-    const cartTotalPrice = Object.entries(cart).reduce((total, [itemId, qty]) => {
-        return total + calculateItemPrice(itemId) * qty;
+    // Get total qty for a specific product (across all lines)
+    const getItemQty = (itemId: string): number => {
+        return cartLines.filter(l => l.itemId === itemId).reduce((sum, l) => sum + l.qty, 0);
+    };
+
+    const cartTotal = cartLines.reduce((sum, l) => sum + l.qty, 0);
+    const cartTotalPrice = cartLines.reduce((total, line) => {
+        return total + calculateLinePrice(line) * line.qty;
     }, 0);
 
     const handleTabPress = (title: string, idx: number) => {
@@ -189,78 +293,149 @@ export default function RestaurantDetailScreen() {
 
     const handleAdd = (itemId: string, item: MenuItem) => {
         if (item.isCustomizable) {
+            // Always open modal for customizable items
             setSelectedItem(item);
             setModalVisible(true);
         } else {
-            setCart(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) + 1 }));
+            // For non-customizable items, merge into existing line or create new
+            setCartLines(prev => {
+                const existing = prev.find(l => l.itemId === itemId && Object.keys(l.selectedOptions).length === 0);
+                if (existing) {
+                    return prev.map(l => l.lineId === existing.lineId ? { ...l, qty: l.qty + 1 } : l);
+                }
+                return [...prev, {
+                    lineId: `${itemId}_${Date.now()}`,
+                    itemId,
+                    qty: 1,
+                    selectedOptions: {},
+                }];
+            });
         }
     };
 
-    const handleModalConfirm = (selectedSize: string, selectedToppings: string[]) => {
+    const handleModalConfirm = (selectedOptions: Record<string, any[]>, qty: number = 1) => {
         if (selectedItem) {
-            setCart(prev => ({ ...prev, [selectedItem.id]: (prev[selectedItem.id] || 0) + 1 }));
-            setCartDetails(prev => ({ ...prev, [selectedItem.id]: { size: selectedSize, toppings: selectedToppings } }));
+            setCartLines(prev => [...prev, {
+                lineId: `${selectedItem.id}_${Date.now()}`,
+                itemId: selectedItem.id,
+                qty,
+                selectedOptions,
+            }]);
             setModalVisible(false);
             setSelectedItem(null);
         }
     };
 
     const handleRemove = (itemId: string) => {
-        setCart(prev => {
-            const newCart = { ...prev };
-            if (newCart[itemId] > 1) {
-                newCart[itemId]--;
+        setCartLines(prev => {
+            // Find the last line for this product
+            const idx = [...prev].reverse().findIndex(l => l.itemId === itemId);
+            if (idx === -1) return prev;
+            const realIdx = prev.length - 1 - idx;
+            const line = prev[realIdx];
+
+            if (line.qty > 1) {
+                return prev.map((l, i) => i === realIdx ? { ...l, qty: l.qty - 1 } : l);
             } else {
-                delete newCart[itemId];
-                setCartDetails(prevDetails => {
-                    const newDetails = { ...prevDetails };
-                    delete newDetails[itemId];
-                    return newDetails;
-                });
+                return prev.filter((_, i) => i !== realIdx);
             }
-            return newCart;
         });
     };
 
     const getCartItems = () => {
-        return Object.entries(cart).map(([itemId, qty]) => {
-            const item = sections.flatMap(s => s.data).find(i => i.id === itemId);
-            const details = cartDetails[itemId] || { size: 'M', toppings: [] };
+        return cartLines.map(line => {
+            const item = sections.flatMap(s => s.data).find(i => i.id === line.itemId);
+
+            // Format toppings string for backend
+            let toppingsStr = '';
+            if (line.selectedOptions) {
+                const optionNames = Object.values(line.selectedOptions).flat();
+                toppingsStr = optionNames.join(', ');
+            }
+
             return {
-                id: itemId,
+                id: line.itemId,
+                lineId: line.lineId,
                 name: item?.name || '',
-                price: calculateItemPrice(itemId),
+                price: calculateLinePrice(line),
                 emoji: item?.emoji || '',
-                qty,
-                size: details.size,
-                toppings: details.toppings,
+                qty: line.qty,
+                toppings: toppingsStr ? [toppingsStr] : [],
             };
         });
+    };
+
+    // Cart line manipulation for cart drawer
+    const handleLineQtyChange = (lineId: string, delta: number) => {
+        setCartLines(prev => prev.map(l => {
+            if (l.lineId !== lineId) return l;
+            const newQty = l.qty + delta;
+            return newQty >= 1 ? { ...l, qty: newQty } : l;
+        }));
+    };
+
+    const handleLineRemove = (lineId: string) => {
+        setCartLines(prev => prev.filter(l => l.lineId !== lineId));
+    };
+
+    const getLineToppingsStr = (line: typeof cartLines[0]): string => {
+        if (!line.selectedOptions) return '';
+        return Object.values(line.selectedOptions).flat().join(', ');
     };
 
     const handleDeliveryClick = () => {
         setShowConfirmOrder(true);
     };
 
-    const handleConfirmOrder = () => {
-        const deliveryFee = restaurant?.deliveryFee || 0;
-        const order = {
-            id: `${Date.now()}`,
-            restaurantId: restaurant?._id || id,
-            restaurantName: restaurant?.name || 'Nhà hàng',
-            restaurantAddress: restaurant?.address || 'Quận 11, TP. HCM',
-            totalPrice: cartTotalPrice + deliveryFee,
-            itemCount: cartTotal,
-            status: 'ORDERED' as const,
-            createdAt: new Date().toISOString(),
-            items: getCartItems(),
-        };
+    const handleConfirmOrder = async () => {
+        try {
+            const deliveryFee = restaurant?.deliveryFee || 0;
+            const items = getCartItems();
 
-        addOrder(order);
-        setShowConfirmOrder(false);
-        setCart({});
-        setCartDetails({});
-        router.replace({ pathname: '/', params: { orderSuccess: '1' } } as any);
+            const order = {
+                id: `${Date.now()}`,
+                restaurantName: restaurant?.name || 'Nhà hàng',
+                restaurantAddress: restaurant?.address || 'Quận 11, TP. HCM',
+                totalPrice: cartTotalPrice + deliveryFee,
+                itemCount: cartTotal,
+                status: 'ORDERED' as const,
+                createdAt: new Date().toISOString(),
+                items: items,
+            };
+
+            if (token) {
+                // Use the restaurant ID from this page - this is the restaurant we're ordering FROM
+                const realRestId = restaurant?._id || restaurant?.id || id;
+
+                if (realRestId) {
+                    const apiItems = items.map(item => ({
+                        productId: item.id,
+                        name: item.name,
+                        price: item.price,
+                        quantity: item.qty,
+                        emoji: item.emoji,
+                        note: item.toppings?.join(', ') || ''
+                    }));
+
+                    await orderAPI.createOrder(token, {
+                        restaurantId: realRestId,
+                        items: apiItems,
+                        deliveryFee,
+                        deliveryAddress: '123 Test Street'
+                    });
+                }
+            }
+
+            // Fallback: still save in local App context just in case
+            addOrder(order);
+            setShowConfirmOrder(false);
+            setCartLines([]);
+            router.replace({ pathname: '/', params: { orderSuccess: '1' } } as any);
+        } catch (error: any) {
+            console.error("Error creating order detail:", error);
+            const errorMsg = error.message || (error.data?.message) || "Lỗi tạo đơn hàng!";
+            Platform.OS === 'web' ? window.alert(errorMsg) : alert(errorMsg);
+        }
     };
 
     if (loading) {
@@ -297,7 +472,7 @@ export default function RestaurantDetailScreen() {
             <SectionList
                 ref={sectionListRef}
                 sections={sections}
-                keyExtractor={item => item.id}
+                keyExtractor={(item, index) => item._id || item.id || `hlist-${index}`}
                 showsVerticalScrollIndicator={false}
                 stickySectionHeadersEnabled
                 onScroll={Animated.event(
@@ -308,7 +483,7 @@ export default function RestaurantDetailScreen() {
                 ListHeaderComponent={
                     <View>
                         <View style={s.hero}>
-                            <Image source={{ uri: restaurant.image }} style={s.heroImg} resizeMode="cover" />
+                            <Image source={{ uri: resolveImage(restaurant.image) }} style={s.heroImg} resizeMode="cover" />
                             <LinearGradient colors={['transparent', 'rgba(0,0,0,0.5)']} style={s.heroOverlay} />
                         </View>
 
@@ -325,8 +500,8 @@ export default function RestaurantDetailScreen() {
 
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                                 <View style={s.tagsRow}>
-                                    {(restaurant.tags || []).map((tag: string) => (
-                                        <View key={tag} style={s.tag}>
+                                    {(restaurant.tags || []).map((tag: string, idx: number) => (
+                                        <View key={`${tag}-${idx}`} style={s.tag}>
                                             <Text style={s.tagText}>{tag}</Text>
                                         </View>
                                     ))}
@@ -336,20 +511,20 @@ export default function RestaurantDetailScreen() {
                             <View style={s.statsBox}>
                                 <View style={s.statItem}>
                                     <Ionicons name="star" size={18} color="#FFB627" />
-                                    <Text style={s.statVal}>{restaurant.rating}</Text>
+                                    <Text style={s.statVal}>{restaurant.rating || '4.5'}</Text>
                                     <Text style={s.statSub}>Đánh giá</Text>
                                 </View>
                                 <View style={s.statDivider} />
                                 <View style={s.statItem}>
                                     <Ionicons name="time-outline" size={18} color={AppColors.primary} />
-                                    <Text style={s.statVal}>{restaurant.deliveryTime}p</Text>
+                                    <Text style={s.statVal}>{restaurant.deliveryTime || '20'}p</Text>
                                     <Text style={s.statSub}>Dặt hàng</Text>
                                 </View>
                                 <View style={s.statDivider} />
                                 <View style={s.statItem}>
                                     <Ionicons name="bicycle-outline" size={18} color={AppColors.primary} />
                                     <Text style={s.statVal}>
-                                        {restaurant.deliveryFee === 0 ? 'Free' : `${(restaurant.deliveryFee / 1000).toFixed(0)}k`}
+                                        {(restaurant.deliveryFee === 0 || !restaurant.deliveryFee) ? 'Free' : `${(restaurant.deliveryFee / 1000).toFixed(0)}k`}
                                     </Text>
                                     <Text style={s.statSub}>Phí ship</Text>
                                 </View>
@@ -386,7 +561,7 @@ export default function RestaurantDetailScreen() {
                 renderItem={({ item }) => (
                     <MenuCard
                         item={item}
-                        qty={cart[item.id] || 0}
+                        qty={getItemQty(item.id)}
                         onAdd={() => handleAdd(item.id, item)}
                         onRemove={() => handleRemove(item.id)}
                     />
@@ -397,7 +572,7 @@ export default function RestaurantDetailScreen() {
 
             {cartTotal > 0 && (
                 <View style={s.footer}>
-                    <TouchableOpacity style={s.footerCartSection}>
+                    <TouchableOpacity style={s.footerCartSection} onPress={() => setShowCartDrawer(true)}>
                         <Ionicons name="cart-outline" size={24} color={AppColors.primary} />
                         <View>
                             <Text style={s.footerLabel}>Giỏ hàng</Text>
@@ -423,6 +598,95 @@ export default function RestaurantDetailScreen() {
                     </TouchableOpacity>
                 </View>
             )}
+
+            {/* ── Cart Drawer Modal ── */}
+            <Modal visible={showCartDrawer} transparent animationType="slide">
+                <View style={cd.overlay}>
+                    <TouchableOpacity style={cd.overlayBg} activeOpacity={1} onPress={() => setShowCartDrawer(false)} />
+                    <View style={cd.container}>
+                        <View style={cd.header}>
+                            <Text style={cd.headerTitle}>🛒 Giỏ hàng ({cartTotal} món)</Text>
+                            <TouchableOpacity onPress={() => setShowCartDrawer(false)}>
+                                <Ionicons name="close" size={24} color={AppColors.charcoal} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={cd.content} showsVerticalScrollIndicator={false}>
+                            {cartLines.length === 0 ? (
+                                <View style={cd.emptyBox}>
+                                    <Text style={{ fontSize: 48 }}>🛒</Text>
+                                    <Text style={cd.emptyText}>Giỏ hàng trống</Text>
+                                </View>
+                            ) : (
+                                cartLines.map((line, idx) => {
+                                    const item = sections.flatMap(sec => sec.data).find(i => i.id === line.itemId);
+                                    const toppings = getLineToppingsStr(line);
+                                    const linePrice = calculateLinePrice(line);
+                                    return (
+                                        <View key={line.lineId} style={cd.lineItem}>
+                                            <View style={cd.lineTop}>
+                                                <View style={cd.lineEmojiBox}>
+                                                    {item?.image ? (
+                                                        <Image source={{ uri: resolveImage(item.image) }} style={cd.lineImg} resizeMode="cover" />
+                                                    ) : (
+                                                        <Text style={{ fontSize: 28 }}>{item?.emoji || '🍽️'}</Text>
+                                                    )}
+                                                </View>
+                                                <View style={cd.lineInfo}>
+                                                    <Text style={cd.lineName} numberOfLines={1}>{item?.name || 'Món'}</Text>
+                                                    {!!toppings && (
+                                                        <Text style={cd.lineToppings} numberOfLines={2}>+ {toppings}</Text>
+                                                    )}
+                                                    <Text style={cd.linePrice}>{linePrice.toLocaleString('vi-VN')}đ</Text>
+                                                </View>
+                                                <TouchableOpacity style={cd.lineDeleteBtn} onPress={() => handleLineRemove(line.lineId)}>
+                                                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                                                </TouchableOpacity>
+                                            </View>
+                                            <View style={cd.lineBottom}>
+                                                <View style={cd.lineQtyControls}>
+                                                    <TouchableOpacity
+                                                        style={[cd.lineQtyBtn, line.qty <= 1 && cd.lineQtyBtnDisabled]}
+                                                        onPress={() => handleLineQtyChange(line.lineId, -1)}
+                                                        disabled={line.qty <= 1}
+                                                    >
+                                                        <Ionicons name="remove" size={16} color={line.qty <= 1 ? '#ccc' : AppColors.primary} />
+                                                    </TouchableOpacity>
+                                                    <Text style={cd.lineQtyText}>{line.qty}</Text>
+                                                    <TouchableOpacity style={cd.lineQtyBtn} onPress={() => handleLineQtyChange(line.lineId, 1)}>
+                                                        <Ionicons name="add" size={16} color={AppColors.primary} />
+                                                    </TouchableOpacity>
+                                                </View>
+                                                <Text style={cd.lineSubtotal}>{(linePrice * line.qty).toLocaleString('vi-VN')}đ</Text>
+                                            </View>
+                                            {idx < cartLines.length - 1 && <View style={cd.lineDivider} />}
+                                        </View>
+                                    );
+                                })
+                            )}
+                        </ScrollView>
+
+                        {cartLines.length > 0 && (
+                            <View style={cd.footer}>
+                                <View style={cd.footerRow}>
+                                    <Text style={cd.footerLabel}>Tổng ({cartTotal} món)</Text>
+                                    <Text style={cd.footerTotal}>{cartTotalPrice.toLocaleString('vi-VN')}đ</Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={cd.orderBtn}
+                                    activeOpacity={0.8}
+                                    onPress={() => { setShowCartDrawer(false); handleDeliveryClick(); }}
+                                >
+                                    <LinearGradient colors={['#FF6B35', '#E55A2B']} style={cd.orderBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                                        <Ionicons name="bicycle" size={20} color="#fff" />
+                                        <Text style={cd.orderBtnText}>Đặt hàng</Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </View>
+                </View>
+            </Modal>
 
             <CreateModalPage
                 visible={modalVisible}
@@ -529,7 +793,9 @@ const s = StyleSheet.create({
         backgroundColor: '#FFF3ED',
         justifyContent: 'center', alignItems: 'center',
         marginRight: 14, position: 'relative',
+        overflow: 'hidden',
     },
+    menuImg: { width: '100%', height: '100%' },
     menuEmoji: { fontSize: 40 },
     bestTag: {
         position: 'absolute', bottom: -6, left: -4,
@@ -664,4 +930,72 @@ const sk = StyleSheet.create({
     l1: { height: 14, backgroundColor: '#E5E7EB', borderRadius: 7, width: '70%' },
     l2: { height: 11, backgroundColor: '#F3F4F6', borderRadius: 6, width: '90%' },
     l3: { height: 16, backgroundColor: '#FFF3ED', borderRadius: 8, width: '30%' },
+});
+
+// Cart Drawer styles
+const cd = StyleSheet.create({
+    overlay: { flex: 1, justifyContent: 'flex-end' },
+    overlayBg: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+    container: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 24, borderTopRightRadius: 24,
+        maxHeight: '80%',
+        ...Platform.select({
+            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.15, shadowRadius: 12 },
+            android: { elevation: 10 },
+        }),
+    },
+    header: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: 20, paddingTop: 18, paddingBottom: 14,
+        borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+    },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: AppColors.charcoal },
+    content: { paddingHorizontal: 16, paddingTop: 12 },
+    emptyBox: { alignItems: 'center', paddingVertical: 40, gap: 12 },
+    emptyText: { fontSize: 15, color: AppColors.gray, fontWeight: '600' },
+    lineItem: { paddingVertical: 12 },
+    lineTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    lineEmojiBox: {
+        width: 52, height: 52, borderRadius: 12,
+        backgroundColor: '#FFF3ED', justifyContent: 'center', alignItems: 'center',
+        overflow: 'hidden',
+    },
+    lineImg: { width: '100%', height: '100%' },
+    lineInfo: { flex: 1, gap: 2 },
+    lineName: { fontSize: 14, fontWeight: '700', color: AppColors.charcoal },
+    lineToppings: { fontSize: 11, color: AppColors.primary, fontWeight: '500' },
+    linePrice: { fontSize: 13, fontWeight: '600', color: AppColors.gray },
+    lineDeleteBtn: {
+        width: 34, height: 34, borderRadius: 10,
+        backgroundColor: '#FEE2E2', justifyContent: 'center', alignItems: 'center',
+    },
+    lineBottom: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        marginTop: 10, paddingLeft: 64,
+    },
+    lineQtyControls: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    lineQtyBtn: {
+        width: 30, height: 30, borderRadius: 8,
+        backgroundColor: '#FFF3ED', justifyContent: 'center', alignItems: 'center',
+        borderWidth: 1.5, borderColor: AppColors.primary,
+    },
+    lineQtyBtnDisabled: { borderColor: '#E5E7EB', backgroundColor: '#F9FAFB' },
+    lineQtyText: { fontSize: 16, fontWeight: '800', color: AppColors.charcoal, minWidth: 24, textAlign: 'center' as const },
+    lineSubtotal: { fontSize: 15, fontWeight: '800', color: AppColors.primary },
+    lineDivider: { height: 1, backgroundColor: '#F3F4F6', marginTop: 12 },
+    footer: {
+        paddingHorizontal: 20, paddingVertical: 14,
+        paddingBottom: Platform.OS === 'ios' ? 30 : 14,
+        borderTopWidth: 1, borderTopColor: '#F3F4F6',
+    },
+    footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    footerLabel: { fontSize: 14, fontWeight: '600', color: AppColors.gray },
+    footerTotal: { fontSize: 18, fontWeight: '800', color: AppColors.primary },
+    orderBtn: { borderRadius: BorderRadius.md, overflow: 'hidden' as const },
+    orderBtnGradient: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        gap: 8, paddingVertical: 14,
+    },
+    orderBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 });

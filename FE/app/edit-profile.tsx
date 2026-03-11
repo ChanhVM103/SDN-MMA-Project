@@ -46,13 +46,22 @@ export default function EditProfileScreen() {
                         phone: phone.trim(),
                         address: address.trim(),
                     });
-                    Alert.alert('Thành công', 'Thông tin đã được cập nhật', [
-                        { text: 'OK', onPress: () => router.back() },
-                    ]);
+                    if (Platform.OS === 'web') {
+                        window.alert('Thông tin đã được cập nhật');
+                        router.back();
+                    } else {
+                        Alert.alert('Thành công', 'Thông tin đã được cập nhật', [
+                            { text: 'OK', onPress: () => router.back() },
+                        ]);
+                    }
                 }
             }
         } catch (error: any) {
-            Alert.alert('Lỗi', error.message || 'Không thể cập nhật thông tin');
+            if (Platform.OS === 'web') {
+                window.alert(error.message || 'Không thể cập nhật thông tin');
+            } else {
+                Alert.alert('Lỗi', error.message || 'Không thể cập nhật thông tin');
+            }
         } finally {
             setLoading(false);
         }

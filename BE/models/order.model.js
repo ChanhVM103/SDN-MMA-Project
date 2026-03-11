@@ -24,6 +24,7 @@ const orderSchema = new mongoose.Schema(
       required: true,
     },
     restaurantName: { type: String, required: true },
+    restaurantAddress: { type: String, default: "" },
 
     // Shipper được giao đơn
     shipper: {
@@ -81,6 +82,9 @@ const orderSchema = new mongoose.Schema(
 
     // Thời gian giao ước tính (phút)
     estimatedDeliveryTime: { type: Number, default: 30 },
+
+    // Đã đánh giá chưa
+    isReviewed: { type: Boolean, default: false },
 
     // Lịch sử trạng thái
     statusHistory: [

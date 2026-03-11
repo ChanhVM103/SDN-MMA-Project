@@ -13,7 +13,7 @@ import KeyboardAvoidingWrapper from '@/components/KeyboardAvoidingWrapper';
 
 export default function ChangePasswordScreen() {
     const router = useRouter();
-    const { token } = useAuth();
+    const { token, logout } = useAuth();
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -45,18 +45,43 @@ export default function ChangePasswordScreen() {
         setLoading(true);
         try {
             if (!token) {
-                Alert.alert('Lỗi', 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+                if (Platform.OS === 'web') {
+                    window.alert('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+                } else {
+                    Alert.alert('Lỗi', 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+                }
+                logout(); // Call logout if token is missing
                 return;
             }
-            await authAPI.changePassword(token, {
+            const res = await authAPI.changePassword(token, {
                 currentPassword,
                 newPassword,
             });
-            Alert.alert('Thành công', 'Mật khẩu đã được thay đổi', [
-                { text: 'OK', onPress: () => router.back() },
-            ]);
+            if (res.success) {
+                if (Platform.OS === 'web') {
+                    window.alert('Mật khẩu đã được thay đổi');
+                    router.back();
+                } else {
+                    Alert.alert('Thành công', 'Mật khẩu đã được thay đổi', [
+                        { text: 'OK', onPress: () => router.back() }
+                    ]);
+                }
+            }
         } catch (error: any) {
-            Alert.alert('Lỗi', error.message || 'Không thể đổi mật khẩu. Vui lòng thử lại.');
+            if (error.response?.status === 401) {
+                if (Platform.OS === 'web') {
+                    window.alert('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+                } else {
+                    Alert.alert('Lỗi', 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+                }
+                logout();
+            } else {
+                if (Platform.OS === 'web') {
+                    window.alert(error.message || 'Không thể đổi mật khẩu. Vui lòng thử lại.');
+                } else {
+                    Alert.alert('Lỗi', error.message || 'Không thể đổi mật khẩu. Vui lòng thử lại.');
+                }
+            }
         } finally {
             setLoading(false);
         }

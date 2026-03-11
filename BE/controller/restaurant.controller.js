@@ -231,14 +231,63 @@ const adminCreateRestaurant = async (req, res) => {
 
 /**
  * PUT /api/restaurants/:id
- * Update restaurant
+ * Update restaurant (supports partial updates)
  */
 const updateRestaurant = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = validateAndBuildRestaurantData(req.body);
-    if (req.body.owner) {
-      updateData.owner = req.body.owner;
+    const body = req.body;
+    const updateData = {};
+
+    // String fields - only include if provided
+    const stringFields = ["name", "image", "distance", "address", "phone", "description", "openingHours", "thumbnail"];
+    for (const field of stringFields) {
+      if (body[field] !== undefined) {
+        updateData[field] = typeof body[field] === "string" ? body[field].trim() : body[field];
+      }
+    }
+
+    // Numeric fields - only include if provided
+    const numericFields = ["rating", "reviews", "discountPercent", "deliveryTime", "deliveryFee", "latitude", "longitude", "totalOrders"];
+    for (const field of numericFields) {
+      if (body[field] !== undefined) {
+        const num = Number(body[field]);
+        if (Number.isNaN(num)) {
+          return res.status(400).json({ success: false, message: `Field '${field}' must be a number` });
+        }
+        updateData[field] = num;
+      }
+    }
+
+    // Boolean fields
+    const booleanFields = ["isFlashSale", "isOpen"];
+    for (const field of booleanFields) {
+      if (body[field] !== undefined) {
+        updateData[field] = Boolean(body[field]);
+      }
+    }
+
+    // Tags
+    if (body.tags !== undefined) {
+      updateData.tags = parseTags(body.tags);
+    }
+
+    // Type
+    if (body.type !== undefined) {
+      if (!["food", "drink"].includes(body.type)) {
+        return res.status(400).json({ success: false, message: "Field 'type' must be either 'food' or 'drink'" });
+      }
+      updateData.type = body.type;
+    }
+
+    // Owner (admin only)
+    if (body.owner) {
+      updateData.owner = body.owner;
+    }
+
+    // Images array
+    if (body.images !== undefined) {
+      updateData.images = Array.isArray(body.images) ? body.images : [];
     }
 
     const restaurant = await restaurantService.updateRestaurant(id, updateData);

@@ -22,13 +22,9 @@ const decrementRestaurantOrders = async (restaurantId) => {
 
 // Luồng trạng thái hợp lệ (Admin)
 const STATUS_FLOW = {
-  pending: ["confirmed", "cancelled"],
-  confirmed: ["preparing", "cancelled"],
-  preparing: ["ready_for_pickup", "delivering"],
-  ready_for_pickup: ["shipper_accepted"],
-  shipper_accepted: ["delivering"],
-  delivering: ["shipper_delivered", "delivered"],
-  shipper_delivered: ["delivered"],
+  pending: ["preparing", "cancelled"], // Skip confirmed, go straight to preparing
+  preparing: ["delivering"],
+  delivering: ["delivered"],
   delivered: [],
   cancelled: [],
 };
@@ -93,6 +89,7 @@ const createOrder = async (req, res) => {
       user: req.userId,
       restaurant: restaurantId,
       restaurantName: restaurant.name,
+      restaurantAddress: restaurant.address,
       items,
       subtotal,
       deliveryFee,
@@ -134,7 +131,8 @@ const getMyOrders = async (req, res) => {
 
     const total = await Order.countDocuments(filter);
     const orders = await Order.find(filter)
-      .populate("restaurant", "name image deliveryTime")
+      .populate("restaurant", "name image deliveryTime address")
+      .select("+restaurantAddress")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));
@@ -394,15 +392,11 @@ const getOrderStats = async (req, res) => {
 // BRAND (NHÀ HÀNG) ROUTES
 // ════════════════════════════════════════════════
 
-// Luồng trạng thái hợp lệ cho Brand
+// Luồng trạng thái hợp lệ cho Brand (nhà hàng chỉ được xác nhận → chuẩn bị → giao)
 const BRAND_STATUS_FLOW = {
-  pending: ["confirmed", "cancelled"],
-  confirmed: ["preparing", "cancelled"],
-  preparing: ["ready_for_pickup"],
-  ready_for_pickup: [],
-  shipper_accepted: [],
-  delivering: [],
-  shipper_delivered: ["delivered"],
+  pending: ["preparing", "cancelled"], // Skip confirmed
+  preparing: ["delivering"],
+  delivering: [], // Brand can no longer mark as delivered, customer must confirm
   delivered: [],
   cancelled: [],
 };
@@ -427,11 +421,13 @@ const getRestaurantStats = async (req, res) => {
       // Doanh thu đã thu (isPaid = true)
       Order.aggregate([
         { $match: { restaurant: restaurant._id, isPaid: true } },
-        { $group: {
-          _id: "$paymentMethod",
-          total: { $sum: "$paidAmount" },
-          count: { $sum: 1 },
-        }},
+        {
+          $group: {
+            _id: "$paymentMethod",
+            total: { $sum: "$paidAmount" },
+            count: { $sum: 1 },
+          }
+        },
       ]),
       // Đếm theo trạng thái
       Order.aggregate([
@@ -450,7 +446,8 @@ const getRestaurantStats = async (req, res) => {
     revenueAgg.forEach(r => { revenueByMethod[r._id] = { total: r.total, count: r.count }; });
 
     const countByStatus = {};
-    statusAgg.forEach(s => { countByStatus[s._id] = s.count; });
+    let actualTotalOrders = 0;
+    statusAgg.forEach(s => { countByStatus[s._id] = s.count; actualTotalOrders += s.count; });
 
     // Nếu isPaid chưa được set đúng, dùng fallback từ delivered orders
     const vnpayRevenuePaid = revenueByMethod["vnpay"]?.total || 0;
@@ -467,7 +464,7 @@ const getRestaurantStats = async (req, res) => {
         cashRevenue,
         totalRevenue: vnpayRevenue + cashRevenue,
         countByStatus,
-        totalOrders: restaurant.totalOrders || 0,
+        totalOrders: actualTotalOrders,
       },
     });
   } catch (err) {
@@ -773,6 +770,53 @@ const shipperCompleteDelivery = async (req, res) => {
   }
 };
 
+// ── PATCH /api/orders/:id/confirm-received ───────
+// User: Xác nhận đã nhận được hàng (ghi nhận doanh thu cho nhà hàng)
+const confirmOrderReceived = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+    }
+
+    if (order.user.toString() !== req.userId) {
+      return res.status(403).json({ success: false, message: "Bạn không có quyền xác nhận đơn hàng này" });
+    }
+
+    if (order.status !== "delivering") {
+      return res.status(400).json({
+        success: false,
+        message: `Xác nhận thất bại. Đơn hàng đang ở trạng thái "${order.status}", không phải "delivering"`,
+      });
+    }
+
+    order.status = "delivered";
+    if (order.paymentMethod === "cash") {
+      order.isPaid = true;
+      order.paidAmount = order.total;
+      order.paidAt = new Date();
+      await addRestaurantRevenue(order.restaurant._id || order.restaurant, order.total);
+    }
+
+    order.statusHistory.push({
+      status: "delivered",
+      changedBy: req.userId,
+      note: "Khách hàng xác nhận đã nhận được hàng",
+    });
+
+    await order.save();
+
+    return res.json({
+      success: true,
+      message: "Xác nhận nhận hàng thành công!",
+      data: order,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -785,6 +829,7 @@ module.exports = {
   getRestaurantOrders,
   updateOrderStatusByBrand,
   brandHandoverToShipper,
+  confirmOrderReceived,
   brandConfirmDelivered,
   getAvailableOrders,
   getShipperOrders,

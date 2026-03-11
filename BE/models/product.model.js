@@ -25,32 +25,45 @@ const productSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      required: [true, "Product category is required"],
       trim: true,
+      default: "",
     },
     type: {
       type: String,
       enum: ["food", "drink"],
       default: "food",
     },
-    allowToppings: {
-      type: Boolean,
-      default: false,
-    },
-    toppings: {
+    addons: {
       type: [
         {
           name: {
             type: String,
             required: true,
             trim: true,
-            maxlength: [60, "Topping name must be less than 60 characters"],
+            maxlength: [60, "Addon group name must be less than 60 characters"],
           },
-          extraPrice: {
-            type: Number,
-            default: 0,
-            min: [0, "Topping extra price cannot be negative"],
+          isRequired: {
+            type: Boolean,
+            default: false,
           },
+          multiple: {
+            type: Boolean,
+            default: false,
+          },
+          options: [
+            {
+              name: {
+                type: String,
+                required: true,
+                trim: true,
+              },
+              price: {
+                type: Number,
+                default: 0,
+                min: [0, "Option price cannot be negative"],
+              },
+            },
+          ],
         },
       ],
       default: [],

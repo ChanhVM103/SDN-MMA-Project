@@ -138,3 +138,122 @@ export const authAPI = {
             body: JSON.stringify({ avatar }),
         }),
 };
+
+/**
+ * Product API endpoints
+ */
+export const productAPI = {
+    getAllProducts: (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: number }) => {
+        let query = `?page=${params?.page || 1}&limit=${params?.limit || 10}`;
+        if (params?.search) query += `&search=${params.search}`;
+        if (params?.sortBy) query += `&sortBy=${params.sortBy}`;
+        if (params?.sortOrder) query += `&sortOrder=${params.sortOrder}`;
+        return apiRequest(`/products${query}`, { method: 'GET' });
+    },
+    getProductsByRestaurant: (restaurantId: string, params?: { limit?: number }) => {
+        let query = params?.limit ? `?limit=${params.limit}` : '';
+        return apiRequest(`/products/restaurant/${restaurantId}${query}`, { method: 'GET' });
+    },
+
+    getProductById: (productId: string) =>
+        apiRequest(`/products/${productId}`, { method: 'GET' }),
+
+    createProduct: (token: string, restaurantId: string, data: any) =>
+        apiRequest(`/products/restaurant/${restaurantId}/products`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: JSON.stringify(data),
+        }),
+
+    updateProduct: (token: string, restaurantId: string, productId: string, data: any) =>
+        apiRequest(`/products/${productId}`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}` },
+            body: JSON.stringify(data),
+        }),
+
+    deleteProduct: (token: string, restaurantId: string, productId: string) =>
+        apiRequest(`/products/${productId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+        }),
+};
+
+/**
+ * Restaurant API endpoints
+ */
+export const restaurantAPI = {
+    getAllRestaurants: (params?: { page?: number; limit?: number; type?: string }) => {
+        let query = `?page=${params?.page || 1}&limit=${params?.limit || 20}`;
+        if (params?.type) query += `&type=${params.type}`;
+        return apiRequest(`/restaurants${query}`, { method: "GET" });
+    },
+
+    getRestaurantById: (id: string) =>
+        apiRequest(`/restaurants/${id}`, { method: 'GET' }),
+
+    getMyRestaurant: (token: string) =>
+        apiRequest('/restaurants/my-restaurant', {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token}` }
+        }),
+
+    updateRestaurant: (token: string, id: string, data: any) =>
+        apiRequest(`/restaurants/${id}`, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token}` },
+            body: JSON.stringify(data),
+        }),
+};
+
+/**
+ * Order API endpoints
+ */
+export const orderAPI = {
+    createOrder: (token: string, data: any) =>
+        apiRequest('/orders', {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: JSON.stringify(data),
+        }),
+
+    getMyOrders: (token: string, params?: { status?: string; limit?: number; page?: number }) => {
+        let query = `?page=${params?.page || 1}&limit=${params?.limit || 20}`;
+        if (params?.status) query += `&status=${params.status}`;
+        return apiRequest(`/orders/my${query}`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token}` }
+        });
+    },
+
+    getRestaurantOrders: (token: string, restaurantId: string, params?: { status?: string; limit?: number; page?: number }) => {
+        let query = `?page=${params?.page || 1}&limit=${params?.limit || 20}`;
+        if (params?.status) query += `&status=${params.status}`;
+        return apiRequest(`/orders/restaurant/${restaurantId}${query}`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token}` }
+        });
+    },
+
+    getRestaurantOrderStats: (token: string, restaurantId: string) =>
+        apiRequest(`/orders/restaurant/${restaurantId}/stats`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token}` }
+        }), confirmOrderReceived: (token: string, orderId: string) =>
+            apiRequest(`/orders/${orderId}/confirm-received`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${token}` }
+            }), updateRestaurantOrderStatus: (token: string, restaurantId: string, orderId: string, status: string, note?: string) =>
+                apiRequest(`/orders/${orderId}/brand-status`, {
+                    method: 'PATCH',
+                    headers: { Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ status, note })
+                }),
+
+    cancelRestaurantOrder: (token: string, restaurantId: string, orderId: string, reason: string) =>
+        apiRequest(`/orders/${orderId}/brand-status`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ status: 'cancelled', note: reason })
+        })
+};

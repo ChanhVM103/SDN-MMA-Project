@@ -78,13 +78,13 @@ export default function FlashSaleSection() {
                 <TouchableOpacity><Text style={s.seeAll}>Xem tất cả</Text></TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.scroll} nestedScrollEnabled={true}>
-                {flashDeals.map((item) => {
-                    const itemId = String(item._id || item.id || '');
+                {flashDeals.map((item, idx) => {
+                    const itemId = String(item._id || item.id || `flash-${idx}`);
                     const imageUri = resolveRestaurantImage(item);
                     const showImage = Boolean(imageUri) && !imageErrors[itemId];
 
                     return (
-                        <TouchableOpacity key={item._id || item.id} style={s.card} activeOpacity={0.85} onPress={() => handlePress(item)}>
+                        <TouchableOpacity key={itemId} style={s.card} activeOpacity={0.85} onPress={() => handlePress(item)}>
                             <View style={s.discountBadge}>
                                 <Text style={s.discountText}>-{item.discountPercent || 0}%</Text>
                             </View>

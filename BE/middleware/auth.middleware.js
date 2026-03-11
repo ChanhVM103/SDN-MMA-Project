@@ -10,6 +10,7 @@ const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.log("DEBUG [Auth]: Missing or malformed header:", authHeader);
       return res.status(401).json({
         success: false,
         message: "Access denied. No token provided.",
@@ -32,6 +33,7 @@ const authMiddleware = (req, res, next) => {
       });
     }
 
+    console.log("DEBUG [Auth]: Invalid token:", error.message);
     return res.status(401).json({
       success: false,
       message: "Invalid token.",
@@ -46,6 +48,7 @@ const authMiddleware = (req, res, next) => {
 const authorizeRole = (...allowedRoles) => {
   return (req, res, next) => {
     if (!req.userRole) {
+      console.log("DEBUG [Auth]: Role missing on request. Decoded ID was:", req.userId);
       return res.status(401).json({
         success: false,
         message: "User role not found. Please login again.",
@@ -53,6 +56,7 @@ const authorizeRole = (...allowedRoles) => {
     }
 
     if (!allowedRoles.includes(req.userRole)) {
+      console.log(`DEBUG [Auth]: Forbidden. Role "${req.userRole}" not in allowed:`, allowedRoles);
       return res.status(403).json({
         success: false,
         message: "Access forbidden. Insufficient permissions.",

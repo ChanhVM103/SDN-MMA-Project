@@ -26,14 +26,14 @@ export default function BrandSection() {
         <View style={s.container}>
             <View style={s.header}>
                 <Text style={s.title}>🎁 Gia nhập Foodie Hub</Text>
-                <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+                <TouchableOpacity onPress={() => router.push('/(auth)/register' as any)}>
                     <Text style={s.seeAll}>Trở thành đối tác &gt;</Text>
                 </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.scroll}>
-                {brands.map((brand) => (
+                {brands.map((brand, idx) => (
                     <TouchableOpacity
-                        key={brand._id}
+                        key={brand._id || brand.id || `brand-${idx}`}
                         style={s.card}
                         activeOpacity={0.85}
                     >

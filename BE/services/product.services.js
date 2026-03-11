@@ -1,7 +1,7 @@
 const Product = require("../models/product.model");
 
 const PRODUCT_SELECT_FIELDS =
-  "restaurantId name price image category type allowToppings toppings isBestSeller description isAvailable createdAt updatedAt";
+  "restaurantId name price image category type allowToppings toppings addons isBestSeller description isAvailable createdAt updatedAt";
 
 const sanitizeUpdateData = (updateData = {}) => {
   const safeData = { ...updateData };

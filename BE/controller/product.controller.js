@@ -1,26 +1,5 @@
 const productService = require("../services/product.services");
 
-const normalizeToppings = (toppings, allowToppings, type) => {
-  if (!allowToppings || type !== "drink") {
-    return [];
-  }
-
-  if (!Array.isArray(toppings)) {
-    return [];
-  }
-
-  return toppings
-    .map((item) => {
-      const name = typeof item?.name === "string" ? item.name.trim() : "";
-      const extraPrice = Number(item?.extraPrice ?? 0);
-      if (!name) return null;
-      return {
-        name,
-        extraPrice: Number.isNaN(extraPrice) || extraPrice < 0 ? 0 : extraPrice,
-      };
-    })
-    .filter(Boolean);
-};
 
 /**
  * GET /api/products
@@ -98,8 +77,7 @@ const createProduct = async (req, res) => {
       image,
       category,
       type,
-      allowToppings,
-      toppings,
+      addons,
       isBestSeller,
       description,
       isAvailable,
@@ -134,27 +112,14 @@ const createProduct = async (req, res) => {
       });
     }
 
-    if (!category) {
-      return res.status(400).json({
-        success: false,
-        message: "Product category is required",
-      });
-    }
-
     const productData = {
       restaurantId,
       name,
       price,
       image,
-      category,
+      category: category || "",
       type: type || "food",
-      allowToppings:
-        allowToppings !== undefined ? allowToppings : type === "drink",
-      toppings: normalizeToppings(
-        toppings,
-        allowToppings !== undefined ? allowToppings : type === "drink",
-        type || "food",
-      ),
+      addons: Array.isArray(addons) ? addons : [],
       isBestSeller: isBestSeller || false,
       description: description || "",
       isAvailable: isAvailable !== undefined ? isAvailable : true,
@@ -345,8 +310,7 @@ const createProductForRestaurant = async (req, res) => {
       image,
       category,
       type,
-      allowToppings,
-      toppings,
+      addons,
       description,
       isBestSeller,
       isAvailable,
@@ -374,26 +338,13 @@ const createProductForRestaurant = async (req, res) => {
       });
     }
 
-    if (!category) {
-      return res.status(400).json({
-        success: false,
-        message: "Product category is required",
-      });
-    }
-
     const productData = {
       name,
       price,
       image,
-      category,
+      category: category || "",
       type: type || "food",
-      allowToppings:
-        allowToppings !== undefined ? allowToppings : type === "drink",
-      toppings: normalizeToppings(
-        toppings,
-        allowToppings !== undefined ? allowToppings : type === "drink",
-        type || "food",
-      ),
+      addons: Array.isArray(addons) ? addons : [],
       description: description || "",
       isBestSeller: isBestSeller || false,
       isAvailable: isAvailable !== undefined ? isAvailable : true,

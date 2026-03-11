@@ -32,6 +32,14 @@ export default function RootLayout() {
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <Stack initialRouteName="(tabs)">
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/dashboard" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/products" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/add-product" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/edit-product" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/edit-shop" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/orders" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/finance" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/performance" options={{ headerShown: false }} />
               <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="restaurant/create.modal" options={{ headerShown: false }} />
 

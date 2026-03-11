@@ -7,60 +7,62 @@ const Order = require("../models/order.model");
 exports.createReview = async (req, res) => {
   try {
     const { rating, comment, restaurantId, orderId } = req.body;
-    const userId = req.user._id;
+    const userId = req.userId;
 
-    // Temporary bypass for FE mock orders
-    // const order = await Order.findOne({
-    //   _id: orderId,
-    //   user: userId,
-    //   restaurant: restaurantId,
-    // });
+    // Validate: order must exist, belong to user, and be delivered
+    const order = await Order.findOne({
+      _id: orderId,
+      user: userId,
+    });
 
-    // if (!order) {
-    //   return res.status(404).json({
-    //     success: false,
-    //     message: "Order not found or does not belong to you",
-    //   });
-    // }
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Đơn hàng không tồn tại hoặc không thuộc về bạn",
+      });
+    }
 
-    // if (order.status !== "delivered") {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "You can only review an order after it has been delivered",
-    //   });
-    // }
+    if (order.status !== "delivered") {
+      return res.status(400).json({
+        success: false,
+        message: "Chỉ có thể đánh giá đơn hàng đã giao thành công",
+      });
+    }
 
-    // 3. Check if user already reviewed this order (we also have a DB index for this)
+    // Check if user already reviewed this order
     const existingReview = await Review.findOne({ order: orderId, user: userId });
     if (existingReview) {
       return res.status(400).json({
         success: false,
-        message: "You have already reviewed this order",
+        message: "Bạn đã đánh giá đơn hàng này rồi",
       });
     }
 
-    // 4. Create the review
+    // Create the review
     const review = await Review.create({
       rating,
       comment,
-      restaurant: restaurantId,
+      restaurant: restaurantId || order.restaurant,
       user: userId,
       order: orderId,
     });
 
+    // Mark order as reviewed
+    await Order.findByIdAndUpdate(orderId, { isReviewed: true });
+
     res.status(201).json({
       success: true,
-      message: "Review submitted successfully",
+      message: "Đánh giá đã được gửi thành công",
       data: review,
     });
   } catch (error) {
     console.error("Error creating review:", error);
     // Handle Mongoose duplicate key error specifically if it reaches here
     if (error.code === 11000) {
-        return res.status(400).json({
-            success: false,
-            message: "You have already reviewed this order",
-          });
+      return res.status(400).json({
+        success: false,
+        message: "You have already reviewed this order",
+      });
     }
 
     res.status(500).json({
