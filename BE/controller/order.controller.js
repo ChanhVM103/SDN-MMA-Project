@@ -158,7 +158,8 @@ const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate("restaurant", "name image address phone deliveryTime")
-      .populate("user", "fullName email phone");
+      .populate("user", "fullName email phone")
+      .populate("shipper", "fullName phone avatar");
 
     if (!order) {
       return res
@@ -784,10 +785,10 @@ const confirmOrderReceived = async (req, res) => {
       return res.status(403).json({ success: false, message: "Bạn không có quyền xác nhận đơn hàng này" });
     }
 
-    if (order.status !== "delivering") {
+    if (!["delivering", "shipper_delivered"].includes(order.status)) {
       return res.status(400).json({
         success: false,
-        message: `Xác nhận thất bại. Đơn hàng đang ở trạng thái "${order.status}", không phải "delivering"`,
+        message: `Xác nhận thất bại. Đơn hàng đang ở trạng thái "${order.status}", không phải "delivering" hoặc "shipper_delivered"`,
       });
     }
 

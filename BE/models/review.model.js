@@ -20,6 +20,17 @@ const reviewSchema = new mongoose.Schema(
       ref: "Restaurant",
       required: [true, "Review must belong to a restaurant"],
     },
+    // Đánh giá theo từng món ăn (null = đánh giá tổng thể nhà hàng)
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+      default: null,
+    },
+    // Lưu tên sản phẩm tại thời điểm đánh giá
+    productName: {
+      type: String,
+      default: "",
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -35,15 +46,15 @@ const reviewSchema = new mongoose.Schema(
   }
 );
 
-// Prevent user from submitting multiple reviews for the same order
-reviewSchema.index({ order: 1, user: 1 }, { unique: true });
+// Mỗi user chỉ được review 1 lần / order / product
+// product: null  → đánh giá nhà hàng tổng thể
+// product: <id>  → đánh giá món ăn cụ thể
+reviewSchema.index({ order: 1, user: 1, product: 1 }, { unique: true });
 
-// Static method to calculate average rating and number of reviews
+// Chỉ tính rating nhà hàng từ review tổng thể (product === null)
 reviewSchema.statics.calcAverageRatings = async function (restaurantId) {
   const stats = await this.aggregate([
-    {
-      $match: { restaurant: restaurantId },
-    },
+    { $match: { restaurant: restaurantId, product: null } },
     {
       $group: {
         _id: "$restaurant",
@@ -56,30 +67,25 @@ reviewSchema.statics.calcAverageRatings = async function (restaurantId) {
   if (stats.length > 0) {
     await Restaurant.findByIdAndUpdate(restaurantId, {
       reviews: stats[0].nRating,
-      rating: Math.round(stats[0].avgRating * 10) / 10, // round to 1 decimal place
+      rating: Math.round(stats[0].avgRating * 10) / 10,
     });
   } else {
-    // If all reviews are deleted
-    await Restaurant.findByIdAndUpdate(restaurantId, {
-      reviews: 0,
-      rating: 0,
-    });
+    await Restaurant.findByIdAndUpdate(restaurantId, { reviews: 0, rating: 0 });
   }
 };
 
-// Call calcAverageRatings after saving a new review
 reviewSchema.post("save", function () {
-  this.constructor.calcAverageRatings(this.restaurant);
+  if (!this.product) {
+    this.constructor.calcAverageRatings(this.restaurant);
+  }
 });
 
-// Call calcAverageRatings when updating or deleting a review (findByIdAndUpdate, findByIdAndDelete)
-reviewSchema.pre(/^findOneAnd/, async function (next) {
+reviewSchema.pre(/^findOneAnd/, async function () {
   this.r = await this.clone().findOne();
-  next();
 });
 
 reviewSchema.post(/^findOneAnd/, async function () {
-  if (this.r) {
+  if (this.r && !this.r.product) {
     await this.r.constructor.calcAverageRatings(this.r.restaurant);
   }
 });

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getRestaurantProducts } from "../services/brand-api";
+import { getRestaurantReviews } from "../services/review-api";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
 
@@ -12,6 +13,9 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
   const [addedId, setAddedId] = useState(null); // animation trigger
   const [toppingModal, setToppingModal] = useState(null); // { product }
   const [selectedToppings, setSelectedToppings] = useState([]); // [{name, extraPrice}]
+  const [activeTab, setActiveTab] = useState("menu"); // "menu" | "reviews"
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -30,6 +34,16 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
       finally { setLoading(false); }
     })();
   }, [restaurantId]);
+
+  // Fetch reviews khi chuyển sang tab đánh giá
+  useEffect(() => {
+    if (activeTab !== "reviews" || !restaurantId) return;
+    setReviewsLoading(true);
+    getRestaurantReviews(restaurantId, 1, 20)
+      .then(data => setReviews(data?.data || data || []))
+      .catch(() => setReviews([]))
+      .finally(() => setReviewsLoading(false));
+  }, [activeTab, restaurantId]);
 
   const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
   const filtered = activeCategory ? products.filter(p => p.category === activeCategory) : products;
@@ -130,9 +144,116 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
       </div>
 
       {/* ── BODY ─────────────────────────────── */}
-      <div style={{ display: "flex", maxWidth: 1000, margin: "0 auto", position: "relative" }}>
+      <div style={{ display: "flex", maxWidth: 1000, margin: "0 auto", position: "relative", flexDirection: "column" }}>
 
-        {/* Category sidebar */}
+        {/* ── TAB BAR ── */}
+        <div style={{ display: "flex", background: "#fff", borderBottom: "1px solid #eee", position: "sticky", top: 0, zIndex: 10 }}>
+          {[
+            { key: "menu", label: "🍽️ Thực đơn" },
+            { key: "reviews", label: `⭐ Đánh giá (${restaurant.reviews || 0})` },
+          ].map(tab => (
+            <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
+              flex: 1, padding: "14px 0", border: "none", background: "none", cursor: "pointer",
+              fontSize: 14, fontWeight: activeTab === tab.key ? 700 : 400,
+              color: activeTab === tab.key ? "#ee4d2d" : "#555",
+              borderBottom: activeTab === tab.key ? "2px solid #ee4d2d" : "2px solid transparent",
+              transition: "all 0.2s",
+            }}>{tab.label}</button>
+          ))}
+        </div>
+
+        {/* ── REVIEWS TAB ── */}
+        {activeTab === "reviews" && (
+          <div style={{ padding: "16px", maxWidth: 700, margin: "0 auto", width: "100%" }}>
+            {/* Rating summary */}
+            <div style={{
+              background: "#fff", borderRadius: 14, padding: "20px 24px", marginBottom: 16,
+              display: "flex", alignItems: "center", gap: 24, boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
+            }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 48, fontWeight: 900, color: "#ee4d2d", lineHeight: 1 }}>
+                  {restaurant.rating?.toFixed(1) || "–"}
+                </div>
+                <div style={{ display: "flex", gap: 2, justifyContent: "center", margin: "6px 0 4px" }}>
+                  {[1,2,3,4,5].map(s => (
+                    <span key={s} style={{ fontSize: 18, color: s <= Math.round(restaurant.rating || 0) ? "#f59e0b" : "#e5e7eb" }}>★</span>
+                  ))}
+                </div>
+                <div style={{ fontSize: 12, color: "#9ca3af" }}>{restaurant.reviews || 0} đánh giá</div>
+              </div>
+              <div style={{ flex: 1 }}>
+                {[5,4,3,2,1].map(star => {
+                  const count = reviews.filter(r => Math.round(r.rating) === star).length;
+                  const pct = reviews.length ? (count / reviews.length) * 100 : 0;
+                  return (
+                    <div key={star} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 12, color: "#6b7280", width: 10 }}>{star}</span>
+                      <span style={{ fontSize: 12, color: "#f59e0b" }}>★</span>
+                      <div style={{ flex: 1, height: 6, background: "#f3f4f6", borderRadius: 3, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${pct}%`, background: "#f59e0b", borderRadius: 3, transition: "width 0.5s" }} />
+                      </div>
+                      <span style={{ fontSize: 11, color: "#9ca3af", width: 16 }}>{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Review list */}
+            {reviewsLoading ? (
+              <div style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>⏳ Đang tải đánh giá...</div>
+            ) : reviews.length === 0 ? (
+              <div style={{ textAlign: "center", padding: 40, background: "#fff", borderRadius: 14, color: "#9ca3af" }}>
+                <div style={{ fontSize: 40, marginBottom: 8 }}>💬</div>
+                <div>Chưa có đánh giá nào</div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {reviews.map((review, idx) => (
+                  <div key={review._id || idx} style={{
+                    background: "#fff", borderRadius: 12, padding: "16px 18px",
+                    boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                      {/* Avatar */}
+                      <div style={{
+                        width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+                        background: "linear-gradient(135deg,#ee4d2d,#ff7337)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        color: "#fff", fontWeight: 700, fontSize: 15,
+                      }}>
+                        {(review.user?.fullName || "?")[0].toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>
+                          {review.user?.fullName || "Người dùng"}
+                        </div>
+                        <div style={{ fontSize: 11, color: "#9ca3af" }}>
+                          {new Date(review.createdAt).toLocaleDateString("vi-VN")}
+                        </div>
+                      </div>
+                      {/* Stars */}
+                      <div style={{ display: "flex", gap: 1 }}>
+                        {[1,2,3,4,5].map(s => (
+                          <span key={s} style={{ fontSize: 15, color: s <= review.rating ? "#f59e0b" : "#e5e7eb" }}>★</span>
+                        ))}
+                      </div>
+                    </div>
+                    {review.comment && (
+                      <p style={{ margin: 0, fontSize: 14, color: "#374151", lineHeight: 1.6, paddingLeft: 48 }}>
+                        {review.comment}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── MENU TAB ── */}
+        {activeTab === "menu" && (
+        <div style={{ display: "flex" }}>
         {categories.length > 0 && (
           <aside style={{
             width: 130, flexShrink: 0, position: "sticky", top: 64,
@@ -263,6 +384,8 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
             </div>
           )}
         </main>
+        </div>
+        )}
       </div>
 
       {/* ── STICKY CART BAR ───────────────────── */}
