@@ -22,9 +22,12 @@ const decrementRestaurantOrders = async (restaurantId) => {
 
 // Luồng trạng thái hợp lệ (Admin)
 const STATUS_FLOW = {
-  pending: ["preparing", "cancelled"], // Skip confirmed, go straight to preparing
-  preparing: ["delivering"],
-  delivering: ["delivered"],
+  pending: ["preparing", "cancelled"],
+  preparing: ["shipper_accepted", "ready_for_pickup", "delivering", "cancelled"],
+  ready_for_pickup: ["shipper_accepted", "delivering", "cancelled"],
+  shipper_accepted: ["delivering", "cancelled"],
+  delivering: ["shipper_delivered", "cancelled"], // Buyer cannot confirm from delivering anymore
+  shipper_delivered: ["delivered", "cancelled"],
   delivered: [],
   cancelled: [],
 };
@@ -395,9 +398,12 @@ const getOrderStats = async (req, res) => {
 
 // Luồng trạng thái hợp lệ cho Brand (nhà hàng chỉ được xác nhận → chuẩn bị → giao)
 const BRAND_STATUS_FLOW = {
-  pending: ["preparing", "cancelled"], // Skip confirmed
-  preparing: ["delivering"],
-  delivering: [], // Brand can no longer mark as delivered, customer must confirm
+  pending: ["preparing", "cancelled"],
+  preparing: ["shipper_accepted", "ready_for_pickup", "delivering", "cancelled"],
+  ready_for_pickup: ["shipper_accepted", "delivering", "cancelled"],
+  shipper_accepted: ["delivering", "cancelled"],
+  delivering: ["shipper_delivered", "cancelled"],
+  shipper_delivered: ["delivered", "cancelled"],
   delivered: [],
   cancelled: [],
 };
@@ -489,7 +495,14 @@ const getRestaurantOrders = async (req, res) => {
     }
 
     const filter = { restaurant: restaurantId };
-    if (status) filter.status = status;
+    if (status) {
+      if (status === "delivering") {
+        // Return all intermediate states for the 'Delivering' tab
+        filter.status = { $in: ["ready_for_pickup", "shipper_accepted", "delivering", "shipper_delivered"] };
+      } else {
+        filter.status = status;
+      }
+    }
 
     const total = await Order.countDocuments(filter);
     const orders = await Order.find(filter)
@@ -659,7 +672,11 @@ const brandConfirmDelivered = async (req, res) => {
 // Shipper: Xem các đơn đang chờ giao (ready_for_pickup)
 const getAvailableOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ status: "ready_for_pickup" })
+    // Shipper can see orders that are either being prepared or are ready for pickup
+    const orders = await Order.find({
+      status: { $in: ["preparing", "ready_for_pickup"] },
+      shipper: null // Only orders that haven't been claimed yet
+    })
       .populate("restaurant", "name address image")
       .populate("user", "fullName phone")
       .sort({ createdAt: -1 });
@@ -696,20 +713,26 @@ const shipperAcceptOrder = async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
 
-    if (order.status !== "ready_for_pickup") {
+    if (!["preparing", "ready_for_pickup"].includes(order.status)) {
       return res.status(400).json({ success: false, message: `Đơn hàng không ở trạng thái chờ shipper. Hiện tại: "${order.status}"` });
     }
 
+    if (order.shipper) {
+      return res.status(400).json({ success: false, message: "Đơn hàng này đã có shipper khác nhận rồi" });
+    }
+
     order.shipper = req.userId;
-    order.status = "shipper_accepted";
+    // When a shipper accepts from ready_for_pickup, it usually moves to shipper_accepted (waiting for pickup) or delivering
+    const nextStatus = req.body.status || "shipper_accepted";
+    order.status = nextStatus;
     order.statusHistory.push({
-      status: "shipper_accepted",
+      status: nextStatus,
       changedBy: req.userId,
-      note: "Shipper đã nhận đơn",
+      note: req.body.note || (nextStatus === "delivering" ? "Shipper nhận hàng và đang giao" : "Shipper đã nhận đơn"),
     });
     await order.save();
 
-    return res.json({ success: true, message: "Đã nhận đơn hàng!", data: order });
+    return res.json({ success: true, message: `Đã cập nhật trạng thái thành "${nextStatus}"`, data: order });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
@@ -785,10 +808,10 @@ const confirmOrderReceived = async (req, res) => {
       return res.status(403).json({ success: false, message: "Bạn không có quyền xác nhận đơn hàng này" });
     }
 
-    if (!["delivering", "shipper_delivered"].includes(order.status)) {
+    if (order.status !== "shipper_delivered") {
       return res.status(400).json({
         success: false,
-        message: `Xác nhận thất bại. Đơn hàng đang ở trạng thái "${order.status}", không phải "delivering" hoặc "shipper_delivered"`,
+        message: `Xác nhận thất bại. Bạn chỉ có thể xác nhận sau khi shipper báo đã giao hàng thành công (Trạng thái hiện tại: "${order.status}")`,
       });
     }
 

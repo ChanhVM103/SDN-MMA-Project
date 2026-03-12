@@ -26,8 +26,11 @@ export default function RestaurantOrders() {
     const STATUS_MAP: any = {
         pending: { label: 'Chờ xác nhận', color: '#F59E0B' },
         preparing: { label: 'Đang chuẩn bị', color: '#3B82F6' },
-        delivering: { label: 'Đang giao', color: '#10B981' },
-        delivered: { label: 'Đã giao', color: '#10B981' },
+        ready_for_pickup: { label: 'Chờ shipper lấy', color: '#6B7280' },
+        shipper_accepted: { label: 'Shipper đã nhận đơn', color: '#8B5CF6' },
+        delivering: { label: 'Đang giao hàng', color: '#10B981' },
+        shipper_delivered: { label: 'Shipper báo đã giao', color: '#F472B6' },
+        delivered: { label: 'Đã hoàn thành', color: '#10B981' },
         cancelled: { label: 'Đã hủy', color: '#EF4444' },
     };
 
@@ -215,7 +218,7 @@ export default function RestaurantOrders() {
                                     </>
                                 )}
                                 {activeTab === 'preparing' && (
-                                    <TouchableOpacity style={[s.btn, s.btnPrimary, { flex: 1 }]} onPress={() => handleUpdateStatus(order._id, 'delivering')}>
+                                    <TouchableOpacity style={[s.btn, s.btnPrimary, { flex: 1 }]} onPress={() => handleUpdateStatus(order._id, 'ready_for_pickup')}>
                                         <Text style={s.btnTextPrimary}>Giao cho Shipper</Text>
                                     </TouchableOpacity>
                                 )}

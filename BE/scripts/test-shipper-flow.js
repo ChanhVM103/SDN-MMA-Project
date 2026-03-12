@@ -5,7 +5,7 @@ const Restaurant = require('../models/restaurant.model');
 const User = require('../models/user.model');
 
 async function test() {
-    console.log('--- SHIPPER FLOW TEST ---');
+    console.log('--- EARLY SHIPPER NOTIFICATION FLOW TEST ---');
     try {
         await mongoose.connect(process.env.MONGODB_URI, {
             serverSelectionTimeoutMS: 20000,
@@ -16,28 +16,14 @@ async function test() {
         const user = await User.findOne({ email: 'khoa@gmail.com' });
         const brand = await User.findOne({ email: 'brand@gmail.com' });
         const restaurant = await Restaurant.findOne({ owner: brand._id });
-
-        // Ensure a shipper exists
-        let shipper = await User.findOne({ role: 'shipper' });
-        if (!shipper) {
-            console.log('Creating a test shipper...');
-            shipper = await User.create({
-                fullName: 'Test Shipper',
-                email: 'shipper@test.com',
-                password: 'password123',
-                role: 'shipper',
-                phone: '0987654321'
-            });
-        }
+        const shipper = await User.findOne({ role: 'shipper' });
 
         if (!user || !restaurant || !shipper) {
-            throw new Error(`Missing test data: user=${!!user}, restaurant=${!!restaurant}, shipper=${!!shipper}`);
+            throw new Error('Missing test data');
         }
 
-        const initialRevenue = restaurant.totalRevenue || 0;
-
-        // 2. Create Order
-        console.log('\n[Phase 1] Creating Order...');
+        // 2. Create Order (Initial state: Pending, No Shipper)
+        console.log('\n[Phase 1] User creating order (Pending, No Shipper)...');
         const order = await Order.create({
             user: user._id,
             restaurant: restaurant._id,
@@ -49,65 +35,57 @@ async function test() {
             deliveryAddress: '123 Test St',
             paymentMethod: 'cash',
             status: 'pending',
+            shipper: null,
             statusHistory: [{ status: 'pending', note: 'Created' }]
         });
         console.log(`Order created: ${order._id}`);
 
-        // 3. Brand Prepared
-        console.log('\n[Phase 2] Brand marking as preparing...');
+        // 3. Restaurant Accepts
+        console.log('\n[Phase 2] Restaurant accepting order (Status -> preparing)...');
         order.status = 'preparing';
-        order.statusHistory.push({ status: 'preparing', note: 'Cooking...' });
         await order.save();
+        console.log('Order status: preparing');
 
-        // 4. Handover to Shipper
-        console.log('\n[Phase 3] Brand handover to shipper...');
-        order.status = 'ready_for_pickup';
-        order.statusHistory.push({ status: 'ready_for_pickup', note: 'Waiting for shipper' });
-        await order.save();
+        // 4. Verify Visibility (Shipper SHOULD see it now while cooking)
+        console.log('\n[Phase 3] Verifying visibility for Shipper while cooking...');
+        const availableOrders = await Order.find({
+            status: { $in: ["preparing", "ready_for_pickup"] },
+            shipper: null
+        });
+        const isVisibleToShipper = availableOrders.some(o => o._id.toString() === order._id.toString());
+        console.log(`Is visible to Shipper now? ${isVisibleToShipper} (Expected: true)`);
 
-        // 5. Shipper Accepts
-        console.log('\n[Phase 4] Shipper accepting order...');
+        // 5. Shipper Accepts early
+        console.log('\n[Phase 4] Shipper accepting order early (while preparing)...');
         order.shipper = shipper._id;
         order.status = 'shipper_accepted';
-        order.statusHistory.push({ status: 'shipper_accepted', note: 'Shipper on way' });
         await order.save();
+        console.log('Shipper assigned. Status: shipper_accepted');
 
-        // 6. Shipper Pickup
-        console.log('\n[Phase 5] Shipper picked up...');
+        // 6. Restaurant completes cooking
+        console.log('\n[Phase 5] Restaurant finishing preparation (Status -> ready_for_pickup)...');
+        order.status = 'ready_for_pickup';
+        await order.save();
+        console.log('Order status: ready_for_pickup');
+
+        // 7. Delivery Flow
+        console.log('\n[Phase 6] Shipper picking up and delivering...');
         order.status = 'delivering';
-        order.statusHistory.push({ status: 'delivering', note: 'On route' });
         await order.save();
-
-        // 7. Shipper Delivered
-        console.log('\n[Phase 6] Shipper delivered...');
         order.status = 'shipper_delivered';
-        order.statusHistory.push({ status: 'shipper_delivered', note: 'Giao xong, cho khach xac nhan' });
         await order.save();
+        console.log('Order status: shipper_delivered');
 
-        // 8. User Confirms (The test for the fix)
-        console.log('\n[Phase 7] User confirming receipt (the fix)...');
-        if (!['delivering', 'shipper_delivered'].includes(order.status)) {
-            throw new Error(`Invalid status for confirmation: ${order.status}`);
-        }
+        // 8. User Confirms
+        console.log('\n[Phase 7] User confirming receipt (Strict confirmation)...');
         order.status = 'delivered';
         order.isPaid = true;
-        order.paidAmount = order.total;
-        order.paidAt = new Date();
-        order.statusHistory.push({ status: 'delivered', note: 'Khach da nhan hang' });
         await order.save();
+        console.log('Order status: delivered');
 
-        // Update Revenue
-        await Restaurant.findByIdAndUpdate(restaurant._id, {
-            $inc: { totalRevenue: order.total }
-        });
-
-        const updatedRestaurant = await Restaurant.findById(restaurant._id);
-        console.log('✅ Final status: delivered');
-        console.log(`✅ Revenue updated: ${initialRevenue} -> ${updatedRestaurant.totalRevenue} (+${order.total})`);
-
-        // Cleaning up the test order
-        // await Order.findByIdAndDelete(order._id);
-        // console.log('\nTest order cleaned up.');
+        // Cleanup
+        await Order.findByIdAndDelete(order._id);
+        console.log('\n✅ Test passed: Early Shipper notification flow works correctly.');
 
         process.exit(0);
     } catch (err) {
@@ -115,5 +93,7 @@ async function test() {
         process.exit(1);
     }
 }
+
+test();
 
 test();

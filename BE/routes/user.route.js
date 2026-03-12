@@ -6,6 +6,10 @@ var { authMiddleware, authorizeRole } = require("../middleware/auth.middleware")
 // Public route must be defined before authMiddleware
 router.get("/brands/public", userController.getPublicBrands);
 
+// Favorites (Auth required)
+router.get("/favorites", authMiddleware, userController.getFavorites);
+router.post("/favorites/toggle/:restaurantId", authMiddleware, userController.toggleFavorite);
+
 router.use(authMiddleware, authorizeRole("admin"));
 
 router.get("/stats", userController.getUserStats);

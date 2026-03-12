@@ -17,7 +17,10 @@ export default function OrdersScreen() {
     const STATUS_MAP: any = {
         pending: { label: 'Chờ xác nhận', color: '#F59E0B' },
         preparing: { label: 'Đang chuẩn bị', color: '#3B82F6' },
+        ready_for_pickup: { label: 'Sẵn sàng chờ lấy', color: '#6B7280' },
+        shipper_accepted: { label: 'Shipper đã nhận đơn', color: '#8B5CF6' },
         delivering: { label: 'Đang giao hàng', color: '#10B981' },
+        shipper_delivered: { label: 'Shipper đã tới nơi', color: '#F472B6' },
         delivered: { label: 'Đã giao', color: '#10B981' },
         cancelled: { label: 'Đã hủy', color: '#EF4444' },
     };
@@ -272,7 +275,7 @@ export default function OrdersScreen() {
                             </View>
                         )}
 
-                        {order.status === 'delivering' && (
+                        {order.status === 'shipper_delivered' && (
                             <TouchableOpacity
                                 onPress={() => handleConfirmReceived(order._id || order.id)}
                                 style={[s.reviewBtn, { backgroundColor: '#10B981' }]}

@@ -129,9 +129,41 @@ const deleteUser = async (req, res) => {
     } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
 };
 
+// ── FAVORITES Logic ───────────────────────────────
+const toggleFavorite = async (req, res) => {
+    try {
+        const { restaurantId } = req.params;
+        console.log(`[DEBUG] toggleFavorite for user ${req.userId}, restaurant ${restaurantId}`);
+        const user = await User.findById(req.userId);
+        if (!user) return res.status(404).json({ success: false, message: "Người dùng không tồn tại" });
+
+        const isFavorited = user.favorites.some(id => id.toString() === restaurantId);
+        if (isFavorited) {
+            user.favorites = user.favorites.filter(id => id.toString() !== restaurantId);
+        } else {
+            user.favorites.push(restaurantId);
+        }
+
+        await user.save();
+        return res.json({ success: true, message: isFavorited ? "Đã xóa khỏi danh sách yêu thích" : "Đã thêm vào danh sách yêu thích", isFavorited: !isFavorited });
+    } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
+};
+
+const getFavorites = async (req, res) => {
+    try {
+        const user = await User.findById(req.userId).populate({
+            path: 'favorites',
+            select: 'name image emoji address rating reviews distance tags'
+        });
+        if (!user) return res.status(404).json({ success: false, message: "Người dùng không tồn tại" });
+        return res.json({ success: true, data: user.favorites });
+    } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
+};
+
+
 module.exports = {
     getAllUsers, getUserStats, getUserById,
     adminCreateUser, updateUser, changeUserRole,
     toggleUserActive, resetPassword, deleteUser,
-    getPublicBrands,
+    getPublicBrands, toggleFavorite, getFavorites,
 };

@@ -257,3 +257,20 @@ export const orderAPI = {
             body: JSON.stringify({ status: 'cancelled', note: reason })
         })
 };
+
+/**
+ * User API endpoints (Profile, Favorites, etc.)
+ */
+export const userAPI = {
+    getFavorites: (token: string) =>
+        apiRequest('/users/favorites', {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token}` }
+        }),
+
+    toggleFavorite: (token: string, restaurantId: string) =>
+        apiRequest(`/users/favorites/toggle/${restaurantId}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` }
+        }),
+};
