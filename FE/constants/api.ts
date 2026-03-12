@@ -138,3 +138,34 @@ export const authAPI = {
             body: JSON.stringify({ avatar }),
         }),
 };
+
+/**
+ * Shipper API endpoints
+ */
+export const shipperAPI = {
+    getAvailableOrders: (token: string) =>
+        apiRequest("/orders/shipper/available", {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` },
+        }),
+    getMyOrders: (token: string) =>
+        apiRequest("/orders/shipper/my", {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` },
+        }),
+    acceptOrder: (token: string, orderId: string) =>
+        apiRequest(`/orders/${orderId}/shipper-accept`, {
+            method: "PATCH",
+            headers: { Authorization: `Bearer ${token}` },
+        }),
+    pickupOrder: (token: string, orderId: string) =>
+        apiRequest(`/orders/${orderId}/shipper-pickup`, {
+            method: "PATCH",
+            headers: { Authorization: `Bearer ${token}` },
+        }),
+    completeDelivery: (token: string, orderId: string) =>
+        apiRequest(`/orders/${orderId}/shipper-delivered`, {
+            method: "PATCH",
+            headers: { Authorization: `Bearer ${token}` },
+        }),
+};
