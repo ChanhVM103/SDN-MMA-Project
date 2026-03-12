@@ -42,6 +42,7 @@ export default function RootLayout() {
               <Stack.Screen name="restaurant/performance" options={{ headerShown: false }} />
               <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="restaurant/create.modal" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/promotions" options={{ headerShown: false }} />
 
               <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
               <Stack.Screen name="sign-in" options={{ headerShown: false }} />

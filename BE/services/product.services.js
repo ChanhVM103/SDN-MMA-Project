@@ -1,4 +1,5 @@
 const Product = require("../models/product.model");
+const Promotion = require("../models/promotion.model");
 
 const PRODUCT_SELECT_FIELDS =
   "restaurantId name price image category type allowToppings toppings addons isBestSeller description isAvailable createdAt updatedAt";
@@ -48,8 +49,28 @@ const getAllProducts = async (
       .skip(skip)
       .limit(limit);
 
+    // Attach active promotions
+    const productDocs = await Promise.all(products.map(async (p) => {
+      const activePromo = await Promotion.findOne({
+        productIds: p._id,
+        isActive: true,
+        $or: [
+          { endDate: { $exists: false } },
+          { endDate: { $gt: new Date() } }
+        ]
+      });
+      const pObj = p.toObject();
+      if (activePromo) {
+        pObj.promotion = {
+          name: activePromo.name,
+          discountPercent: activePromo.discountPercent
+        };
+      }
+      return pObj;
+    }));
+
     return {
-      data: products,
+      data: productDocs,
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(total / limit),
@@ -73,7 +94,24 @@ const getProductById = async (id) => {
     if (!product) {
       throw new Error("Product not found");
     }
-    return product;
+
+    const activePromo = await Promotion.findOne({
+      productIds: product._id,
+      isActive: true,
+      $or: [
+        { endDate: { $exists: false } },
+        { endDate: { $gt: new Date() } }
+      ]
+    });
+
+    const pObj = product.toObject();
+    if (activePromo) {
+      pObj.promotion = {
+        name: activePromo.name,
+        discountPercent: activePromo.discountPercent
+      };
+    }
+    return pObj;
   } catch (error) {
     throw new Error(`Error fetching product: ${error.message}`);
   }
@@ -177,8 +215,28 @@ const getProductsByRestaurant = async (
       .skip(skip)
       .limit(limit);
 
+    // Attach active promotions
+    const productDocs = await Promise.all(products.map(async (p) => {
+      const activePromo = await Promotion.findOne({
+        productIds: p._id,
+        isActive: true,
+        $or: [
+          { endDate: { $exists: false } },
+          { endDate: { $gt: new Date() } }
+        ]
+      });
+      const pObj = p.toObject();
+      if (activePromo) {
+        pObj.promotion = {
+          name: activePromo.name,
+          discountPercent: activePromo.discountPercent
+        };
+      }
+      return pObj;
+    }));
+
     return {
-      data: products,
+      data: productDocs,
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(total / limit),

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
@@ -72,6 +73,18 @@ export default function NewArrivalsSection() {
                                         <Text style={s.badgeText}>HOT</Text>
                                     </View>
                                 )}
+                                {item.promotion && (
+                                    <View style={[s.promoBadge, item.isBestSeller && { top: 34 }]}>
+                                        <LinearGradient
+                                            colors={['#EF4444', '#E11D48']}
+                                            style={s.promoGradient}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
+                                        >
+                                            <Text style={s.badgeText}>Giảm {item.promotion.discountPercent}%</Text>
+                                        </LinearGradient>
+                                    </View>
+                                )}
                             </View>
                             <View style={s.info}>
                                 <Text style={s.name} numberOfLines={1}>{item.name}</Text>
@@ -79,7 +92,16 @@ export default function NewArrivalsSection() {
                                     {item.restaurantId?.name || 'Nhà hàng'}
                                 </Text>
                                 <View style={s.footer}>
-                                    <Text style={s.price}>{item.price?.toLocaleString()}đ</Text>
+                                    <View style={s.priceColumn}>
+                                        {item.promotion ? (
+                                            <>
+                                                <Text style={s.price}>{(item.price * (1 - item.promotion.discountPercent / 100)).toLocaleString()}đ</Text>
+                                                <Text style={s.oldPrice}>{item.price.toLocaleString()}đ</Text>
+                                            </>
+                                        ) : (
+                                            <Text style={s.price}>{item.price?.toLocaleString()}đ</Text>
+                                        )}
+                                    </View>
                                     <View style={s.addBtn}>
                                         <Ionicons name="add" size={16} color="#fff" />
                                     </View>
@@ -183,6 +205,31 @@ const s = StyleSheet.create({
         fontSize: 14,
         fontWeight: '800',
         color: AppColors.primary,
+    },
+    priceColumn: { gap: 1 },
+    oldPrice: {
+        fontSize: 10,
+        color: AppColors.gray,
+        textDecorationLine: 'line-through',
+    },
+    promoBadge: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        borderRadius: 8,
+        overflow: 'hidden',
+        alignSelf: 'flex-start',
+        shadowColor: '#EF4444',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3
+    },
+    promoGradient: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     addBtn: {
         width: 24,

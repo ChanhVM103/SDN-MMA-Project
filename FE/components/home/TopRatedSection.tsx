@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
@@ -78,6 +79,16 @@ export default function TopRatedSection() {
                                 <TouchableOpacity style={s.heartBtn} onPress={() => toggleFavorite(item._id || item.id)} activeOpacity={0.7}>
                                     <Ionicons name={isFavorite(item._id || item.id) ? 'heart' : 'heart-outline'} size={18} color={isFavorite(item._id || item.id) ? '#EF4444' : '#999'} />
                                 </TouchableOpacity>
+                                {Number(item.discountPercent) > 0 && (
+                                    <LinearGradient
+                                        colors={['#FF4B2B', '#FF416C']}
+                                        style={s.promoBadge}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                    >
+                                        <Text style={s.promoText}>Giảm {item.discountPercent}%</Text>
+                                    </LinearGradient>
+                                )}
                             </View>
                             <View style={s.info}>
                                 <Text style={s.name} numberOfLines={1}>{item.name}</Text>
@@ -125,4 +136,6 @@ const s = StyleSheet.create({
     tagRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
     tag: { backgroundColor: '#F3F4F6', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
     tagText: { fontSize: 10, fontWeight: '600', color: AppColors.darkGray },
+    promoBadge: { position: 'absolute', bottom: 8, left: 8, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, overflow: 'hidden' },
+    promoText: { fontSize: 11, fontWeight: '800', color: '#fff' },
 });

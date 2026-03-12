@@ -35,6 +35,10 @@ interface MenuItem {
     isCustomizable?: boolean;
     addons?: any[];
     image?: string;
+    promotion?: {
+        name: string;
+        discountPercent: number;
+    };
 }
 
 interface SectionData {
@@ -100,13 +104,32 @@ function MenuCard({ item, qty, onAdd, onRemove }: { item: MenuItem; qty: number;
                         <Text style={s.newTagText}>Mới</Text>
                     </View>
                 )}
+                {item.promotion && (
+                    <LinearGradient
+                        colors={['#EF4444', '#E11D48']}
+                        style={s.promoBadge}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                    >
+                        <Text style={s.promoBadgeText}>-{item.promotion.discountPercent}%</Text>
+                    </LinearGradient>
+                )}
             </View>
             <View style={s.menuInfo}>
                 <Text style={s.menuName}>{item.name}</Text>
                 {!!item.description && (
                     <Text style={s.menuDesc} numberOfLines={2}>{item.description}</Text>
                 )}
-                <Text style={s.menuPrice}>{item.price.toLocaleString('vi-VN')}đ</Text>
+                <View style={s.priceRow}>
+                    {item.promotion ? (
+                        <>
+                            <Text style={s.menuPrice}>{(item.price * (1 - item.promotion.discountPercent / 100)).toLocaleString('vi-VN')}đ</Text>
+                            <Text style={s.oldPrice}>{item.price.toLocaleString('vi-VN')}đ</Text>
+                        </>
+                    ) : (
+                        <Text style={s.menuPrice}>{item.price.toLocaleString('vi-VN')}đ</Text>
+                    )}
+                </View>
             </View>
 
             {qty === 0 ? (
@@ -205,7 +228,8 @@ export default function RestaurantDetailScreen() {
                         image: product.image, // Keep raw image for resolution later
                         category: category,
                         addons: product.addons || [],
-                        isCustomizable: product.addons && product.addons.length > 0
+                        isCustomizable: product.addons && product.addons.length > 0,
+                        promotion: product.promotion
                     });
                 });
 
@@ -257,11 +281,8 @@ export default function RestaurantDetailScreen() {
     const heroOpacity = scrollY.interpolate({ inputRange: [0, HERO_HEIGHT - 60], outputRange: [1, 0], extrapolate: 'clamp' });
 
     // Calculate price for a single cart line
-    const calculateLinePrice = (line: typeof cartLines[0]): number => {
-        const item = sections.flatMap(s => s.data).find(i => i.id === line.itemId);
-        const basePrice = item?.price || 0;
-        if (!line.selectedOptions || !item?.addons) return basePrice;
-
+    const calculateAddonsPrice = (line: typeof cartLines[0], item: MenuItem | undefined): number => {
+        if (!line.selectedOptions || !item?.addons) return 0;
         let addonsPrice = 0;
         item.addons.forEach(addonGroup => {
             const selectedInGroup = line.selectedOptions[addonGroup.name] || [];
@@ -270,6 +291,26 @@ export default function RestaurantDetailScreen() {
                 if (optionDef) addonsPrice += (optionDef.price || 0);
             });
         });
+        return addonsPrice;
+    };
+
+    const calculateLinePrice = (line: typeof cartLines[0]): number => {
+        const item = sections.flatMap(s => s.data).find(i => i.id === line.itemId);
+        let basePrice = item?.price || 0;
+        
+        // Apply promotion discount
+        if (item?.promotion) {
+            basePrice = basePrice * (1 - item.promotion.discountPercent / 100);
+        }
+
+        const addonsPrice = calculateAddonsPrice(line, item);
+        return basePrice + addonsPrice;
+    };
+
+    const calculateOriginalLinePrice = (line: typeof cartLines[0]): number => {
+        const item = sections.flatMap(s => s.data).find(i => i.id === line.itemId);
+        const basePrice = item?.price || 0;
+        const addonsPrice = calculateAddonsPrice(line, item);
         return basePrice + addonsPrice;
     };
 
@@ -358,9 +399,11 @@ export default function RestaurantDetailScreen() {
                 lineId: line.lineId,
                 name: item?.name || '',
                 price: calculateLinePrice(line),
+                originalPrice: calculateOriginalLinePrice(line),
                 emoji: item?.emoji || '',
                 qty: line.qty,
                 toppings: toppingsStr ? [toppingsStr] : [],
+                promotionName: item?.promotion?.name,
             };
         });
     };
@@ -412,6 +455,7 @@ export default function RestaurantDetailScreen() {
                         productId: item.id,
                         name: item.name,
                         price: item.price,
+                        originalPrice: item.originalPrice || item.price,
                         quantity: item.qty,
                         emoji: item.emoji,
                         note: item.toppings?.join(', ') || ''
@@ -530,10 +574,15 @@ export default function RestaurantDetailScreen() {
                                 </View>
                             </View>
 
-                            {restaurant.isFlashSale && (
-                                <View style={s.flashBanner}>
+                            {(restaurant.isFlashSale && Number(restaurant.discountPercent) > 0) && (
+                                <LinearGradient
+                                    colors={['rgba(239, 68, 68, 0.1)', 'rgba(225, 29, 72, 0.1)']}
+                                    style={s.flashBanner}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                >
                                     <Text style={s.flashBannerText}>⚡ Flash Sale - Giảm {restaurant.discountPercent}% hôm nay!</Text>
-                                </View>
+                                </LinearGradient>
                             )}
                         </View>
 
@@ -762,10 +811,20 @@ const s = StyleSheet.create({
     statSub: { fontSize: 11, color: AppColors.gray },
     statDivider: { width: 1, backgroundColor: '#E5E7EB', marginHorizontal: 8 },
     flashBanner: {
-        backgroundColor: '#FEF2F2', borderRadius: BorderRadius.md,
-        padding: 10, borderWidth: 1, borderColor: '#FECACA',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 14,
+        marginTop: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(239, 68, 68, 0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    flashBannerText: { fontSize: 13, fontWeight: '700', color: '#EF4444', textAlign: 'center' },
+    flashBannerText: {
+        color: '#EF4444',
+        fontSize: 14,
+        fontWeight: '800',
+    },
     tabsWrapper: {
         backgroundColor: '#fff',
         borderBottomWidth: 1.5, borderBottomColor: '#F3F4F6',
@@ -810,9 +869,17 @@ const s = StyleSheet.create({
     },
     newTagText: { fontSize: 9, fontWeight: '800', color: '#fff' },
     menuInfo: { flex: 1 },
-    menuName: { fontSize: 14, fontWeight: '700', color: AppColors.charcoal, marginBottom: 4 },
-    menuDesc: { fontSize: 12, color: AppColors.gray, lineHeight: 16, marginBottom: 6 },
+    menuName: { fontSize: 14, fontWeight: '700', color: AppColors.charcoal, marginBottom: 2 },
+    menuDesc: { fontSize: 12, color: AppColors.gray, lineHeight: 16, marginBottom: 4 },
+    priceRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     menuPrice: { fontSize: 15, fontWeight: '800', color: AppColors.primary },
+    oldPrice: { fontSize: 12, color: AppColors.gray, textDecorationLine: 'line-through' },
+    promoBadge: {
+        position: 'absolute', top: 0, left: 0,
+        backgroundColor: '#E63946', paddingHorizontal: 6, paddingVertical: 2,
+        borderBottomRightRadius: 8
+    },
+    promoBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
     addBtn: {
         width: 32, height: 32, borderRadius: 10,
         backgroundColor: AppColors.primary,

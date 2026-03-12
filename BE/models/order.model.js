@@ -5,6 +5,7 @@ const orderItemSchema = new mongoose.Schema({
   productId: { type: String, required: true },
   name: { type: String, required: true },
   price: { type: Number, required: true },
+  originalPrice: { type: Number },
   quantity: { type: Number, required: true, min: 1 },
   emoji: { type: String, default: "🍽️" },
   note: { type: String, default: "" },

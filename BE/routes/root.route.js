@@ -7,6 +7,7 @@ var userRouter = require("./user.route");
 var orderRouter = require("./order.route");
 var paymentRouter = require("./payment.route");
 var reviewRouter = require("./review.route");
+var promotionRouter = require("./promotion.route");
 var paymentController = require("../controller/payment.controller");
 
 router.use("/auth", authRouter);
@@ -16,6 +17,7 @@ router.use("/users", userRouter);
 router.use("/orders", orderRouter);
 router.use("/payments", paymentRouter);
 router.use("/reviews", reviewRouter);
+router.use("/promotions", promotionRouter);
 
 // Alias routes to match the simple VNPay sample format.
 router.post("/create-vnpay-url", paymentController.createVnpayUrl);

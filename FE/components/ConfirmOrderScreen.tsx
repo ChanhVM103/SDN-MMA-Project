@@ -17,6 +17,7 @@ interface CartItem {
     qty: number;
     size?: string;
     toppings?: string[];
+    promotionName?: string;
 }
 
 interface ConfirmOrderProps {
@@ -89,10 +90,22 @@ export default function ConfirmOrderScreen({
                                             {item.toppings && item.toppings.length > 0 && item.toppings[0] && (
                                                 <Text style={s.itemMeta}>+ {item.toppings.join(', ')}</Text>
                                             )}
+                                            {item.promotionName && (
+                                                <View style={s.promoTag}>
+                                                    <Text style={s.promoTagText}>PROMO: {item.promotionName}</Text>
+                                                </View>
+                                            )}
                                         </View>
-                                        <Text style={s.itemPrice}>
-                                            {(item.price * item.qty).toLocaleString('vi-VN')}đ
-                                        </Text>
+                                        <View style={s.priceBox}>
+                                            <Text style={s.itemPrice}>
+                                                {(item.price * item.qty).toLocaleString('vi-VN')}đ
+                                            </Text>
+                                            {item.originalPrice && item.originalPrice > item.price && (
+                                                <Text style={s.oldPrice}>
+                                                    {(item.originalPrice * item.qty).toLocaleString('vi-VN')}đ
+                                                </Text>
+                                            )}
+                                        </View>
                                     </View>
                                 </View>
                                 {idx < cartItems.length - 1 && <View style={s.divider} />}
@@ -265,8 +278,15 @@ const s = StyleSheet.create({
         fontSize: 13,
         fontWeight: '700',
         color: AppColors.primary,
+    },
+    priceBox: {
+        alignItems: 'flex-end',
         minWidth: 80,
-        textAlign: 'right',
+    },
+    oldPrice: {
+        fontSize: 11,
+        color: AppColors.gray,
+        textDecorationLine: 'line-through',
     },
     divider: {
         height: 1,
@@ -363,5 +383,18 @@ const s = StyleSheet.create({
         fontSize: 15,
         fontWeight: '700',
         color: '#fff',
+    },
+    promoTag: {
+        backgroundColor: '#FEF2F2',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        marginTop: 4,
+        alignSelf: 'flex-start',
+    },
+    promoTagText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#EF4444',
     },
 });

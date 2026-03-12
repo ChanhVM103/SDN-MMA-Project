@@ -274,3 +274,33 @@ export const userAPI = {
             headers: { Authorization: `Bearer ${token}` }
         }),
 };
+
+export const promotionAPI = {
+    createPromotion: async (token: string, data: any) =>
+        apiRequest('/promotions', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: JSON.stringify(data)
+        }),
+    getPromotions: async (restaurantId: string, isActive?: boolean) =>
+        apiRequest(`/promotions/restaurant/${restaurantId}${isActive !== undefined ? `?isActive=${isActive}` : ''}`, {
+            method: 'GET'
+        }),
+    deletePromotion: async (token: string, id: string) =>
+        apiRequest(`/promotions/${id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` }
+        }),
+    toggleStatus: async (token: string, id: string, isActive: boolean) =>
+        apiRequest(`/promotions/${id}/status`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ isActive })
+        }),
+    updatePromotion: async (token: string, id: string, data: any) =>
+        apiRequest(`/promotions/${id}`, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token}` },
+            body: JSON.stringify(data)
+        }),
+};

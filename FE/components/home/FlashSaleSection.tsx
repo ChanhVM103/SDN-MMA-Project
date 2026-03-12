@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
@@ -7,12 +8,14 @@ import { useFavorites } from '@/constants/favorites-context';
 import { API_BASE_URL } from '@/constants/api';
 
 import { getFlashSaleRestaurants } from '@/constants/restaurant-api';
+import { productAPI } from '@/constants/api';
 
-const resolveRestaurantImage = (item: any) => {
-    const rawImage =
+const resolveItemImage = (item: any, type: 'restaurant' | 'product') => {
+    const rawImage = type === 'product' ? item.image : (
         item?.image ||
         item?.thumbnail ||
-        (Array.isArray(item?.images) ? item.images[0] : '');
+        (Array.isArray(item?.images) ? item.images[0] : '')
+    );
 
     if (!rawImage || typeof rawImage !== 'string') return '';
     if (rawImage.startsWith('http://') || rawImage.startsWith('https://') || rawImage.startsWith('data:image')) {
@@ -33,8 +36,28 @@ export default function FlashSaleSection() {
     useEffect(() => {
         const fetchDeals = async () => {
             try {
-                const data = await getFlashSaleRestaurants();
-                setFlashDeals(data || []);
+                // Fetch restaurants and products in parallel
+                const [restaurantsData, productsRes] = await Promise.all([
+                    getFlashSaleRestaurants(),
+                    productAPI.getAllProducts({ limit: 20 })
+                ]);
+                
+                const restaurants = (restaurantsData || []).map((r: any) => ({ ...r, type: 'restaurant' }));
+                const promotionalProducts = (productsRes?.data || [])
+                    .filter((p: any) => p.promotion)
+                    .map((p: any) => ({ 
+                        ...p, 
+                        type: 'product',
+                        discountPercent: p.promotion.discountPercent,
+                        deliveryTime: p.restaurantId?.deliveryTime || 20 // Default or fallback
+                    }));
+                
+                // Combine and sort by discount percent
+                const combined = [...restaurants, ...promotionalProducts].sort((a, b) => 
+                    (b.discountPercent || 0) - (a.discountPercent || 0)
+                );
+                
+                setFlashDeals(combined);
             } catch (error) {
                 console.error("Failed to load flash deals:", error);
             }
@@ -57,9 +80,17 @@ export default function FlashSaleSection() {
     const pad = (n: number) => n.toString().padStart(2, '0');
 
     const handlePress = (item: any) => {
-        const restaurantId = item?._id || item?.id;
-        if (!restaurantId) return;
-        router.push({ pathname: '/restaurant/[id]', params: { id: restaurantId, data: JSON.stringify(item) } } as any);
+        if (item.type === 'product') {
+            const restaurantId = item.restaurantId?._id || item.restaurantId;
+            router.push({ 
+                pathname: '/restaurant/[id]', 
+                params: { id: restaurantId, highlightProduct: item._id } 
+            } as any);
+        } else {
+            const restaurantId = item?._id || item?.id;
+            if (!restaurantId) return;
+            router.push({ pathname: '/restaurant/[id]', params: { id: restaurantId, data: JSON.stringify(item) } } as any);
+        }
     };
 
     return (
@@ -80,14 +111,19 @@ export default function FlashSaleSection() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.scroll} nestedScrollEnabled={true}>
                 {flashDeals.map((item, idx) => {
                     const itemId = String(item._id || item.id || `flash-${idx}`);
-                    const imageUri = resolveRestaurantImage(item);
+                    const imageUri = resolveItemImage(item, item.type);
                     const showImage = Boolean(imageUri) && !imageErrors[itemId];
 
                     return (
                         <TouchableOpacity key={itemId} style={s.card} activeOpacity={0.85} onPress={() => handlePress(item)}>
-                            <View style={s.discountBadge}>
-                                <Text style={s.discountText}>-{item.discountPercent || 0}%</Text>
-                            </View>
+                            <LinearGradient
+                                colors={['#EF4444', '#E11D48']}
+                                style={s.discountBadge}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                            >
+                                <Text style={s.discountText}>Giảm {item.discountPercent || 0}%</Text>
+                            </LinearGradient>
                             <TouchableOpacity style={s.heartBtn} onPress={() => toggleFavorite(item._id || item.id)} activeOpacity={0.7}>
                                 <Ionicons name={isFavorite(item._id || item.id) ? 'heart' : 'heart-outline'} size={16} color={isFavorite(item._id || item.id) ? '#EF4444' : '#ccc'} />
                             </TouchableOpacity>

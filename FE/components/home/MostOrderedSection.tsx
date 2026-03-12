@@ -103,7 +103,19 @@ export default function MostOrderedSection() {
                             )}
                         </View>
                         <View style={s.info}>
-                            <Text style={s.name} numberOfLines={1}>{item.name}</Text>
+                            <View style={s.nameRow}>
+                                <Text style={s.name} numberOfLines={1}>{item.name}</Text>
+                                {Number(item.discountPercent) > 0 && (
+                                    <LinearGradient
+                                        colors={['#FEF2F2', '#FEE2E2']}
+                                        style={s.promoBadge}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                    >
+                                        <Text style={s.promoText}>Giảm {item.discountPercent}%</Text>
+                                    </LinearGradient>
+                                )}
+                            </View>
                             <View style={s.metaRow}>
                                 <Ionicons name="cart-outline" size={12} color={AppColors.gray} />
                                 <Text style={s.metaText}>{formatCompactNumber(item.totalOrders || 0)} đã đặt</Text>
@@ -131,7 +143,10 @@ const s = StyleSheet.create({
     image: { width: '100%', height: '100%' },
     emoji: { fontSize: 24 },
     info: { flex: 1 },
-    name: { fontSize: 14, fontWeight: '700', color: AppColors.charcoal, marginBottom: 3 },
+    nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 },
+    name: { fontSize: 14, fontWeight: '700', color: AppColors.charcoal, flex: 1 },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     metaText: { fontSize: 12, color: AppColors.gray },
+    promoBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginLeft: 8 },
+    promoText: { fontSize: 10, fontWeight: '800', color: '#EF4444' },
 });

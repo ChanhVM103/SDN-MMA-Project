@@ -18,6 +18,10 @@ interface MenuItem {
     category: string;
     isBestSeller?: boolean;
     addons?: any[];
+    promotion?: {
+        name: string;
+        discountPercent: number;
+    };
 }
 
 interface CreateModalProps {
@@ -103,7 +107,11 @@ export default function CreateModalPage({ visible, item, onClose, onConfirm }: C
         });
     }
 
-    const totalPrice = ((item?.price || 0) + addonsPrice) * qty;
+    const basePrice = item?.promotion
+        ? (item.price * (1 - item.promotion.discountPercent / 100))
+        : (item?.price || 0);
+    const totalPrice = (basePrice + addonsPrice) * qty;
+    const originalTotalPrice = ((item?.price || 0) + addonsPrice) * qty;
 
     if (!item) return null;
 
@@ -130,7 +138,16 @@ export default function CreateModalPage({ visible, item, onClose, onConfirm }: C
                             {!!item.description && (
                                 <Text style={s.productDesc}>{item.description}</Text>
                             )}
-                            <Text style={s.productPrice}>{item.price.toLocaleString('vi-VN')}đ</Text>
+                            <View style={s.modalPriceRow}>
+                                {item.promotion ? (
+                                    <>
+                                        <Text style={s.productPrice}>{(item.price * (1 - item.promotion.discountPercent / 100)).toLocaleString('vi-VN')}đ</Text>
+                                        <Text style={s.modalOldPrice}>{item.price.toLocaleString('vi-VN')}đ</Text>
+                                    </>
+                                ) : (
+                                    <Text style={s.productPrice}>{item.price.toLocaleString('vi-VN')}đ</Text>
+                                )}
+                            </View>
                         </View>
 
                         {/* Custom Addons */}
@@ -220,7 +237,12 @@ export default function CreateModalPage({ visible, item, onClose, onConfirm }: C
                     <View style={s.footer}>
                         <View style={s.totalBox}>
                             <Text style={s.totalLabel}>Tổng cộng</Text>
-                            <Text style={s.totalPrice}>{totalPrice.toLocaleString('vi-VN')}đ</Text>
+                            <View style={{ alignItems: 'flex-end' }}>
+                                <Text style={s.totalPrice}>{totalPrice.toLocaleString('vi-VN')}đ</Text>
+                                {item.promotion && (
+                                    <Text style={s.totalOldPrice}>{originalTotalPrice.toLocaleString('vi-VN')}đ</Text>
+                                )}
+                            </View>
                         </View>
                         <TouchableOpacity style={s.confirmBtn} onPress={handleConfirm}>
                             <LinearGradient colors={['#FF6B35', '#E55A2B']} style={s.confirmBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
@@ -472,4 +494,7 @@ const s = StyleSheet.create({
         minWidth: 28,
         textAlign: 'center',
     },
+    modalPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    modalOldPrice: { fontSize: 13, color: AppColors.gray, textDecorationLine: 'line-through' },
+    totalOldPrice: { fontSize: 12, color: AppColors.gray, textDecorationLine: 'line-through' },
 });

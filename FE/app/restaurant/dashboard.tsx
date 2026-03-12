@@ -15,6 +15,7 @@ const { width } = Dimensions.get('window');
 
 const menuGrid = [
     { icon: 'cube-outline', label: 'Sản phẩm của tôi', color: '#E85D04', route: '/restaurant/products' },
+    { icon: 'pricetag-outline', label: 'Khuyến mãi', color: '#FF9800', route: '/restaurant/promotions' },
     { icon: 'wallet-outline', label: 'Tài chính', color: '#F4A261', route: '/restaurant/finance' },
     { icon: 'bar-chart-outline', label: 'Hiệu quả bán hàng', color: '#E63946', route: '/restaurant/performance' },
 ];

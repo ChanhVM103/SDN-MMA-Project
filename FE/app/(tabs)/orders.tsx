@@ -269,7 +269,14 @@ export default function OrdersScreen() {
                                                 <Text style={{ fontSize: 11, color: AppColors.primary }}>+ {item.note}</Text>
                                             )}
                                         </View>
-                                        <Text style={{ fontSize: 12, fontWeight: '700', color: AppColors.primary }}>{(item.price * item.quantity).toLocaleString('vi-VN')}đ</Text>
+                                        <View style={{ alignItems: 'flex-end' }}>
+                                            <Text style={{ fontSize: 12, fontWeight: '700', color: AppColors.primary }}>{(item.price * item.quantity).toLocaleString('vi-VN')}đ</Text>
+                                            {item.originalPrice && item.originalPrice > item.price && (
+                                                <Text style={{ fontSize: 10, color: AppColors.gray, textDecorationLine: 'line-through' }}>
+                                                    {(item.originalPrice * item.quantity).toLocaleString('vi-VN')}đ
+                                                </Text>
+                                            )}
+                                        </View>
                                     </View>
                                 ))}
                             </View>

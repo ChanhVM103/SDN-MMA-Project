@@ -99,6 +99,11 @@ export default function FavoritesScreen() {
                     <View style={s.cardInfo}>
                         <View style={s.cardHeader}>
                             <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
+                            {item.discountPercent > 0 && (
+                                <View style={s.promoBadge}>
+                                    <Text style={s.promoText}>-{item.discountPercent}%</Text>
+                                </View>
+                            )}
                             <TouchableOpacity
                                 onPress={() => handleRemoveOne(itemId)}
                                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -179,4 +184,16 @@ const s = StyleSheet.create({
     ratingText: { fontSize: 13, fontWeight: '700', color: AppColors.charcoal },
     reviewsText: { fontSize: 12, color: AppColors.gray },
     heartBtn: { padding: 4 },
+    promoBadge: {
+        backgroundColor: '#FF4D4D',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        marginRight: 8,
+    },
+    promoText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: '800',
+    },
 });

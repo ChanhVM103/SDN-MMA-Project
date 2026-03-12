@@ -1,4 +1,43 @@
 const Restaurant = require("../models/restaurant.model");
+const Promotion = require("../models/promotion.model");
+
+/**
+ * Helper to attach promotion info to restaurants
+ */
+const attachPromotionsToRestaurants = async (restaurants) => {
+  if (!restaurants || restaurants.length === 0) return restaurants;
+
+  const restaurantIds = restaurants.map(r => r._id);
+  const now = new Date();
+
+  // Find all active promotions for these restaurants
+  const activePromotions = await Promotion.find({
+    restaurantId: { $in: restaurantIds },
+    isActive: true,
+    startDate: { $lte: now },
+    $or: [
+      { endDate: { $exists: false } },
+      { endDate: null },
+      { endDate: { $gte: now } }
+    ]
+  });
+
+  return restaurants.map(r => {
+    const rObj = r.toObject ? r.toObject() : r;
+    const rPromos = activePromotions.filter(p => p.restaurantId.toString() === rObj._id.toString());
+    
+    if (rPromos.length > 0) {
+      const maxDiscount = Math.max(...rPromos.map(p => p.discountPercent));
+      // If promotion discount is higher than existing discountPercent, update it
+      if (maxDiscount > (rObj.discountPercent || 0)) {
+        rObj.discountPercent = maxDiscount;
+        // Mark as flash sale if it has a promotion to show in the UI
+        rObj.isFlashSale = true;
+      }
+    }
+    return rObj;
+  });
+};
 
 /**
  * Get all restaurants with pagination, search, and filtering
@@ -33,7 +72,7 @@ const getAllRestaurants = async (
       .skip(skip)
       .limit(limit);
 
-    return {
+    const result = {
       data: restaurants,
       pagination: {
         currentPage: page,
@@ -42,6 +81,9 @@ const getAllRestaurants = async (
         limit,
       },
     };
+
+    result.data = await attachPromotionsToRestaurants(result.data);
+    return result;
   } catch (error) {
     throw new Error(`Error fetching restaurants: ${error.message}`);
   }
@@ -52,11 +94,12 @@ const getAllRestaurants = async (
  */
 const getRestaurantById = async (id) => {
   try {
-    const restaurant = await Restaurant.findById(id);
+    const restaurant = await Restaurant.findById(id).populate("owner", "fullName email");
     if (!restaurant) {
       throw new Error("Restaurant not found");
     }
-    return restaurant;
+    const results = await attachPromotionsToRestaurants([restaurant]);
+    return results[0];
   } catch (error) {
     throw new Error(`Error fetching restaurant: ${error.message}`);
   }
@@ -171,7 +214,8 @@ const deleteRestaurant = async (id) => {
  */
 const getTopRatedRestaurants = async (limit = 10) => {
   try {
-    return await Restaurant.find().sort({ rating: -1 }).limit(limit);
+    const restaurants = await Restaurant.find().sort({ rating: -1 }).limit(limit);
+    return await attachPromotionsToRestaurants(restaurants);
   } catch (error) {
     throw new Error(`Error fetching top rated restaurants: ${error.message}`);
   }
@@ -182,9 +226,24 @@ const getTopRatedRestaurants = async (limit = 10) => {
  */
 const getFlashSaleRestaurants = async (limit = 10) => {
   try {
-    return await Restaurant.find({ isFlashSale: true })
+    const now = new Date();
+    // Get IDs of restaurants with active promotions
+    const promotedRestaurants = await Promotion.distinct("restaurantId", {
+      isActive: true,
+      startDate: { $lte: now },
+      endDate: { $gte: now }
+    });
+
+    const restaurants = await Restaurant.find({ 
+      $or: [
+        { isFlashSale: true },
+        { _id: { $in: promotedRestaurants } }
+      ]
+    })
       .sort({ discountPercent: -1 })
       .limit(limit);
+
+    return await attachPromotionsToRestaurants(restaurants);
   } catch (error) {
     throw new Error(`Error fetching flash sale restaurants: ${error.message}`);
   }
@@ -195,9 +254,10 @@ const getFlashSaleRestaurants = async (limit = 10) => {
  */
 const getRestaurantsByTags = async (tags, limit = 10) => {
   try {
-    return await Restaurant.find({ tags: { $in: tags } })
+    const restaurants = await Restaurant.find({ tags: { $in: tags } })
       .sort({ rating: -1 })
       .limit(limit);
+    return await attachPromotionsToRestaurants(restaurants);
   } catch (error) {
     throw new Error(`Error fetching restaurants by tags: ${error.message}`);
   }
@@ -208,10 +268,11 @@ const getRestaurantsByTags = async (tags, limit = 10) => {
  */
 const getMostOrderedRestaurants = async (limit = 10) => {
   try {
-    return await Restaurant.find({ totalOrders: { $gt: 0 } })
+    const restaurants = await Restaurant.find({ totalOrders: { $gt: 0 } })
       .populate("owner", "fullName email")
       .sort({ totalOrders: -1, rating: -1 })
       .limit(limit);
+    return await attachPromotionsToRestaurants(restaurants);
   } catch (error) {
     throw new Error(
       `Error fetching most ordered restaurants: ${error.message}`,

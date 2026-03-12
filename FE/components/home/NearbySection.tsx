@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
@@ -32,7 +33,7 @@ const resolveRestaurantImage = (item: any) => {
 };
 
 const getPromoText = (item: any) => {
-    if (item?.isFlashSale && Number(item?.discountPercent) > 0) {
+    if (Number(item?.discountPercent) > 0) {
         return `Giảm ${item.discountPercent}%`;
     }
     if (Number(item?.deliveryFee) === 0) {
@@ -98,7 +99,19 @@ export default function NearbySection() {
                             )}
                         </View>
                         <View style={s.info}>
-                            <Text style={s.name} numberOfLines={1}>{item.name}</Text>
+                            <View style={s.nameRow}>
+                                <Text style={s.name} numberOfLines={1}>{item.name}</Text>
+                                {promoText ? (
+                                    <LinearGradient
+                                        colors={['#FEF2F2', '#FEE2E2']}
+                                        style={s.promoBadge}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                    >
+                                        <Text style={s.promoText}>{promoText}</Text>
+                                    </LinearGradient>
+                                ) : null}
+                            </View>
                             <View style={s.metaRow}>
                                 <Ionicons name="star" size={12} color="#FFB627" />
                                 <Text style={s.metaText}>{item.rating || '4.0'}</Text>
@@ -110,9 +123,6 @@ export default function NearbySection() {
                                 <Text style={s.metaText}>{item.deliveryTime ? `${item.deliveryTime} phút` : 'N/A'}</Text>
                             </View>
                         </View>
-                        {promoText ? (
-                            <View style={s.promoBadge}><Text style={s.promoText}>{promoText}</Text></View>
-                        ) : null}
                         <TouchableOpacity onPress={() => toggleFavorite(item._id || item.id)} activeOpacity={0.7} style={{ padding: 4 }}>
                             <Ionicons name={isFavorite(item._id || item.id) ? 'heart' : 'heart-outline'} size={20} color={isFavorite(item._id || item.id) ? '#EF4444' : AppColors.gray} />
                         </TouchableOpacity>
@@ -133,10 +143,11 @@ const s = StyleSheet.create({
     image: { width: '100%', height: '100%' },
     emoji: { fontSize: 28 },
     info: { flex: 1 },
-    name: { fontSize: 14, fontWeight: '700', color: AppColors.charcoal, marginBottom: 4 },
+    nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+    name: { fontSize: 14, fontWeight: '700', color: AppColors.charcoal, flex: 1 },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     metaText: { fontSize: 12, color: AppColors.gray },
     dot: { fontSize: 8, color: AppColors.gray },
-    promoBadge: { backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-    promoText: { fontSize: 10, fontWeight: '700', color: '#EF4444' },
+    promoBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginLeft: 8 },
+    promoText: { fontSize: 10, fontWeight: '800', color: '#EF4444' },
 });

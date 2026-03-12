@@ -525,7 +525,17 @@ export default function HomeScreen() {
                       <Ionicons name="star" size={12} color="#FFB627" />
                       <Text style={{ fontSize: 12, fontWeight: '600' }}>{item.rating || '4.5'}</Text>
                       <Text style={{ fontSize: 12, color: AppColors.gray }}>•</Text>
-                      <Text style={{ fontSize: 12, color: AppColors.gray }}>{(item.tags || []).join(', ')}</Text>
+                      <Text style={{ fontSize: 12, color: AppColors.gray }} numberOfLines={1}>{(item.tags || []).join(', ')}</Text>
+                      {Number(item.discountPercent) > 0 && (
+                        <LinearGradient
+                          colors={['#FEF2F2', '#FEE2E2']}
+                          style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 4 }}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                        >
+                          <Text style={{ fontSize: 10, fontWeight: '800', color: '#EF4444' }}>Giảm {item.discountPercent}%</Text>
+                        </LinearGradient>
+                      )}
                     </View>
                   </TouchableOpacity>
                 ))}
