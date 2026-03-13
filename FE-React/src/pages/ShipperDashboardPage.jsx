@@ -134,7 +134,7 @@ const STATUS_CONFIG = {
   ready_for_pickup: { label: "Sẵn sàng lấy hàng", color: "warning" },
   shipper_accepted: { label: "Đã nhận đơn", color: "info" },
   delivering: { label: "Đang giao hàng", color: "primary" },
-  shipper_delivered: { label: "Chờ nhà hàng xác nhận", color: "warning" },
+  shipper_delivered: { label: "Chờ khách hàng xác nhận", color: "warning" },
   delivered: { label: "Đã giao thành công", color: "success" },
   cancelled: { label: "Đã huỷ", color: "error" },
 };
@@ -183,12 +183,13 @@ export default function ShipperDashboardPage({ user, onLogout }) {
     return () => clearInterval(t);
   }, [loadData]);
 
-  const doAction = async (orderId, fn, successMsg) => {
+  const doAction = async (orderId, fn, successMsg, onSuccess) => {
     setActioningId(orderId);
     try {
       await fn(orderId);
       showToast(successMsg, "success");
       await loadData(true);
+      if (onSuccess) onSuccess();
     } catch (err) {
       showToast("Lỗi: " + err.message, "error");
     } finally {
@@ -202,6 +203,7 @@ export default function ShipperDashboardPage({ user, onLogout }) {
   const completedOrders = myOrders.filter(o => o.status === "delivered").length;
   const pendingOrders = inProgress.length;
   const cancelledOrders = myOrders.filter(o => o.status === "cancelled").length;
+  const totalEarnings = myOrders.filter(o => o.status === "delivered").reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
 
   // Determine current list to render
   const currentList = tabIndex === 0 ? available : tabIndex === 1 ? inProgress : history;
@@ -220,7 +222,7 @@ export default function ShipperDashboardPage({ user, onLogout }) {
           color="primary"
           startIcon={isBusy ? <CircularProgress size={20} color="inherit" /> : <TwoWheelerIcon />}
           disabled={isBusy}
-          onClick={() => doAction(order._id, shipperAcceptOrder, "Đã nhận đơn! Đến nhà hàng lấy hàng nhé.")}
+          onClick={() => doAction(order._id, shipperAcceptOrder, "Đã nhận đơn! Đến nhà hàng lấy hàng nhé.", () => setTabIndex(1))}
         >
           {isBusy ? "Đang xử lý..." : "Nhận Đơn Giao"}
         </Button>
@@ -262,7 +264,7 @@ export default function ShipperDashboardPage({ user, onLogout }) {
       if (order.status === "shipper_delivered") {
         return (
           <Alert severity="warning" sx={{ width: "100%", justifyContent: "center", "& .MuiAlert-message": { fontWeight: 600 } }}>
-            Đang chờ nhà hàng xác nhận hoàn thành...
+            Đang chờ khách hàng xác nhận đã nhận...
           </Alert>
         );
       }
@@ -306,7 +308,7 @@ export default function ShipperDashboardPage({ user, onLogout }) {
         <Container maxWidth="md" sx={{ mt: 4 }}>
           {/* ── Summary Cards ── */}
           <Grid container spacing={2} sx={{ mb: 4 }}>
-            <Grid item xs={4}>
+            <Grid item xs={6} sm={3}>
               <Paper elevation={0} sx={{ p: 2, textAlign: "center", border: "1px solid #e2e8f0", borderRadius: 3 }}>
                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
                   <AssignmentReturnIcon fontSize="small" /> Đơn chờ nhận
@@ -316,7 +318,7 @@ export default function ShipperDashboardPage({ user, onLogout }) {
                 </Typography>
               </Paper>
             </Grid>
-            <Grid item xs={4}>
+            <Grid item xs={6} sm={3}>
               <Paper elevation={0} sx={{ p: 2, textAlign: "center", border: "1px solid #e2e8f0", borderRadius: 3 }}>
                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
                   <LocalShippingIcon fontSize="small" color="secondary" /> Đơn đang giao
@@ -326,13 +328,23 @@ export default function ShipperDashboardPage({ user, onLogout }) {
                 </Typography>
               </Paper>
             </Grid>
-            <Grid item xs={4}>
+            <Grid item xs={6} sm={3}>
               <Paper elevation={0} sx={{ p: 2, textAlign: "center", border: "1px solid #e2e8f0", borderRadius: 3 }}>
                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
                   <CheckCircleIcon fontSize="small" color="success" /> Đã hoàn thành
                 </Typography>
                 <Typography variant="h4" color="success.main" fontWeight={800}>
                   {history.filter((o) => o.status === "delivered").length}
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={6} sm={3}>
+              <Paper elevation={0} sx={{ p: 2, textAlign: "center", border: "1px solid #10b981", borderRadius: 3, bgcolor: alpha("#10b981", 0.04) }}>
+                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
+                  💰 Thu nhập
+                </Typography>
+                <Typography variant="h5" color="success.main" fontWeight={800}>
+                  {fmt(totalEarnings)}đ
                 </Typography>
               </Paper>
             </Grid>
@@ -367,7 +379,13 @@ export default function ShipperDashboardPage({ user, onLogout }) {
               <Card elevation={0} sx={{ border: "1px solid rgba(0,0,0,0.06)", overflow: "hidden" }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 1 }}>📊 Phân bổ trạng thái đơn</Typography>
-                  <Typography variant="caption" color="text.secondary">Tổng: {myOrders.length} đơn hàng</Typography>
+                  <Box sx={{ mb: 1.5, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <Typography variant="caption" color="text.secondary">Tổng: {myOrders.length} đơn hàng</Typography>
+                    <Box sx={{ textAlign: "right", p: 1.5, bgcolor: alpha("#10b981", 0.08), borderRadius: 2, border: "1px dashed #10b981" }}>
+                        <Typography variant="caption" color="success.main" fontWeight={700} sx={{ display: "block", textTransform: "uppercase" }}>💰 TỔNG THU NHẬP</Typography>
+                        <Typography variant="h5" color="success.main" fontWeight={800}>{fmt(totalEarnings)}đ</Typography>
+                    </Box>
+                  </Box>
                   <Box sx={{ height: 280, mt: 2 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -553,6 +571,16 @@ export default function ShipperDashboardPage({ user, onLogout }) {
                               </Stack>
 
                               <Divider sx={{ my: 1.5, borderStyle: "dashed" }} />
+
+                              {/* Delivery fee for shipper */}
+                              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1, py: 0.5, px: 1, bgcolor: alpha("#10b981", 0.06), borderRadius: 1 }}>
+                                <Typography variant="body2" color="success.main" fontWeight={700} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                  🚚 Phí giao hàng (thu nhập)
+                                </Typography>
+                                <Typography variant="body1" color="success.main" fontWeight={800}>
+                                  {fmt(order.deliveryFee || 0)}đ
+                                </Typography>
+                              </Box>
                               
                               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                 <Typography variant="body2" color="text.secondary">

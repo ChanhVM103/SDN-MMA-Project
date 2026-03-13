@@ -1,5 +1,6 @@
 const Order = require("../models/order.model");
 const Restaurant = require("../models/restaurant.model");
+const User = require("../models/user.model");
 
 const incrementRestaurantOrders = async (restaurantId) => {
   await Restaurant.findByIdAndUpdate(restaurantId, {
@@ -9,6 +10,12 @@ const incrementRestaurantOrders = async (restaurantId) => {
 
 const addRestaurantRevenue = async (restaurantId, amount) => {
   await Restaurant.findByIdAndUpdate(restaurantId, {
+    $inc: { totalRevenue: amount },
+  });
+};
+
+const addShipperRevenue = async (shipperId, amount) => {
+  await User.findByIdAndUpdate(shipperId, {
     $inc: { totalRevenue: amount },
   });
 };
@@ -431,7 +438,7 @@ const getRestaurantStats = async (req, res) => {
         {
           $group: {
             _id: "$paymentMethod",
-            total: { $sum: "$paidAmount" },
+            total: { $sum: { $subtract: ["$total", { $ifNull: ["$deliveryFee", 0] }] } },
             count: { $sum: 1 },
           }
         },
@@ -446,7 +453,7 @@ const getRestaurantStats = async (req, res) => {
     // Đơn VNPay delivered nhưng isPaid chưa được set (fallback)
     const vnpayDeliveredAgg = await Order.aggregate([
       { $match: { restaurant: restaurant._id, paymentMethod: "vnpay", status: "delivered" } },
-      { $group: { _id: null, total: { $sum: "$total" }, count: { $sum: 1 } } },
+      { $group: { _id: null, total: { $sum: { $subtract: ["$total", { $ifNull: ["$deliveryFee", 0] }] } }, count: { $sum: 1 } } },
     ]);
 
     const revenueByMethod = {};
@@ -649,7 +656,12 @@ const brandConfirmDelivered = async (req, res) => {
       order.isPaid = true;
       order.paidAmount = order.total;
       order.paidAt = new Date();
-      await addRestaurantRevenue(order.restaurant._id, order.total);
+      
+      const productRevenue = order.total - (order.deliveryFee || 0);
+      await addRestaurantRevenue(order.restaurant._id, productRevenue);
+      if (order.shipper) {
+        await addShipperRevenue(order.shipper, order.deliveryFee || 0);
+      }
     }
     order.statusHistory.push({
       status: "delivered",
@@ -672,9 +684,9 @@ const brandConfirmDelivered = async (req, res) => {
 // Shipper: Xem các đơn đang chờ giao (ready_for_pickup)
 const getAvailableOrders = async (req, res) => {
   try {
-    // Shipper can see orders that are either being prepared or are ready for pickup
+    // Shipper can see orders that are ready for pickup (Brand has handed over)
     const orders = await Order.find({
-      status: { $in: ["preparing", "ready_for_pickup"] },
+      status: "ready_for_pickup",
       shipper: null // Only orders that haven't been claimed yet
     })
       .populate("restaurant", "name address image")
@@ -784,11 +796,11 @@ const shipperCompleteDelivery = async (req, res) => {
     order.statusHistory.push({
       status: "shipper_delivered",
       changedBy: req.userId,
-      note: "Shipper báo giao hàng thành công, chờ nhà hàng xác nhận",
+      note: "Shipper báo giao hàng thành công, chờ khách hàng xác nhận",
     });
     await order.save();
 
-    return res.json({ success: true, message: "Đã báo giao hàng thành công! Đang chờ nhà hàng xác nhận.", data: order });
+    return res.json({ success: true, message: "Đã báo giao hàng thành công! Đang chờ khách hàng xác nhận.", data: order });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
@@ -816,11 +828,21 @@ const confirmOrderReceived = async (req, res) => {
     }
 
     order.status = "delivered";
+    
+    // Revenue splitting: restaurant gets product revenue, shipper gets delivery fee
+    const productRevenue = order.total - (order.deliveryFee || 0);
+    const shipperFee = order.deliveryFee || 0;
+    
     if (order.paymentMethod === "cash") {
       order.isPaid = true;
       order.paidAmount = order.total;
       order.paidAt = new Date();
-      await addRestaurantRevenue(order.restaurant._id || order.restaurant, order.total);
+    }
+    
+    // Always split revenue when order is delivered (both cash and vnpay)
+    await addRestaurantRevenue(order.restaurant._id || order.restaurant, productRevenue);
+    if (order.shipper && shipperFee > 0) {
+      await addShipperRevenue(order.shipper, shipperFee);
     }
 
     order.statusHistory.push({
