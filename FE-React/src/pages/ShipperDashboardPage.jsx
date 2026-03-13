@@ -32,6 +32,20 @@ import {
 } from "@mui/material";
 import { ThemeProvider, createTheme, alpha } from "@mui/material/styles";
 
+import {
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RTooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+
 // MUI Icons
 import TwoWheelerIcon from "@mui/icons-material/TwoWheeler";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
@@ -185,6 +199,9 @@ export default function ShipperDashboardPage({ user, onLogout }) {
   // Derive data
   const inProgress = myOrders.filter((o) => ["shipper_accepted", "delivering", "shipper_delivered"].includes(o.status));
   const history = myOrders.filter((o) => ["delivered", "cancelled"].includes(o.status));
+  const completedOrders = myOrders.filter(o => o.status === "delivered").length;
+  const pendingOrders = inProgress.length;
+  const cancelledOrders = myOrders.filter(o => o.status === "cancelled").length;
 
   // Determine current list to render
   const currentList = tabIndex === 0 ? available : tabIndex === 1 ? inProgress : history;
@@ -339,11 +356,91 @@ export default function ShipperDashboardPage({ user, onLogout }) {
                 }
               />
               <Tab label="Lịch Sử" />
+              <Tab label="Thống Kê" />
             </Tabs>
           </Paper>
 
           {/* ── Content ── */}
-          {loading ? (
+          {tabIndex === 3 ? (
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "1fr 1fr" }, gap: 3, pt: 1, pb: 4 }}>
+              {/* Donut: Order Status */}
+              <Card elevation={0} sx={{ border: "1px solid rgba(0,0,0,0.06)", overflow: "hidden" }}>
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 1 }}>📊 Phân bổ trạng thái đơn</Typography>
+                  <Typography variant="caption" color="text.secondary">Tổng: {myOrders.length} đơn hàng</Typography>
+                  <Box sx={{ height: 280, mt: 2 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: "Hoàn thành", value: completedOrders, color: "#10b981" },
+                            { name: "Đang giao", value: pendingOrders, color: "#f59e0b" },
+                            { name: "Đã hủy", value: cancelledOrders, color: "#ef4444" },
+                          ].filter((d) => d.value > 0)}
+                          cx="50%" cy="50%" innerRadius={65} outerRadius={100} paddingAngle={4} dataKey="value" stroke="none"
+                        >
+                          {[
+                            { name: "Hoàn thành", value: completedOrders, color: "#10b981" },
+                            { name: "Đang giao", value: pendingOrders, color: "#f59e0b" },
+                            { name: "Đã hủy", value: cancelledOrders, color: "#ef4444" },
+                          ].filter((d) => d.value > 0).map((entry, index) => (
+                            <Cell key={index} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <RTooltip formatter={(value, name) => [`${value} đơn`, name]} />
+                        <Legend verticalAlign="bottom" iconType="circle" iconSize={10} formatter={(value) => (<span style={{ color: "#666", fontSize: 13, fontWeight: 500 }}>{value}</span>)} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </Box>
+                </CardContent>
+              </Card>
+
+              {/* Area: Orders Timeline */}
+              <Card elevation={0} sx={{ border: "1px solid rgba(0,0,0,0.06)", overflow: "hidden" }}>
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 1 }}>📈 Thống kê đơn hàng</Typography>
+                  <Typography variant="caption" color="text.secondary">Lượng đơn hàng trong 6 tháng qua</Typography>
+                  <Box sx={{ height: 280, mt: 2 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={(() => {
+                          const months = {};
+                          const monthNames = ["Th1", "Th2", "Th3", "Th4", "Th5", "Th6", "Th7", "Th8", "Th9", "Th10", "Th11", "Th12"];
+                          const now = new Date();
+                          for (let i = 5; i >= 0; i--) {
+                            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+                            months[key] = { month: monthNames[d.getMonth()] + " " + d.getFullYear(), orders: 0 };
+                          }
+                          myOrders.forEach((o) => {
+                            if (!o.createdAt) return;
+                            const d = new Date(o.createdAt);
+                            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+                            if (months[key]) months[key].orders++;
+                          });
+                          return Object.values(months);
+                        })()}
+                        margin={{ top: 10, right: 30, left: -10, bottom: 0 }}
+                      >
+                        <defs>
+                          <linearGradient id="gradOrders" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#ee4d2d" stopOpacity={0.25} />
+                            <stop offset="95%" stopColor="#ee4d2d" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#999" }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 12, fill: "#999" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <RTooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }} />
+                        <Legend verticalAlign="top" align="right" iconType="circle" iconSize={10} formatter={(value) => (<span style={{ color: "#666", fontSize: 13, fontWeight: 500 }}>{value}</span>)} />
+                        <Area type="monotone" dataKey="orders" name="Đơn hàng" stroke="#ee4d2d" strokeWidth={2.5} fillOpacity={1} fill="url(#gradOrders)" dot={{ r: 4, fill: "#ee4d2d", strokeWidth: 2, stroke: "#fff" }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Box>
+          ) : loading ? (
             <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 10 }}>
               <CircularProgress color="primary" sx={{ mb: 2 }} />
               <Typography color="text.secondary">Đang tải dữ liệu...</Typography>
