@@ -106,36 +106,22 @@ const STAR_LABELS = ["", "Tệ", "Không hài lòng", "Bình thường", "Hài l
 
 // ─── Review Modal ─────────────────────────────────────────
 function ReviewModal({ order, onClose, onSuccess }) {
-  const buildInitialRatings = () => [
-    { key: "restaurant", label: order.restaurantName, emoji: "🏪", productId: null, productName: "", rating: 5 },
-    ...(order.items || []).map((item) => ({
-      key: item.productId || item.name,
-      label: item.name,
-      emoji: item.emoji || "🍽️",
-      productId: item.productId || null,
-      productName: item.name,
-      rating: 5,
-    })),
-  ];
-
-  const [ratings, setRatings] = useState(buildInitialRatings);
+  const [rating, setRating] = useState(5);
+  const [hovered, setHovered] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const setRating = (idx, value) =>
-    setRatings((prev) => prev.map((r, i) => (i === idx ? { ...r, rating: value } : r)));
+  const STAR_LABELS = ["", "Tệ 😞", "Không hài lòng 😕", "Bình thường 😐", "Hài lòng 😊", "Tuyệt vời! 🤩"];
 
   const handleSubmit = async () => {
     setSubmitting(true);
     setErrorMsg("");
     try {
       const restaurantId = order.restaurant?._id || order.restaurant;
-      await submitBulkReviews(
-        order._id,
-        restaurantId,
-        ratings.map((r) => ({ rating: r.rating, comment: r.key === "restaurant" ? comment : "", productId: r.productId, productName: r.productName }))
-      );
+      await submitBulkReviews(order._id, restaurantId, [
+        { rating, comment, productId: null, productName: "" }
+      ]);
       onSuccess();
     } catch (err) {
       setErrorMsg(err.message || "Gửi đánh giá thất bại");
@@ -145,86 +131,106 @@ function ReviewModal({ order, onClose, onSuccess }) {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 99998, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
+    <div style={{ position: "fixed", inset: 0, zIndex: 99998, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(6px)" }} />
       <div style={{
-        position: "relative", background: "#fff", borderRadius: "20px 20px 0 0",
-        width: "100%", maxWidth: 520, maxHeight: "85vh",
-        display: "flex", flexDirection: "column",
-        boxShadow: "0 -8px 40px rgba(0,0,0,0.18)",
-        animation: "slideUp 0.3s cubic-bezier(.175,.885,.32,1.275)",
+        position: "relative", background: "#fff", borderRadius: 24,
+        width: "100%", maxWidth: 460,
+        boxShadow: "0 32px 80px rgba(0,0,0,0.22)",
+        animation: "modalPop 0.3s cubic-bezier(.175,.885,.32,1.275)",
+        overflow: "hidden",
       }}>
-        {/* Header */}
-        <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid #f0f0f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>⭐ Đánh giá đơn hàng</h3>
-            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#9ca3af" }}>{order.restaurantName} · #{order._id.slice(-8).toUpperCase()}</p>
-          </div>
-          <button onClick={onClose} style={{ background: "#f3f4f6", border: "none", borderRadius: 20, width: 32, height: 32, fontSize: 16, cursor: "pointer", color: "#6b7280" }}>✕</button>
+        {/* Decorative header */}
+        <div style={{
+          background: "linear-gradient(135deg, #ee4d2d 0%, #ff7337 100%)",
+          padding: "28px 24px 24px", textAlign: "center", position: "relative",
+        }}>
+          <button onClick={onClose} style={{
+            position: "absolute", top: 14, right: 14,
+            width: 32, height: 32, borderRadius: "50%",
+            background: "rgba(255,255,255,0.2)", border: "none",
+            color: "#fff", fontSize: 16, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>✕</button>
+          <div style={{ fontSize: 48, marginBottom: 8 }}>⭐</div>
+          <h3 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 800, color: "#fff" }}>
+            Đánh giá nhà hàng
+          </h3>
+          <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: 500 }}>
+            {order.restaurantName}
+          </p>
         </div>
 
-        {/* Items list */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px" }}>
-          {ratings.map((r, idx) => (
-            <div key={r.key} style={{
-              padding: "12px 0",
-              borderBottom: idx < ratings.length - 1 ? "1px solid #f5f5f5" : "none",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: 24, flexShrink: 0 }}>{r.emoji}</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {r.label}
-                  </span>
-                </div>
-                <StarRating value={r.rating} onChange={(v) => setRating(idx, v)} size={30} />
-              </div>
-              {/* Comment box chỉ hiện cho nhà hàng (idx 0) */}
-              {idx === 0 && (
-                <div style={{ marginTop: 10 }}>
-                  <textarea
-                    value={comment}
-                    onChange={e => setComment(e.target.value)}
-                    placeholder="Chia sẻ cảm nhận của bạn về nhà hàng này... (tuỳ chọn)"
-                    rows={3}
-                    style={{
-                      width: "100%", boxSizing: "border-box",
-                      border: "1.5px solid #e5e7eb", borderRadius: 10,
-                      padding: "10px 12px", fontSize: 13,
-                      fontFamily: "inherit", resize: "none", outline: "none",
-                      lineHeight: 1.6, color: "#374151",
-                      transition: "border-color 0.15s",
-                      background: "#fafafa",
-                    }}
-                    onFocus={e => e.target.style.borderColor = "#ee4d2d"}
-                    onBlur={e => e.target.style.borderColor = "#e5e7eb"}
-                  />
-                  <div style={{ fontSize: 11, color: "#9ca3af", textAlign: "right", marginTop: 3 }}>
-                    {comment.length}/500
-                  </div>
-                </div>
-              )}
+        {/* Body */}
+        <div style={{ padding: "24px 28px" }}>
+          {/* Stars */}
+          <div style={{ textAlign: "center", marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 8 }}>
+              {[1,2,3,4,5].map(s => (
+                <span key={s}
+                  onClick={() => setRating(s)}
+                  onMouseEnter={() => setHovered(s)}
+                  onMouseLeave={() => setHovered(0)}
+                  style={{
+                    fontSize: 40, cursor: "pointer",
+                    color: s <= (hovered || rating) ? "#f59e0b" : "#e5e7eb",
+                    transition: "color 0.1s, transform 0.15s",
+                    transform: s === (hovered || rating) ? "scale(1.3)" : s < (hovered || rating) ? "scale(1.1)" : "scale(1)",
+                    display: "inline-block", filter: s <= (hovered || rating) ? "drop-shadow(0 2px 6px rgba(245,158,11,0.5))" : "none",
+                  }}
+                >★</span>
+              ))}
             </div>
-          ))}
-        </div>
-
-        {/* Error */}
-        {errorMsg && (
-          <div style={{ margin: "0 20px 8px", padding: "9px 14px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontSize: 13, display: "flex", gap: 8 }}>
-            <span>⚠️</span>{errorMsg}
+            <div style={{
+              fontSize: 14, fontWeight: 700, color: "#ee4d2d",
+              minHeight: 20, transition: "all 0.2s",
+            }}>
+              {STAR_LABELS[hovered || rating]}
+            </div>
           </div>
-        )}
 
-        {/* Submit */}
-        <div style={{ padding: "12px 20px 20px" }}>
+          {/* Comment */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 13, fontWeight: 700, color: "#374151", display: "block", marginBottom: 8 }}>
+              💬 Nhận xét của bạn <span style={{ color: "#9ca3af", fontWeight: 400 }}>(tuỳ chọn)</span>
+            </label>
+            <textarea
+              value={comment}
+              onChange={e => setComment(e.target.value.slice(0, 500))}
+              placeholder="Món ăn ngon không? Thời gian giao hàng có ổn không? Chia sẻ để giúp những người khác nhé!"
+              rows={4}
+              style={{
+                width: "100%", boxSizing: "border-box",
+                border: "1.5px solid #e5e7eb", borderRadius: 12,
+                padding: "12px 14px", fontSize: 13,
+                fontFamily: "inherit", resize: "none", outline: "none",
+                lineHeight: 1.6, color: "#374151",
+                transition: "border-color 0.15s, box-shadow 0.15s",
+                background: "#fafafa",
+              }}
+              onFocus={e => { e.target.style.borderColor = "#ee4d2d"; e.target.style.boxShadow = "0 0 0 3px rgba(238,77,45,0.1)"; }}
+              onBlur={e => { e.target.style.borderColor = "#e5e7eb"; e.target.style.boxShadow = "none"; }}
+            />
+            <div style={{ fontSize: 11, color: "#9ca3af", textAlign: "right", marginTop: 4 }}>{comment.length}/500</div>
+          </div>
+
+          {errorMsg && (
+            <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 10, background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontSize: 13, display: "flex", gap: 8, alignItems: "center" }}>
+              ⚠️ {errorMsg}
+            </div>
+          )}
+
           <button onClick={handleSubmit} disabled={submitting} style={{
-            width: "100%", padding: "14px", borderRadius: 12, border: "none",
-            background: submitting ? "#d1d5db" : "linear-gradient(135deg,#ee4d2d,#ff7337)",
-            color: "#fff", fontWeight: 700, fontSize: 15,
+            width: "100%", padding: "15px", borderRadius: 14, border: "none",
+            background: submitting ? "#e5e7eb" : "linear-gradient(135deg, #ee4d2d, #ff6b35)",
+            color: submitting ? "#9ca3af" : "#fff",
+            fontWeight: 800, fontSize: 15,
             cursor: submitting ? "not-allowed" : "pointer",
-            boxShadow: submitting ? "none" : "0 4px 16px rgba(238,77,45,0.35)",
+            boxShadow: submitting ? "none" : "0 6px 20px rgba(238,77,45,0.35)",
+            transition: "all 0.2s", fontFamily: "inherit",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}>
-            {submitting ? "Đang gửi..." : "🌟 Gửi đánh giá"}
+            {submitting ? "⏳ Đang gửi..." : "🌟 Gửi đánh giá"}
           </button>
         </div>
       </div>
@@ -234,48 +240,21 @@ function ReviewModal({ order, onClose, onSuccess }) {
 
 // ─── Edit Review Modal ────────────────────────────────────
 function EditReviewModal({ reviews, order, onClose, onSuccess }) {
-  // Map existing reviews by productId (null = restaurant)
-  const [ratings, setRatings] = useState(() => {
-    const items = [
-      { key: "restaurant", label: order.restaurantName, emoji: "🏪", productId: null },
-      ...(order.items || []).map((item) => ({
-        key: item.productId || item.name,
-        label: item.name,
-        emoji: item.emoji || "🍽️",
-        productId: item.productId || null,
-      })),
-    ];
-    return items.map((item) => {
-      const existing = reviews.find((r) =>
-        item.productId ? r.product === item.productId || r.product?._id === item.productId : !r.product
-      );
-      return { ...item, rating: existing?.rating || 5, reviewId: existing?._id || null };
-    });
-  });
-
-  const [comments, setComments] = useState(() => {
-    const map = {};
-    ratings.forEach(r => {
-      const existing = reviews.find(rv =>
-        r.productId ? rv.product === r.productId || rv.product?._id === r.productId : !rv.product
-      );
-      map[r.key] = existing?.comment || "";
-    });
-    return map;
-  });
+  const restaurantReview = reviews.find(r => !r.product);
+  const [rating, setRatingVal] = useState(restaurantReview?.rating || 5);
+  const [hovered, setHovered] = useState(0);
+  const [comment, setComment] = useState(restaurantReview?.comment || "");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const setRating = (idx, value) =>
-    setRatings((prev) => prev.map((r, i) => (i === idx ? { ...r, rating: value } : r)));
+  const STAR_LABELS = ["", "Tệ 😞", "Không hài lòng 😕", "Bình thường 😐", "Hài lòng 😊", "Tuyệt vời! 🤩"];
 
   const handleSubmit = async () => {
+    if (!restaurantReview?._id) return;
     setSubmitting(true);
     setErrorMsg("");
     try {
-      await Promise.all(
-        ratings.map((r) => r.reviewId ? updateReview(r.reviewId, { rating: r.rating, comment: comments[r.key] || "" }) : null).filter(Boolean)
-      );
+      await updateReview(restaurantReview._id, { rating, comment });
       onSuccess();
     } catch (err) {
       setErrorMsg(err.message || "Cập nhật thất bại");
@@ -285,83 +264,99 @@ function EditReviewModal({ reviews, order, onClose, onSuccess }) {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 99998, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
+    <div style={{ position: "fixed", inset: 0, zIndex: 99998, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(6px)" }} />
       <div style={{
-        position: "relative", background: "#fff", borderRadius: "20px 20px 0 0",
-        width: "100%", maxWidth: 520, maxHeight: "85vh",
-        display: "flex", flexDirection: "column",
-        boxShadow: "0 -8px 40px rgba(0,0,0,0.18)",
-        animation: "slideUp 0.3s cubic-bezier(.175,.885,.32,1.275)",
+        position: "relative", background: "#fff", borderRadius: 24,
+        width: "100%", maxWidth: 460,
+        boxShadow: "0 32px 80px rgba(0,0,0,0.22)",
+        animation: "modalPop 0.3s cubic-bezier(.175,.885,.32,1.275)",
+        overflow: "hidden",
       }}>
         {/* Header */}
-        <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid #f0f0f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>✏️ Sửa đánh giá</h3>
-            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#9ca3af" }}>{order.restaurantName} · #{order._id.slice(-8).toUpperCase()}</p>
-          </div>
-          <button onClick={onClose} style={{ background: "#f3f4f6", border: "none", borderRadius: 20, width: 32, height: 32, fontSize: 16, cursor: "pointer", color: "#6b7280" }}>✕</button>
+        <div style={{
+          background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)",
+          padding: "28px 24px 24px", textAlign: "center", position: "relative",
+        }}>
+          <button onClick={onClose} style={{
+            position: "absolute", top: 14, right: 14,
+            width: 32, height: 32, borderRadius: "50%",
+            background: "rgba(255,255,255,0.2)", border: "none",
+            color: "#fff", fontSize: 16, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>✕</button>
+          <div style={{ fontSize: 48, marginBottom: 8 }}>✏️</div>
+          <h3 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 800, color: "#fff" }}>Sửa đánh giá</h3>
+          <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: 500 }}>{order.restaurantName}</p>
         </div>
 
-        {/* Items */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px" }}>
-          {ratings.map((r, idx) => (
-            <div key={r.key} style={{
-              padding: "12px 0",
-              borderBottom: idx < ratings.length - 1 ? "1px solid #f5f5f5" : "none",
-              opacity: r.reviewId ? 1 : 0.4,
-            }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: 24, flexShrink: 0 }}>{r.emoji}</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {r.label}
-                  </span>
-                  {!r.reviewId && <span style={{ fontSize: 11, color: "#9ca3af" }}>(chưa đánh giá)</span>}
-                </div>
-                <StarRating value={r.rating} onChange={r.reviewId ? (v) => setRating(idx, v) : null} size={30} />
-              </div>
-              {/* Comment box cho từng mục có reviewId */}
-              {r.reviewId && (
-                <div style={{ marginTop: 10 }}>
-                  <textarea
-                    value={comments[r.key] || ""}
-                    onChange={e => setComments(prev => ({ ...prev, [r.key]: e.target.value }))}
-                    placeholder={idx === 0 ? "Nhận xét về nhà hàng... (tuỳ chọn)" : `Nhận xét về ${r.label}... (tuỳ chọn)`}
-                    rows={2}
-                    style={{
-                      width: "100%", boxSizing: "border-box",
-                      border: "1.5px solid #e5e7eb", borderRadius: 10,
-                      padding: "9px 12px", fontSize: 13,
-                      fontFamily: "inherit", resize: "none", outline: "none",
-                      lineHeight: 1.6, color: "#374151",
-                      transition: "border-color 0.15s",
-                      background: "#fafafa",
-                    }}
-                    onFocus={e => e.target.style.borderColor = "#3b82f6"}
-                    onBlur={e => e.target.style.borderColor = "#e5e7eb"}
-                  />
-                </div>
-              )}
+        {/* Body */}
+        <div style={{ padding: "24px 28px" }}>
+          {/* Stars */}
+          <div style={{ textAlign: "center", marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 8 }}>
+              {[1,2,3,4,5].map(s => (
+                <span key={s}
+                  onClick={() => setRatingVal(s)}
+                  onMouseEnter={() => setHovered(s)}
+                  onMouseLeave={() => setHovered(0)}
+                  style={{
+                    fontSize: 40, cursor: "pointer",
+                    color: s <= (hovered || rating) ? "#f59e0b" : "#e5e7eb",
+                    transition: "color 0.1s, transform 0.15s",
+                    transform: s === (hovered || rating) ? "scale(1.3)" : s < (hovered || rating) ? "scale(1.1)" : "scale(1)",
+                    display: "inline-block", filter: s <= (hovered || rating) ? "drop-shadow(0 2px 6px rgba(245,158,11,0.5))" : "none",
+                  }}
+                >★</span>
+              ))}
             </div>
-          ))}
-        </div>
-
-        {errorMsg && (
-          <div style={{ margin: "0 20px 8px", padding: "9px 14px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontSize: 13, display: "flex", gap: 8 }}>
-            <span>⚠️</span>{errorMsg}
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#3b82f6", minHeight: 20 }}>
+              {STAR_LABELS[hovered || rating]}
+            </div>
           </div>
-        )}
 
-        <div style={{ padding: "12px 20px 20px" }}>
+          {/* Comment */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 13, fontWeight: 700, color: "#374151", display: "block", marginBottom: 8 }}>
+              💬 Nhận xét <span style={{ color: "#9ca3af", fontWeight: 400 }}>(tuỳ chọn)</span>
+            </label>
+            <textarea
+              value={comment}
+              onChange={e => setComment(e.target.value.slice(0, 500))}
+              placeholder="Cập nhật cảm nhận của bạn..."
+              rows={4}
+              style={{
+                width: "100%", boxSizing: "border-box",
+                border: "1.5px solid #e5e7eb", borderRadius: 12,
+                padding: "12px 14px", fontSize: 13,
+                fontFamily: "inherit", resize: "none", outline: "none",
+                lineHeight: 1.6, color: "#374151",
+                transition: "border-color 0.15s, box-shadow 0.15s",
+                background: "#fafafa",
+              }}
+              onFocus={e => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }}
+              onBlur={e => { e.target.style.borderColor = "#e5e7eb"; e.target.style.boxShadow = "none"; }}
+            />
+            <div style={{ fontSize: 11, color: "#9ca3af", textAlign: "right", marginTop: 4 }}>{comment.length}/500</div>
+          </div>
+
+          {errorMsg && (
+            <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 10, background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontSize: 13, display: "flex", gap: 8, alignItems: "center" }}>
+              ⚠️ {errorMsg}
+            </div>
+          )}
+
           <button onClick={handleSubmit} disabled={submitting} style={{
-            width: "100%", padding: "14px", borderRadius: 12, border: "none",
-            background: submitting ? "#d1d5db" : "linear-gradient(135deg,#3b82f6,#6366f1)",
-            color: "#fff", fontWeight: 700, fontSize: 15,
+            width: "100%", padding: "15px", borderRadius: 14, border: "none",
+            background: submitting ? "#e5e7eb" : "linear-gradient(135deg, #3b82f6, #6366f1)",
+            color: submitting ? "#9ca3af" : "#fff",
+            fontWeight: 800, fontSize: 15,
             cursor: submitting ? "not-allowed" : "pointer",
-            boxShadow: submitting ? "none" : "0 4px 16px rgba(59,130,246,0.35)",
+            boxShadow: submitting ? "none" : "0 6px 20px rgba(59,130,246,0.35)",
+            transition: "all 0.2s", fontFamily: "inherit",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}>
-            {submitting ? "Đang lưu..." : "💾 Lưu thay đổi"}
+            {submitting ? "⏳ Đang lưu..." : "💾 Lưu thay đổi"}
           </button>
         </div>
       </div>
@@ -733,6 +728,10 @@ function OrdersPage({ user, navigate }) {
         @keyframes slideUp {
           from { opacity: 0; transform: translateY(60px); }
           to   { opacity: 1; transform: translateY(0);    }
+        }
+        @keyframes modalPop {
+          from { opacity: 0; transform: scale(0.88) translateY(16px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>
     </div>
