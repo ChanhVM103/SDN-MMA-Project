@@ -41,6 +41,10 @@ export const cancelOrder = async (orderId, reason = "") => apiRequest(`/orders/$
     body: JSON.stringify({ reason })
 });
 
+export const confirmOrderReceived = async (orderId) => apiRequest(`/orders/${orderId}/confirm-received`, {
+    method: 'PATCH',
+});
+
 // ── BRAND HANDOVER ───────────────────────────────
 export const brandHandoverToShipper = async (orderId) => apiRequest(`/orders/${orderId}/brand-handover`, {
     method: 'PATCH',

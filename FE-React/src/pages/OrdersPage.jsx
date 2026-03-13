@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getMyOrders, cancelOrder } from "../services/order-api";
+import { getMyOrders, cancelOrder, confirmOrderReceived } from "../services/order-api";
 import { submitBulkReviews, checkOrderReviewed, updateReview, deleteReview } from "../services/review-api";
 
 const STATUS_CONFIG = {
@@ -548,11 +548,19 @@ function OrdersPage({ user, navigate }) {
                 </div>
 
                 {/* Footer */}
-                <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#fafafa" }}>
-                  <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                    {new Date(order.createdAt).toLocaleString("vi-VN")}
+                <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border-color)", backgroundColor: "#fafafa" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                      {new Date(order.createdAt).toLocaleString("vi-VN")}
+                    </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {(order.deliveryFee > 0) && (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--text-muted)", marginBottom: 2 }}>
+                      <span>🚚 Phí giao hàng</span>
+                      <span>{(order.deliveryFee || 0).toLocaleString("vi-VN")}đ</span>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
                     <span style={{ fontSize: 13, color: "var(--text-main)" }}>Tổng cộng:</span>
                     <span style={{ fontSize: 20, fontWeight: 700, color: "var(--shopee-orange)" }}>
                       {order.total?.toLocaleString("vi-VN")}đ
@@ -576,6 +584,31 @@ function OrdersPage({ user, navigate }) {
                     >
                       {cancellingId === order._id ? "Đang hủy..." : "❌ Hủy đơn"}
                     </button>
+                  </div>
+                )}
+
+                {/* Confirm received button for shipper_delivered orders */}
+                {order.status === "shipper_delivered" && (
+                  <div style={{ padding: "10px 20px 14px", display: "flex", justifyContent: "flex-end", backgroundColor: "#fafafa", borderTop: "1px solid #f0f0f0" }}>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await confirmOrderReceived(order._id);
+                          showToast("Đã xác nhận nhận hàng thành công!", "success");
+                          await fetchOrders(false);
+                          setReviewOrder(order);
+                        } catch (err) {
+                          showToast("Lỗi xác nhận: " + err.message, "error");
+                        }
+                      }}
+                      style={{
+                        padding: "8px 20px", borderRadius: 8, border: "none",
+                        background: "linear-gradient(135deg, #10b981, #059669)",
+                        color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 6,
+                        boxShadow: "0 2px 8px rgba(16,185,129,0.3)",
+                      }}
+                    >✅ Đã nhận được hàng</button>
                   </div>
                 )}
 

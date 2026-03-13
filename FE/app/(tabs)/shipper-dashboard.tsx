@@ -133,7 +133,7 @@ export default function ShipperDashboardScreen() {
                 return (
                     <View style={styles.waitingBanner}>
                         <MaterialCommunityIcons name="clock-check-outline" size={20} color="#92400e" />
-                        <Text style={styles.waitingText}>Đang chờ nhà hàng xác nhận...</Text>
+                        <Text style={styles.waitingText}>Đang chờ khách hàng xác nhận...</Text>
                     </View>
                 );
             }

@@ -114,7 +114,7 @@ const createProduct = async (req, res) => {
 
     const productData = {
       restaurantId,
-      name,
+      name: name.trim(),
       price,
       image,
       category: category || "",
@@ -124,6 +124,15 @@ const createProduct = async (req, res) => {
       description: description || "",
       isAvailable: isAvailable !== undefined ? isAvailable : true,
     };
+
+    const Product = require("../models/product.model");
+    const existingProduct = await Product.findOne({
+      restaurantId,
+      name: { $regex: new RegExp(`^${name.trim()}$`, "i") }
+    });
+    if (existingProduct) {
+      return res.status(400).json({ success: false, message: "Tên sản phẩm này đã tồn tại trong cửa hàng" });
+    }
 
     const product = await productService.createProduct(productData);
 
@@ -148,6 +157,22 @@ const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
+
+    if (updateData.name) {
+      const Product = require("../models/product.model");
+      const currentProduct = await Product.findById(id);
+      if (currentProduct) {
+        const existingWithSameName = await Product.findOne({
+          restaurantId: currentProduct.restaurantId,
+          name: { $regex: new RegExp(`^${updateData.name.trim()}$`, "i") },
+          _id: { $ne: id }
+        });
+        if (existingWithSameName) {
+          return res.status(400).json({ success: false, message: "Tên sản phẩm này đã tồn tại trong cửa hàng" });
+        }
+      }
+      updateData.name = updateData.name.trim();
+    }
 
     const product = await productService.updateProduct(id, updateData);
 
@@ -339,7 +364,7 @@ const createProductForRestaurant = async (req, res) => {
     }
 
     const productData = {
-      name,
+      name: name.trim(),
       price,
       image,
       category: category || "",
@@ -349,6 +374,15 @@ const createProductForRestaurant = async (req, res) => {
       isBestSeller: isBestSeller || false,
       isAvailable: isAvailable !== undefined ? isAvailable : true,
     };
+
+    const Product = require("../models/product.model");
+    const existingProduct = await Product.findOne({
+      restaurantId,
+      name: { $regex: new RegExp(`^${name.trim()}$`, "i") }
+    });
+    if (existingProduct) {
+      return res.status(400).json({ success: false, message: "Tên sản phẩm này đã tồn tại trong cửa hàng" });
+    }
 
     const product = await productService.createProductForRestaurant(
       restaurantId,
@@ -376,6 +410,19 @@ const updateProductForRestaurant = async (req, res) => {
   try {
     const { restaurantId, productId } = req.params;
     const updateData = req.body;
+
+    if (updateData.name) {
+      const Product = require("../models/product.model");
+      const existingWithSameName = await Product.findOne({
+        restaurantId,
+        name: { $regex: new RegExp(`^${updateData.name.trim()}$`, "i") },
+        _id: { $ne: productId }
+      });
+      if (existingWithSameName) {
+        return res.status(400).json({ success: false, message: "Tên sản phẩm này đã tồn tại trong cửa hàng" });
+      }
+      updateData.name = updateData.name.trim();
+    }
 
     const product = await productService.updateProductForRestaurant(
       productId,
