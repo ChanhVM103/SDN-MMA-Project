@@ -126,45 +126,78 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&display=swap');`}</style>
 
       {/* ── BANNER ── */}
-      <div style={{ position: "relative", height: 280, overflow: "hidden" }}>
-        {/* Hero image */}
-        <img
-          src={restaurant.image}
-          alt={restaurant.name}
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-        />
-        {/* Gradient overlay — đậm ở dưới để chữ dễ đọc */}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.15) 55%, transparent 100%)" }} />
+      <div style={{ position: "relative" }}>
+        {/* Ảnh banner — cover full width */}
+        <div style={{ height: 220, overflow: "hidden", position: "relative" }}>
+          <img
+            src={restaurant.thumbnail || restaurant.image}
+            alt={restaurant.name}
+            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }}
+          />
+          {/* Gradient dưới để info đọc được */}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.1) 55%, transparent 100%)" }} />
 
-        {/* Back btn */}
-        <button onClick={() => navigate("/home")} style={{
-          position: "absolute", top: 16, left: 16, zIndex: 20,
-          width: 38, height: 38, borderRadius: "50%",
-          background: "rgba(255,255,255,0.18)", backdropFilter: "blur(8px)",
-          border: "1px solid rgba(255,255,255,0.35)", color: "#fff",
-          fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-        }}>←</button>
+          {/* Back btn */}
+          <button onClick={() => navigate("/home")} style={{
+            position: "absolute", top: 16, left: 16, zIndex: 10,
+            width: 40, height: 40, borderRadius: "50%",
+            background: "rgba(0,0,0,0.35)", backdropFilter: "blur(10px)",
+            border: "1px solid rgba(255,255,255,0.25)", color: "#fff",
+            fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+            onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.6)"}
+            onMouseLeave={e => e.currentTarget.style.background = "rgba(0,0,0,0.35)"}
+          >←</button>
 
-        {/* Info overlay — nằm TRONG ảnh, căn dưới */}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 24px" }}>
-          <h1 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 800, color: "#fff", letterSpacing: "-0.3px", textShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
-            {restaurant.name}
-          </h1>
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
-            <span style={{ color: "#fde68a", fontSize: 13, fontWeight: 700 }}>
-              ⭐ {restaurant.rating?.toFixed(1)}
-              <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 400 }}> ({restaurant.reviews}+)</span>
-            </span>
-            <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 13 }}>🕐 {restaurant.deliveryTime} phút</span>
-            <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 13 }}>🗺️ {restaurant.distance}</span>
-            <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 13 }}>🚚 {restaurant.deliveryFee?.toLocaleString("vi-VN")}đ</span>
-            <span style={{
-              fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
-              background: restaurant.isOpen ? "rgba(22,163,74,0.85)" : "rgba(239,68,68,0.85)",
-              color: "#fff", backdropFilter: "blur(4px)",
+          {/* Info overlay — tên + badges đè lên banner */}
+          <div style={{ position: "absolute", bottom: 16, left: 24, right: 24, zIndex: 10, display: "flex", alignItems: "flex-end", gap: 14 }}>
+            {/* Avatar */}
+            <div style={{
+              width: 72, height: 72, borderRadius: 16, overflow: "hidden", flexShrink: 0,
+              border: "3px solid rgba(255,255,255,0.9)", boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
             }}>
-              {restaurant.isOpen ? "● Đang mở cửa" : "● Đóng cửa"}
-            </span>
+              <img src={restaurant.image} alt={restaurant.name}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            </div>
+
+            {/* Text info */}
+            <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: "#fff", lineHeight: 1.2, textShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>
+                  {restaurant.name}
+                </h1>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
+                  background: restaurant.isOpen ? "rgba(22,163,74,0.85)" : "rgba(239,68,68,0.85)",
+                  color: "#fff", backdropFilter: "blur(4px)",
+                  display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap",
+                  border: `1px solid ${restaurant.isOpen ? "rgba(134,239,172,0.5)" : "rgba(252,165,165,0.5)"}`,
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff", display: "inline-block" }} />
+                  {restaurant.isOpen ? "Đang mở cửa" : "Đóng cửa"}
+                </span>
+              </div>
+
+              {/* Info pills */}
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {[
+                  { icon: "⭐", text: `${restaurant.rating?.toFixed(1)} (${restaurant.reviews}+)` },
+                  { icon: "🕐", text: `${restaurant.deliveryTime} phút` },
+                  { icon: "📍", text: restaurant.distance },
+                  { icon: "🚚", text: `${restaurant.deliveryFee?.toLocaleString("vi-VN")}đ` },
+                ].map((item, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: 4,
+                    background: "rgba(0,0,0,0.4)", backdropFilter: "blur(6px)",
+                    borderRadius: 20, padding: "4px 10px",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                  }}>
+                    <span style={{ fontSize: 11 }}>{item.icon}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.92)" }}>{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
