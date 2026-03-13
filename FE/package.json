@@ -7,6 +7,7 @@
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
+    "update-ip": "sh update-ip.sh",
     "web": "expo start --web",
     "lint": "expo lint"
   },
