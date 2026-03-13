@@ -429,9 +429,7 @@ export default function HomeScreen() {
         <FadeInView delay={300} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>🔥 Ưu Đãi</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAll}>Xem tất cả</Text>
-            </TouchableOpacity>
+
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.offersScroll}>
             {SPECIAL_OFFERS.map((offer) => (
@@ -461,9 +459,7 @@ export default function HomeScreen() {
         <FadeInView delay={400} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>🍽️ Danh mục</Text>
-            <TouchableOpacity onPress={() => setActiveCategory(null)}>
-              <Text style={styles.seeAll}>{activeCategory ? 'Bỏ chọn' : 'Xem tất cả'}</Text>
-            </TouchableOpacity>
+
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
             <View style={styles.catGrid}>
@@ -559,10 +555,8 @@ export default function HomeScreen() {
             {/* ── Popular Dishes ─────────────── */}
             <FadeInView delay={500} style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>⭐ Món Phổ Biến</Text>
-                <TouchableOpacity>
-                  <Text style={styles.seeAll}>Xem tất cả</Text>
-                </TouchableOpacity>
+                <Text style={styles.sectionTitle}>⭐ Các món best seller</Text>
+
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dishesScroll}>
                 {popularDishes.map((dish) => (
@@ -605,7 +599,7 @@ export default function HomeScreen() {
             <TopRatedSection />
             <NearbySection />
             <MostOrderedSection />
-            <BrandSection />
+
 
             {/* ── Chef Recommendation ────────── */}
             <FadeInView delay={600} style={styles.section}>
@@ -632,28 +626,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </FadeInView>
 
-            {/* ── Bottom CTA ─────────────────── */}
-            <FadeInView delay={700} style={[styles.section, { marginBottom: 100 }]}>
-              <LinearGradient
-                colors={['#FF6B35', '#FFB627']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.ctaCard}
-              >
-                <Text style={styles.ctaEmoji}>🎁</Text>
-                <Text style={styles.ctaTitle}>Gia nhập FoodieHub!</Text>
-                <Text style={styles.ctaSubtitle}>
-                  Đăng ký ngay để nhận ưu đãi, công thức và phần thưởng độc quyền
-                </Text>
-                <TouchableOpacity
-                  style={styles.ctaButton}
-                  onPress={() => router.push('/sign-up' as any)}
-                >
-                  <Text style={styles.ctaButtonText}>Bắt đầu miễn phí</Text>
-                  <Ionicons name="arrow-forward" size={18} color={AppColors.primary} />
-                </TouchableOpacity>
-              </LinearGradient>
-            </FadeInView>
+
           </>
         )}
       </Animated.ScrollView>

@@ -153,7 +153,6 @@ export default function ProfileScreen() {
         { icon: 'key-outline' as const, label: 'Đổi mật khẩu', color: '#6C5CE7', route: '/change-password' },
         { icon: 'receipt-outline' as const, label: 'Lịch sử đơn hàng', color: '#FF6B35', route: '/(tabs)/orders' },
         { icon: 'heart-outline' as const, label: 'Yêu thích', color: '#EF4444', route: '/(tabs)/favorites' },
-        { icon: 'location-outline' as const, label: 'Địa chỉ giao hàng', color: '#2D6A4F', route: undefined },
     ];
 
     return (

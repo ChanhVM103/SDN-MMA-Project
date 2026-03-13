@@ -76,7 +76,6 @@ export default function NearbySection() {
         <View style={s.container}>
             <View style={s.header}>
                 <Text style={s.title}>📍 Gần bạn</Text>
-                <TouchableOpacity><Text style={s.seeAll}>Xem tất cả</Text></TouchableOpacity>
             </View>
             {nearby.map((item, idx) => {
                 const itemId = String(item._id || item.id || '');

@@ -51,7 +51,6 @@ export default function TopRatedSection() {
         <View style={s.container}>
             <View style={s.header}>
                 <Text style={s.title}>⭐ Quán Rating 5 Sao</Text>
-                <TouchableOpacity><Text style={s.seeAll}>Xem tất cả</Text></TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.scroll}>
                 {topRated.map((item) => {

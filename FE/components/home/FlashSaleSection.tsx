@@ -106,7 +106,6 @@ export default function FlashSaleSection() {
                         <View style={s.timerBox}><Text style={s.timerText}>{pad(timeLeft.s)}</Text></View>
                     </View>
                 </View>
-                <TouchableOpacity><Text style={s.seeAll}>Xem tất cả</Text></TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.scroll} nestedScrollEnabled={true}>
                 {flashDeals.map((item, idx) => {

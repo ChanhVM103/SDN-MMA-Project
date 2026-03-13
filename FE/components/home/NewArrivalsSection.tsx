@@ -40,9 +40,6 @@ export default function NewArrivalsSection() {
         <View style={s.container}>
             <View style={s.header}>
                 <Text style={s.title}>✨ Món Mới Lên Kệ</Text>
-                <TouchableOpacity onPress={() => router.push('/search' as any)}>
-                    <Text style={s.seeAll}>Khám phá</Text>
-                </TouchableOpacity>
             </View>
 
             <ScrollView

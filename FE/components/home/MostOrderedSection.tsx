@@ -67,7 +67,6 @@ export default function MostOrderedSection() {
         <View style={s.container}>
             <View style={s.header}>
                 <Text style={s.title}>🏆 Đặt Nhiều Nhất</Text>
-                <Pressable><Text style={s.seeAll}>Xem tất cả</Text></Pressable>
             </View>
             {mostOrdered.map((item, idx) => {
                 const itemId = String(item._id || item.id || '');
