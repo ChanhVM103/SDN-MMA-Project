@@ -1316,7 +1316,6 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
             {activeTab === "orders" && (() => {
               const STATUS_CONFIG = {
                 pending:           { label: "Chờ xác nhận",          color: "#f59e0b", bg: "#fef3c7", icon: <HourglassEmptyIcon sx={{ fontSize: 16 }} /> },
-                confirmed:         { label: "Đã xác nhận",            color: "#3b82f6", bg: "#dbeafe", icon: <CheckCircleIcon sx={{ fontSize: 16 }} /> },
                 preparing:         { label: "Đang chuẩn bị",         color: "#8b5cf6", bg: "#ede9fe", icon: <InventoryIcon sx={{ fontSize: 16 }} /> },
                 ready_for_pickup:  { label: "Chờ Shipper đến lấy",   color: "#f97316", bg: "#ffedd5", icon: <LocalShippingIcon sx={{ fontSize: 16 }} /> },
                 shipper_accepted:  { label: "Shipper đã nhận đơn",   color: "#06b6d4", bg: "#cffafe", icon: <LocalShippingIcon sx={{ fontSize: 16 }} /> },
@@ -1327,14 +1326,12 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
               };
 
               const NEXT_ACTION = {
-                pending:   { status: "confirmed",  label: "✅ Xác nhận đơn" },
-                confirmed: { status: "preparing",  label: "👨‍🍳 Bắt đầu chuẩn bị" },
+                pending: { status: "preparing", label: "✅ Xác nhận & Chuẩn bị" },
               };
 
               const filterTabs = [
                 { value: "all", label: "Tất cả" },
                 { value: "pending", label: "Chờ xác nhận" },
-                { value: "confirmed", label: "Đã xác nhận" },
                 { value: "preparing", label: "Đang chuẩn bị" },
                 { value: "ready_for_pickup", label: "Chờ shipper" },
                 { value: "shipper_accepted", label: "Shipper đã nhận" },
