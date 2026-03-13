@@ -97,6 +97,7 @@ const DRAWER_WIDTH = 260;
 const CUSTOM_CATEGORY_VALUE = "__custom_category__";
 const PRODUCT_CATEGORY_OPTIONS = [
   "Trà sữa",
+  "Đồ uống",
   "Cà phê",
   "Nước ép",
   "Trà trái cây",
@@ -174,6 +175,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
   const [productsList, setProductsList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [productFilter, setProductFilter] = useState("all");
 
   // Orders state
   const [ordersList, setOrdersList] = useState([]);
@@ -551,11 +553,13 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
   // ─── Filters ────────────────────────────────
   const filteredProducts = productsList.filter((p) => {
     const term = searchQuery.toLowerCase();
-    return (
+    const searchMatch =
       p.name?.toLowerCase().includes(term) ||
       p.category?.toLowerCase().includes(term) ||
-      p.description?.toLowerCase().includes(term)
-    );
+      p.description?.toLowerCase().includes(term);
+    
+    if (productFilter === "all") return searchMatch;
+    return searchMatch && p.type === productFilter;
   });
 
   // ─── Sidebar Nav Items ──────────────────────
@@ -838,102 +842,78 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
                         {restaurant.name?.charAt(0)}
                       </Avatar>
 
-                      <Box sx={{ bgcolor: "#fafafa", borderRadius: 2, p: 2 }}>
-                        <Stack spacing={1.5}>
+                      <Box sx={{ bgcolor: "#fafafa", borderRadius: 2, p: 3, flex: 1 }}>
+                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }, gap: 3 }}>
                           <Box>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
+                            <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
                               Đánh giá
                             </Typography>
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 0.5,
-                              }}
-                            >
-                              <StarIcon
-                                sx={{ fontSize: 18, color: "#ffb700" }}
-                              />
-                              <Typography variant="body2">
-                                {restaurant.rating || 0} (
-                                {restaurant.reviews || 0} đánh giá)
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
+                              <StarIcon sx={{ fontSize: 18, color: "#ffb700" }} />
+                              <Typography variant="body2" fontWeight={600}>
+                                {restaurant.rating || 0} ({restaurant.reviews || 0} đánh giá)
                               </Typography>
                             </Box>
                           </Box>
 
                           <Box>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
-                              Địa chỉ
-                            </Typography>
-                            <Typography variant="body2">
-                              {restaurant.address || "Chưa cập nhật"}
-                            </Typography>
-                          </Box>
-
-                          <Box>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
+                            <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
                               Số điện thoại
                             </Typography>
-                            <Typography variant="body2">
+                            <Typography variant="body2" fontWeight={600} sx={{ mt: 0.5 }}>
                               {restaurant.phone || "Chưa cập nhật"}
                             </Typography>
                           </Box>
 
                           <Box>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
+                            <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
                               Giờ mở cửa
                             </Typography>
-                            <Typography variant="body2">
+                            <Typography variant="body2" fontWeight={600} sx={{ mt: 0.5 }}>
                               {restaurant.openingHours || "Chưa cập nhật"}
                             </Typography>
                           </Box>
 
                           <Box>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
+                            <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
                               Giao hàng
                             </Typography>
-                            <Typography variant="body2">
-                              {restaurant.deliveryTime} phút •{" "}
-                              {restaurant.deliveryFee?.toLocaleString()}đ
+                            <Typography variant="body2" fontWeight={600} sx={{ mt: 0.5 }}>
+                              {restaurant.deliveryTime} phút • {restaurant.deliveryFee?.toLocaleString()}đ
                             </Typography>
                           </Box>
 
-                          <Box>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
+                          <Box sx={{ gridColumn: { xs: "span 1", sm: "span 2", lg: "span 2" } }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
+                              Địa chỉ
+                            </Typography>
+                            <Typography variant="body2" fontWeight={600} sx={{ mt: 0.5, pr: 2 }}>
+                              {restaurant.address || "Chưa cập nhật"}
+                            </Typography>
+                          </Box>
+
+                          <Box sx={{ gridColumn: { xs: "span 1", sm: "span 2", lg: "span 3" } }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
                               Tags
                             </Typography>
-                            <Box
-                              sx={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: 0.5,
-                                mt: 0.5,
-                              }}
-                            >
+                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 0.8 }}>
                               {(restaurant.tags || []).map((tag, idx) => (
-                                <Chip key={idx} label={tag} size="small" />
+                                <Chip 
+                                  key={idx} 
+                                  label={tag} 
+                                  size="small" 
+                                  sx={{ 
+                                    fontWeight: 600, 
+                                    bgcolor: alpha("#ee4d2d", 0.08), 
+                                    color: "primary.main", 
+                                    border: "1px solid", 
+                                    borderColor: alpha("#ee4d2d", 0.3) 
+                                  }} 
+                                />
                               ))}
                             </Box>
                           </Box>
-                        </Stack>
+                        </Box>
                       </Box>
                     </Box>
                   </>
@@ -1120,6 +1100,24 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
                       Thêm sản phẩm
                     </Button>
                   </Stack>
+                </Box>
+
+                {/* Filter tabs cho sản phẩm */}
+                <Box sx={{ px: 2.5, pb: 2, display: "flex", gap: 1 }}>
+                  {[
+                    { value: "all", label: "Tất cả" },
+                    { value: "food", label: "Đồ ăn" },
+                    { value: "drink", label: "Thức uống" },
+                  ].map((tab) => (
+                    <Chip
+                      key={tab.value}
+                      label={tab.label}
+                      onClick={() => setProductFilter(tab.value)}
+                      color={productFilter === tab.value ? "primary" : "default"}
+                      variant={productFilter === tab.value ? "filled" : "outlined"}
+                      sx={{ fontWeight: 600, cursor: "pointer" }}
+                    />
+                  ))}
                 </Box>
 
                 <TableContainer>
