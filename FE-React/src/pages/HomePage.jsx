@@ -155,45 +155,45 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
               height: "100%",
             }}
           >
-            <img
-              src="/banner.png"
-              alt="FoodieHub Banner"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          </div>
-          <div className="carousel-side">
-            <div
-              className="carousel-side-item"
-              style={{
-                padding: 0,
-                overflow: "hidden",
-                backgroundColor: "#fff",
-                borderRadius: "12px",
-                boxShadow: "var(--shadow-sm)",
-              }}
-            >
               <img
-                src="/freeship.png"
-                alt="Freeship Xtra"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                src="/banner.png"
+                alt="FoodieHub Banner"
+                style={{ width: "100%", height: "100%", objectFit: "fill" }}
               />
             </div>
-            <div
-              className="carousel-side-item"
-              style={{
-                padding: 0,
-                overflow: "hidden",
-                backgroundColor: "#fff",
-                borderRadius: "12px",
-                boxShadow: "var(--shadow-sm)",
-              }}
-            >
-              <img
-                src="/flash_sale.png"
-                alt="Flash Sale"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            </div>
+            <div className="carousel-side">
+              <div
+                className="carousel-side-item"
+                style={{
+                  padding: 0,
+                  overflow: "hidden",
+                  backgroundColor: "#fff",
+                  borderRadius: "12px",
+                  boxShadow: "var(--shadow-sm)",
+                }}
+              >
+                <img
+                  src="/freeship.png"
+                  alt="Freeship Xtra"
+                  style={{ width: "100%", height: "100%", objectFit: "fill" }}
+                />
+              </div>
+              <div
+                className="carousel-side-item"
+                style={{
+                  padding: 0,
+                  overflow: "hidden",
+                  backgroundColor: "#fff",
+                  borderRadius: "12px",
+                  boxShadow: "var(--shadow-sm)",
+                }}
+              >
+                <img
+                  src="/flash_sale.png"
+                  alt="Flash Sale"
+                  style={{ width: "100%", height: "100%", objectFit: "fill" }}
+                />
+              </div>
           </div>
         </div>
       </section>

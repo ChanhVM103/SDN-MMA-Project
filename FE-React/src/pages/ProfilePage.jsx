@@ -134,12 +134,6 @@ function ProfilePage({ user, onLogout, navigate, onUpdateUser }) {
           <div style={{ color: "rgba(0,0,0,.87)", fontWeight: "500", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }} onClick={() => navigate("/orders")}>
             <span style={{ fontSize: "18px", color: "blue" }}>📄</span> Đơn Mua
           </div>
-          <div style={{ color: "rgba(0,0,0,.87)", fontWeight: "500", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-            <span style={{ fontSize: "18px", color: "orange" }}>🔔</span> Thông báo
-          </div>
-          <div style={{ color: "rgba(0,0,0,.87)", fontWeight: "500", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-            <span style={{ fontSize: "18px", color: "red" }}>🎟️</span> Kho Voucher
-          </div>
         </div>
       </aside>
 

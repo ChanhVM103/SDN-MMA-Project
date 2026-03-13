@@ -89,24 +89,26 @@ function CategorySection({ onSelectCategory, activeCategory }) {
     <section className="view-port" style={{ paddingTop: "20px", paddingBottom: "10px" }}>
       <div style={{ 
         display: "flex", 
-        justifyContent: "space-between", 
+        justifyContent: "center", 
         alignItems: "center", 
-        marginBottom: "14px" 
+        marginBottom: "20px" 
       }}>
         <h2 style={{ 
-          fontSize: "16px", 
+          fontSize: "18px", 
           fontWeight: "600", 
           margin: 0, 
-          color: "var(--text-main)" 
+          color: "var(--text-main)",
+          textAlign: "center"
         }}>
-          📋 Danh mục
+          📋 DANH MỤC
         </h2>
       </div>
       
       <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))",
-        gap: "14px",
+        display: "flex",
+        flexWrap: "wrap",
+        justifyContent: "center",
+        gap: "24px",
       }}>
         {categories.map((cat) => (
           <div
