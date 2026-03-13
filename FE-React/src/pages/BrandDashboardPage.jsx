@@ -970,9 +970,9 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
                     {[
                       { icon: <ReceiptLongIcon />, label: "Đơn đang xử lý", value: pendingOrders, color: "#f59e0b", bg: "#fef3c7" },
                       { icon: <DoneAllIcon />, label: "Đơn hoàn thành", value: completedOrders, color: "#10b981", bg: "#d1fae5" },
-                      { icon: <BarChartIcon />, label: "Tổng doanh thu", value: `${(vnpayRevenue + cashRevenue).toLocaleString("vi-VN")}đ`, color: "#ee4d2d", bg: "#fff0eb" },
-                      { icon: <StorefrontIcon />, label: "Doanh thu VNPay", value: `${vnpayRevenue.toLocaleString("vi-VN")}đ`, color: "#2aa1ff", bg: "#e6f4ff" },
-                      { icon: <AttachMoneyIcon />, label: "Doanh thu tiền mặt", value: `${cashRevenue.toLocaleString("vi-VN")}đ`, color: "#16a34a", bg: "#dcfce7" },
+                      { icon: <BarChartIcon />, label: "Doanh thu món ăn", value: `${(vnpayRevenue + cashRevenue).toLocaleString("vi-VN")}đ`, color: "#ee4d2d", bg: "#fff0eb" },
+                      { icon: <StorefrontIcon />, label: "Tiền món (VNPay)", value: `${vnpayRevenue.toLocaleString("vi-VN")}đ`, color: "#2aa1ff", bg: "#e6f4ff" },
+                      { icon: <AttachMoneyIcon />, label: "Tiền món (Tiền mặt)", value: `${cashRevenue.toLocaleString("vi-VN")}đ`, color: "#16a34a", bg: "#dcfce7" },
                     ].map((s, i) => (
                       <Card key={i} elevation={0} sx={{ border: "1px solid #f0f0f0" }}>
                         <CardContent sx={{ display: "flex", alignItems: "center", gap: 2, py: 2.5 }}>
@@ -1436,10 +1436,15 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
 
                               {/* Total */}
                               <Box sx={{ textAlign: "right" }}>
-                                <Typography variant="caption" color="text.secondary" fontWeight={700}>TỔNG TIỀN</Typography>
+                                <Typography variant="caption" color="text.secondary" fontWeight={700}>TIỀN HÀNG</Typography>
                                 <Typography variant="h6" color="primary.main" fontWeight={700} sx={{ mt: 0.5 }}>
-                                  {order.total?.toLocaleString("vi-VN")}đ
+                                  {((order.total || 0) - (order.deliveryFee || 0)).toLocaleString("vi-VN")}đ
                                 </Typography>
+                                {(order.deliveryFee > 0) && (
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.3 }}>
+                                    🚚 Ship: {order.deliveryFee?.toLocaleString("vi-VN")}đ (shipper)
+                                  </Typography>
+                                )}
                                 <Typography variant="caption" color="text.secondary">
                                   {order.paymentMethod?.toUpperCase()}
                                 </Typography>
@@ -1505,19 +1510,10 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
                               {order.status === "delivering" && (
                                 <Chip label="🚀 Shipper đang giao" color="info" size="small" variant="outlined" />
                               )}
-
-                              {/* Brand: xác nhận giao thành công (shipper_delivered → delivered) */}
+                              
+                              {/* Waiting for customer to confirm (shipper_delivered → delivered) */}
                               {order.status === "shipper_delivered" && (
-                                <Button
-                                  variant="contained"
-                                  size="small"
-                                  color="success"
-                                  disabled={isUpdating}
-                                  startIcon={isUpdating ? <CircularProgress size={16} color="inherit" /> : <DoneAllIcon />}
-                                  onClick={() => handleBrandConfirmDelivered(order._id)}
-                                >
-                                  {isUpdating ? "Đang xử lý..." : "🎉 Xác nhận giao thành công"}
-                                </Button>
+                                <Chip label="⏳ Chờ khách hàng xác nhận" color="warning" size="small" variant="outlined" />
                               )}
                             </Box>
                           </Paper>

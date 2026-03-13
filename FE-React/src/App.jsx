@@ -20,7 +20,7 @@ import { normalizePath } from "./utils/navigation";
 import { createOrder } from "./services/order-api";
 
 // ─── Cart helpers ──────────────────────────────────
-const EMPTY_CART = { restaurantId: null, restaurantName: null, deliveryAddress: "", items: [] };
+const EMPTY_CART = { restaurantId: null, restaurantName: null, deliveryAddress: "", deliveryFee: 0, items: [] };
 
 function App() {
   const [path, setPath] = useState(() => normalizePath(window.location.pathname));
@@ -87,6 +87,7 @@ function App() {
             restaurantId: restaurant._id || restaurant.id,
             restaurantName: restaurant.name,
             deliveryAddress: "",
+            deliveryFee: restaurant.deliveryFee || 15000,
             items: [{ productId: product._id, name: product.name, price: product.price, quantity: 1, emoji: product.emoji || "🍽️" }],
           })
         );
@@ -101,6 +102,7 @@ function App() {
         ...prev,
         restaurantId: restaurant._id || restaurant.id,
         restaurantName: restaurant.name,
+        deliveryFee: prev.deliveryFee || restaurant.deliveryFee || 15000,
         items: existing
           ? prev.items.map(i => i.variantKey === variantKey ? { ...i, quantity: i.quantity + 1 } : i)
           : [...prev.items, { productId: product._id, variantKey, name: product.name, price: product.price, quantity: 1, emoji: product.emoji || "🍽️" }],
@@ -121,6 +123,8 @@ function App() {
     if (!auth?.user) { navigate("/sign-in"); return; }
     if (!cart.items.length) return;
     const subtotal = cart.items.reduce((s, i) => s + i.price * i.quantity, 0);
+    const deliveryFee = cart.deliveryFee || 0;
+    const total = subtotal + deliveryFee;
     try {
       const order = await createOrder({
         restaurantId: cart.restaurantId,
@@ -128,7 +132,8 @@ function App() {
         deliveryAddress,
         note,
         subtotal,
-        total: subtotal,
+        deliveryFee,
+        total,
         paymentMethod,
       });
       setCart(EMPTY_CART);
@@ -301,6 +306,8 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
   const [placing, setPlacing] = useState(false);
 
   const subtotal = cart.items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const deliveryFee = cart.deliveryFee || 0;
+  const total = subtotal + deliveryFee;
   const itemCount = cart.items.reduce((s, i) => s + i.quantity, 0);
 
   const handleOrder = async () => {
@@ -422,21 +429,29 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
 
             {/* Footer */}
             <div style={{ padding: "14px 20px 20px", borderTop: "1px solid #f0f0f0", flexShrink: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <div>
-                  <div style={{ fontSize: 12, color: "#9ca3af" }}>Tạm tính ({itemCount} món)</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1a1a" }}>{subtotal.toLocaleString("vi-VN")}đ</div>
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#6b7280", marginBottom: 4 }}>
+                  <span>Tạm tính ({itemCount} món)</span>
+                  <span>{subtotal.toLocaleString("vi-VN")}đ</span>
                 </div>
-                <button onClick={() => setStep("checkout")} style={{
-                  padding: "13px 28px", borderRadius: 10, border: "none",
-                  background: "#ee4d2d", color: "#fff",
-                  fontWeight: 700, fontSize: 15, cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 8,
-                  boxShadow: "0 4px 16px rgba(238,77,45,0.3)",
-                }}>
-                  Đặt hàng <span style={{ fontSize: 16 }}>→</span>
-                </button>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#6b7280", marginBottom: 8 }}>
+                  <span>🚚 Phí giao hàng</span>
+                  <span>{deliveryFee.toLocaleString("vi-VN")}đ</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>Tổng thanh toán</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#ee4d2d" }}>{total.toLocaleString("vi-VN")}đ</div>
+                </div>
               </div>
+              <button onClick={() => setStep("checkout")} style={{
+                width: "100%", padding: "13px 28px", borderRadius: 10, border: "none",
+                background: "#ee4d2d", color: "#fff",
+                fontWeight: 700, fontSize: 15, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                boxShadow: "0 4px 16px rgba(238,77,45,0.3)",
+              }}>
+                Đặt hàng <span style={{ fontSize: 16 }}>→</span>
+              </button>
             </div>
           </>
 
@@ -529,9 +544,19 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
 
             {/* Footer */}
             <div style={{ padding: "14px 20px 20px", borderTop: "1px solid #f0f0f0", flexShrink: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
-                <span style={{ fontSize: 13, color: "#9ca3af" }}>Tổng thanh toán</span>
-                <span style={{ fontSize: 22, fontWeight: 800, color: "#ee4d2d" }}>{subtotal.toLocaleString("vi-VN")}đ</span>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#6b7280", marginBottom: 4 }}>
+                  <span>Tạm tính</span>
+                  <span>{subtotal.toLocaleString("vi-VN")}đ</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#6b7280", marginBottom: 8 }}>
+                  <span>🚚 Phí giao hàng</span>
+                  <span>{deliveryFee.toLocaleString("vi-VN")}đ</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>Tổng thanh toán</span>
+                  <span style={{ fontSize: 22, fontWeight: 800, color: "#ee4d2d" }}>{total.toLocaleString("vi-VN")}đ</span>
+                </div>
               </div>
               <button onClick={handleOrder} disabled={placing} style={{
                 width: "100%", border: "none", borderRadius: 10, padding: "14px",

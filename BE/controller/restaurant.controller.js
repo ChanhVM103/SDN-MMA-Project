@@ -180,6 +180,11 @@ const getRestaurantById = async (req, res) => {
 const createRestaurant = async (req, res) => {
   try {
     const restaurantData = validateAndBuildRestaurantData(req.body);
+    const Restaurant = require("../models/restaurant.model");
+    const existingRestaurant = await Restaurant.findOne({ name: restaurantData.name });
+    if (existingRestaurant) {
+      return res.status(400).json({ success: false, message: "Tên thương hiệu đã tồn tại, vui lòng chọn tên khác" });
+    }
 
     const restaurant = await restaurantService.createRestaurant(restaurantData);
 
@@ -210,6 +215,11 @@ const adminCreateRestaurant = async (req, res) => {
         .json({ success: false, message: "Owner ID is required" });
     }
     const restaurantData = validateAndBuildRestaurantData(req.body);
+    const Restaurant = require("../models/restaurant.model");
+    const existingRestaurant = await Restaurant.findOne({ name: restaurantData.name });
+    if (existingRestaurant) {
+      return res.status(400).json({ success: false, message: "Tên thương hiệu đã tồn tại, vui lòng chọn tên khác" });
+    }
 
     const restaurant = await restaurantService.adminCreateRestaurant(
       restaurantData,
@@ -244,6 +254,18 @@ const updateRestaurant = async (req, res) => {
     for (const field of stringFields) {
       if (body[field] !== undefined) {
         updateData[field] = typeof body[field] === "string" ? body[field].trim() : body[field];
+      }
+    }
+
+    // Check for duplicate name if name is being updated
+    if (updateData.name) {
+      const Restaurant = require("../models/restaurant.model");
+      const existingWithSameName = await Restaurant.findOne({ 
+        name: updateData.name,
+        _id: { $ne: id }
+      });
+      if (existingWithSameName) {
+        return res.status(400).json({ success: false, message: "Tên thương hiệu đã tồn tại, vui lòng chọn tên khác" });
       }
     }
 
