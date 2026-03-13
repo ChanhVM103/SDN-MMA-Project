@@ -8,20 +8,36 @@ import { Platform } from "react-native";
 const ENV_API_URL = process.env.EXPO_PUBLIC_API_URL?.trim();
 
 const getBaseUrl = () => {
-    if (ENV_API_URL) {
-        return ENV_API_URL.replace(/\/+$/, "");
+    let baseUrl = ENV_API_URL;
+
+    // If we're on web, we usually want localhost even if env says 10.0.2.2
+    if (Platform.OS === 'web') {
+        if (!baseUrl || baseUrl.includes('10.0.2.2')) {
+            return "http://localhost:3000/api";
+        }
     }
 
+    // If an environment variable is explicitly set, use it
+    if (baseUrl) {
+        // Optimization: If on iOS simulator, 10.0.2.2 won't work, so switch to localhost
+        if (Platform.OS === 'ios' && baseUrl.includes('10.0.2.2')) {
+            return baseUrl.replace('10.0.2.2', 'localhost').replace(/\/+$/, "");
+        }
+        return baseUrl.replace(/\/+$/, "");
+    }
+
+    // Default fallbacks if no environment variable is present
     if (Platform.OS === "android") {
-        // Android emulator (AVD) -> host machine loopback
         return "http://10.0.2.2:3000/api";
     }
 
-    // iOS simulator -> host machine loopback
     return "http://localhost:3000/api";
 };
 
 export const API_BASE_URL = getBaseUrl();
+
+let API_TOKEN: string | null = null;
+export const setApiToken = (token: string | null) => { API_TOKEN = token; };
 
 /**
  * Generic API request helper
@@ -33,12 +49,19 @@ export const apiRequest = async (
     const url = `${API_BASE_URL}${endpoint}`;
 
     const { headers: optionHeaders, ...restOptions } = options;
+    const headersList: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...(optionHeaders as Record<string, string>),
+    };
+
+    // Auto-add Authorization header if token exists and not already provided
+    if (API_TOKEN && !headersList["Authorization"]) {
+        headersList["Authorization"] = `Bearer ${API_TOKEN}`;
+    }
+
     const config: RequestInit = {
         ...restOptions,
-        headers: {
-            "Content-Type": "application/json",
-            ...optionHeaders,
-        },
+        headers: headersList,
     };
 
     try {

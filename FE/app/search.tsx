@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 
+import { getAllRestaurants } from '@/constants/restaurant-api';
+
 const SEARCH_HISTORY = ['Burger gà giòn', 'Sushi combo', 'Trà sữa'];
 
 const POPULAR_SEARCHES = [
@@ -31,6 +33,8 @@ const TRENDING_KEYWORDS = [
 export default function SearchScreen() {
     const router = useRouter();
     const [searchText, setSearchText] = useState('');
+    const [results, setResults] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
     const inputRef = useRef<TextInput>(null);
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(20)).current;
@@ -44,9 +48,38 @@ export default function SearchScreen() {
         ]).start();
     }, []);
 
+    // Search logic with debounce
+    useEffect(() => {
+        if (searchText.trim().length === 0) {
+            setResults([]);
+            return;
+        }
+
+        const timeoutId = setTimeout(async () => {
+            setLoading(true);
+            try {
+                const data = await getAllRestaurants({ search: searchText, limit: 20 });
+                setResults(Array.isArray(data) ? data : data?.restaurants || []);
+            } catch (error) {
+                console.error("Search error:", error);
+            } finally {
+                setLoading(false);
+            }
+        }, 500);
+
+        return () => clearTimeout(timeoutId);
+    }, [searchText]);
+
     const handleBack = () => {
         Keyboard.dismiss();
         router.back();
+    };
+
+    const handleSelectRestaurant = (restaurant: any) => {
+        router.push({
+            pathname: '/restaurant/[id]',
+            params: { id: restaurant._id || restaurant.id, data: JSON.stringify(restaurant) }
+        } as any);
     };
 
     return (
@@ -80,66 +113,98 @@ export default function SearchScreen() {
                 keyboardShouldPersistTaps="handled"
                 contentContainerStyle={s.scrollContent}
             >
-                <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-                    {/* Trending Keywords - scrolling text */}
-                    <View style={s.trendingBar}>
-                        <Ionicons name="trending-up" size={16} color={AppColors.primary} />
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.trendingScroll}>
-                            {TRENDING_KEYWORDS.map((kw) => (
-                                <TouchableOpacity key={kw.id} style={s.trendingChip} activeOpacity={0.7}>
-                                    {kw.hot && <Text style={s.hotBadge}>🔥</Text>}
-                                    <Text style={s.trendingText}>{kw.text}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
-
-                    {/* Search History */}
-                    {SEARCH_HISTORY.length > 0 && (
-                        <View style={s.section}>
-                            <View style={s.sectionHeader}>
-                                <Text style={s.sectionTitle}>Lịch sử tìm kiếm</Text>
-                                <TouchableOpacity>
-                                    <Text style={s.clearText}>Xóa lịch sử tìm kiếm</Text>
-                                </TouchableOpacity>
+                {searchText.length > 0 ? (
+                    <View style={s.resultsContainer}>
+                        {loading ? (
+                            <View style={s.loadingBox}>
+                                <Text style={s.loadingText}>Đang tìm kiếm...</Text>
                             </View>
-                            {SEARCH_HISTORY.map((item, idx) => (
-                                <TouchableOpacity key={idx} style={s.historyItem} activeOpacity={0.6}>
-                                    <Ionicons name="time-outline" size={18} color={AppColors.gray} />
-                                    <Text style={s.historyText}>{item}</Text>
-                                    <Ionicons name="arrow-forward-outline" size={16} color={AppColors.gray} />
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    )}
-
-                    {/* Popular Searches */}
-                    <View style={s.section}>
-                        <Text style={s.sectionTitle}>Phổ biến</Text>
-                        <View style={s.popularGrid}>
-                            {POPULAR_SEARCHES.map((item) => (
-                                <TouchableOpacity key={item.id} style={s.popularItem} activeOpacity={0.7}>
-                                    <View style={s.popularEmoji}>
-                                        <Text style={{ fontSize: 28 }}>{item.emoji}</Text>
+                        ) : results.length > 0 ? (
+                            results.map((item, idx) => (
+                                <TouchableOpacity
+                                    key={item._id || idx}
+                                    style={s.resultItem}
+                                    onPress={() => handleSelectRestaurant(item)}
+                                >
+                                    <View style={s.resultIcon}>
+                                        <Ionicons name="restaurant-outline" size={20} color={AppColors.primary} />
                                     </View>
-                                    <Text style={s.popularName}>{item.name}</Text>
+                                    <View style={s.resultInfo}>
+                                        <Text style={s.resultName}>{item.name}</Text>
+                                        <Text style={s.resultAddress} numberOfLines={1}>{item.address}</Text>
+                                    </View>
+                                    <Ionicons name="chevron-forward" size={16} color={AppColors.gray} />
                                 </TouchableOpacity>
-                            ))}
-                        </View>
+                            ))
+                        ) : (
+                            <View style={s.noResultBox}>
+                                <Ionicons name="search-outline" size={48} color={AppColors.lightGray} />
+                                <Text style={s.noResultText}>Không tìm thấy nhà hàng nào phù hợp</Text>
+                            </View>
+                        )}
                     </View>
+                ) : (
+                    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+                        {/* Trending Keywords */}
+                        <View style={s.trendingBar}>
+                            <Ionicons name="trending-up" size={16} color={AppColors.primary} />
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.trendingScroll}>
+                                {TRENDING_KEYWORDS.map((kw) => (
+                                    <TouchableOpacity key={kw.id} style={s.trendingChip} activeOpacity={0.7} onPress={() => setSearchText(kw.text)}>
+                                        {kw.hot && <Text style={s.hotBadge}>🔥</Text>}
+                                        <Text style={s.trendingText}>{kw.text}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
 
-                    {/* Quick Suggest Tags */}
-                    <View style={s.section}>
-                        <Text style={s.sectionTitle}>Gợi ý cho bạn</Text>
-                        <View style={s.tagRow}>
-                            {['Đồ ăn vặt', 'Cơm trưa', 'Món Nhật', 'Healthy', 'Đồ uống', 'Lẩu'].map((tag) => (
-                                <TouchableOpacity key={tag} style={s.tag} activeOpacity={0.7}>
-                                    <Text style={s.tagText}>{tag}</Text>
-                                </TouchableOpacity>
-                            ))}
+                        {/* Search History */}
+                        {SEARCH_HISTORY.length > 0 && (
+                            <View style={s.section}>
+                                <View style={s.sectionHeader}>
+                                    <Text style={s.sectionTitle}>Lịch sử tìm kiếm</Text>
+                                    <TouchableOpacity>
+                                        <Text style={s.clearText}>Xóa lịch sử tìm kiếm</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                {SEARCH_HISTORY.map((item, idx) => (
+                                    <TouchableOpacity key={idx} style={s.historyItem} activeOpacity={0.6} onPress={() => setSearchText(item)}>
+                                        <Ionicons name="time-outline" size={18} color={AppColors.gray} />
+                                        <Text style={s.historyText}>{item}</Text>
+                                        <Ionicons name="arrow-forward-outline" size={16} color={AppColors.gray} />
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
+
+                        {/* Popular Searches */}
+                        <View style={s.section}>
+                            <Text style={s.sectionTitle}>Phổ biến</Text>
+                            <View style={s.popularGrid}>
+                                {POPULAR_SEARCHES.map((item) => (
+                                    <TouchableOpacity key={item.id} style={s.popularItem} activeOpacity={0.7} onPress={() => setSearchText(item.name)}>
+                                        <View style={s.popularEmoji}>
+                                            <Text style={{ fontSize: 28 }}>{item.emoji}</Text>
+                                        </View>
+                                        <Text style={s.popularName}>{item.name}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                         </View>
-                    </View>
-                </Animated.View>
+
+                        {/* Quick Suggest Tags */}
+                        <View style={s.section}>
+                            <Text style={s.sectionTitle}>Gợi ý cho bạn</Text>
+                            <View style={s.tagRow}>
+                                {['Đồ ăn vặt', 'Cơm trưa', 'Món Nhật', 'Healthy', 'Đồ uống', 'Lẩu'].map((tag) => (
+                                    <TouchableOpacity key={tag} style={s.tag} activeOpacity={0.7} onPress={() => setSearchText(tag)}>
+                                        <Text style={s.tagText}>{tag}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                    </Animated.View>
+                )}
             </ScrollView>
         </View>
     );
@@ -276,4 +341,32 @@ const s = StyleSheet.create({
         borderColor: '#E5E7EB',
     },
     tagText: { fontSize: 13, fontWeight: '500', color: AppColors.darkGray },
+
+    // Results
+    resultsContainer: { paddingHorizontal: 16, marginTop: 10 },
+    resultItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+        gap: 12,
+    },
+    resultIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#FFF1ED',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    resultInfo: { flex: 1, gap: 2 },
+    resultName: { fontSize: 15, fontWeight: '600', color: AppColors.charcoal },
+    resultAddress: { fontSize: 13, color: AppColors.gray },
+
+    // States
+    loadingBox: { padding: 40, alignItems: 'center' },
+    loadingText: { color: AppColors.gray, fontSize: 14 },
+    noResultBox: { padding: 60, alignItems: 'center', gap: 12 },
+    noResultText: { color: AppColors.gray, fontSize: 14, textAlign: 'center' },
 });

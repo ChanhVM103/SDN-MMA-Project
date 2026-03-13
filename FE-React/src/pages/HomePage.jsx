@@ -6,6 +6,7 @@ import {
 } from "../services/restaurant-api";
 import { TypewriterText } from "../components/ui/TypewriterText";
 import CategorySection from "../components/CategorySection";
+import CarouselSection from "../components/CarouselSection";
 
 function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
   // Filters
@@ -382,64 +383,25 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
             `}</style>
 
             {/* Flash Sale Section */}
-            {flashSaleRestaurants.length > 0 && (
-              <div className="restaurant-section">
-                <div className="section-header">
-                  <h2>⚡ FLASH SALE</h2>
-                  <span className="see-more">Xem thêm &gt;</span>
-                </div>
-                <div className="horizontal-scroll">
-                  {flashSaleRestaurants.map((restaurant) => (
-                    <div key={restaurant._id || restaurant.id}>
-                      <RestaurantCard
-                        restaurant={restaurant}
-                        navigate={navigate}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <CarouselSection 
+              title="⚡ FLASH SALE" 
+              restaurants={flashSaleRestaurants} 
+              navigate={navigate} 
+            />
 
             {/* Top Rated Section */}
-            {topRatedRestaurants.length > 0 && (
-              <div className="restaurant-section">
-                <div className="section-header">
-                  <h2>⭐ QUÁN RATING 5 SAO</h2>
-                  <span className="see-more">Xem thêm &gt;</span>
-                </div>
-                <div className="horizontal-scroll">
-                  {topRatedRestaurants.map((restaurant) => (
-                    <div key={restaurant._id || restaurant.id}>
-                      <RestaurantCard
-                        restaurant={restaurant}
-                        navigate={navigate}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <CarouselSection 
+              title="⭐ QUÁN RATING 5 SAO" 
+              restaurants={topRatedRestaurants} 
+              navigate={navigate} 
+            />
 
             {/* Most Ordered Section */}
-            {mostOrderedRestaurants.length > 0 && (
-              <div className="restaurant-section">
-                <div className="section-header">
-                  <h2>🏆 ĐẶT NHIỀU NHẤT</h2>
-                  <span className="see-more">Xem thêm &gt;</span>
-                </div>
-                <div className="horizontal-scroll">
-                  {mostOrderedRestaurants.map((restaurant) => (
-                    <div key={restaurant._id || restaurant.id}>
-                      <RestaurantCard
-                        restaurant={restaurant}
-                        navigate={navigate}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <CarouselSection 
+              title="🏆 ĐẶT NHIỀU NHẤT" 
+              restaurants={mostOrderedRestaurants} 
+              navigate={navigate} 
+            />
 
             {/* Default State Fallback */}
             {flashSaleRestaurants.length === 0 && topRatedRestaurants.length === 0 && mostOrderedRestaurants.length === 0 && restaurants.length > 0 && (

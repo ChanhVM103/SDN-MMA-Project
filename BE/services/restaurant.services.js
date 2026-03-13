@@ -53,10 +53,13 @@ const getAllRestaurants = async (
   try {
     const skip = (page - 1) * limit;
 
-    // Build search query
+    // Build search query (using regex for partial matches)
     let query = {};
     if (search) {
-      query = { $text: { $search: search } };
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { tags: { $regex: search, $options: "i" } },
+      ];
     }
     if (type && ["food", "drink"].includes(type)) {
       query.type = type;

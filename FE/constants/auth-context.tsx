@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setApiToken } from './api';
 
 interface User {
     id: string;
@@ -36,6 +37,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Sync token with API helper
+    useEffect(() => {
+        setApiToken(token);
+    }, [token]);
 
     // Load stored auth on app start
     useEffect(() => {
