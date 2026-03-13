@@ -75,30 +75,32 @@ const CarouselSection = ({ title, restaurants, navigate }) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="section-header" style={{ 
-        display: "flex", 
-        justifyContent: "space-between", 
-        alignItems: "center", 
-        borderBottom: "4px solid var(--shopee-orange)", 
-        marginBottom: "15px", 
-        paddingBottom: "8px",
-        margin: "0 15px"
-      }}>
-        <h2 style={{ 
-          fontSize: "16px", 
-          fontWeight: "600", 
-          letterSpacing: "1px", 
-          margin: 0, 
-          color: "var(--text-main)", 
-          textTransform: "uppercase" 
-        }}>{title}</h2>
-        <span className="see-more" style={{ 
-          fontSize: "13px", 
-          color: "var(--shopee-orange)", 
-          cursor: "pointer", 
-          fontWeight: "500" 
-        }}>Xem thêm &gt;</span>
-      </div>
+      {title && (
+        <div className="section-header" style={{ 
+          display: "flex", 
+          justifyContent: "space-between", 
+          alignItems: "center", 
+          borderBottom: "4px solid var(--shopee-orange)", 
+          marginBottom: "15px", 
+          paddingBottom: "8px",
+          margin: "0 15px"
+        }}>
+          <h2 style={{ 
+            fontSize: "16px", 
+            fontWeight: "600", 
+            letterSpacing: "1px", 
+            margin: 0, 
+            color: "var(--text-main)", 
+            textTransform: "uppercase" 
+          }}>{title}</h2>
+          <span className="see-more" style={{ 
+            fontSize: "13px", 
+            color: "var(--shopee-orange)", 
+            cursor: "pointer", 
+            fontWeight: "500" 
+          }}>Xem thêm &gt;</span>
+        </div>
+      )}
 
       <div style={{ position: "relative", overflow: "visible" }} className="carousel-container">
         {/* Left Arrow */}
