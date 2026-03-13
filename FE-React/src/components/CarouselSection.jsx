@@ -5,6 +5,8 @@ const CarouselSection = ({ title, restaurants, navigate }) => {
   const scrollRef = useRef(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
+  const [isReversing, setIsReversing] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const checkScroll = () => {
     if (scrollRef.current) {
@@ -20,15 +22,37 @@ const CarouselSection = ({ title, restaurants, navigate }) => {
       el.addEventListener("scroll", checkScroll);
       checkScroll();
       window.addEventListener("resize", checkScroll);
-      // Extra check after potential reflow
-      const timer = setTimeout(checkScroll, 500);
+      
+      // Auto-glide logic (continuous movement)
+      const glideInterval = setInterval(() => {
+        if (!isHovered && scrollRef.current) {
+          const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+          
+          if (!isReversing) {
+            // Glide right
+            if (scrollLeft + clientWidth >= scrollWidth - 1) {
+              setIsReversing(true);
+            } else {
+              scrollRef.current.scrollLeft += 1; // Di chuyển 1px mỗi bước
+            }
+          } else {
+            // Glide left
+            if (scrollLeft <= 1) {
+              setIsReversing(false);
+            } else {
+              scrollRef.current.scrollLeft -= 1; // Di chuyển ngược lại 1px
+            }
+          }
+        }
+      }, 30); // 30ms mỗi bước -> cực kỳ mượt
+
       return () => {
         el.removeEventListener("scroll", checkScroll);
         window.removeEventListener("resize", checkScroll);
-        clearTimeout(timer);
+        clearInterval(glideInterval);
       };
     }
-  }, [restaurants]);
+  }, [restaurants, isHovered, isReversing]);
 
   const scroll = (direction) => {
     if (scrollRef.current) {
@@ -45,7 +69,12 @@ const CarouselSection = ({ title, restaurants, navigate }) => {
   if (!restaurants || restaurants.length === 0) return null;
 
   return (
-    <div className="restaurant-section" style={{ position: "relative", marginBottom: "35px" }}>
+    <div 
+      className="restaurant-section" 
+      style={{ position: "relative", marginBottom: "35px" }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div className="section-header" style={{ 
         display: "flex", 
         justifyContent: "space-between", 
@@ -110,7 +139,6 @@ const CarouselSection = ({ title, restaurants, navigate }) => {
             overflowX: "auto", 
             gap: "15px", 
             padding: "10px 15px 20px 15px", 
-            scrollSnapType: "x mandatory",
             WebkitOverflowScrolling: "touch",
             scrollbarWidth: "none",
             msOverflowStyle: "none",
@@ -122,7 +150,6 @@ const CarouselSection = ({ title, restaurants, navigate }) => {
               style={{ 
                 minWidth: "205px", 
                 flex: "0 0 205px", 
-                scrollSnapAlign: "start",
                 transition: "transform 0.3s ease"
               }}
               className="carousel-item"
