@@ -66,3 +66,14 @@ export const deleteRestaurantApi = (id) =>
   adminApiRequest(`/restaurants/${id}`, {
     method: "DELETE",
   });
+
+// --- STATS / REVENUE ---
+
+export const getOrderStatsApi = () =>
+  adminApiRequest("/orders/stats", { method: "GET" });
+
+export const getUserStatsApi = () =>
+  adminApiRequest("/users/stats", { method: "GET" });
+
+export const getRestaurantStatsApi = (restaurantId) =>
+  adminApiRequest(`/orders/restaurant/${restaurantId}/stats`, { method: "GET" });

@@ -8,6 +8,9 @@ import {
   updateRestaurantApi,
   deleteRestaurantApi,
   adminCreateUserApi,
+  getOrderStatsApi,
+  getUserStatsApi,
+  getRestaurantStatsApi,
 } from "../services/admin-api";
 
 // MUI Components
@@ -166,6 +169,12 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [resSearchQuery, setResSearchQuery] = useState("");
 
+  // Dashboard stats
+  const [orderStats, setOrderStats] = useState(null);
+  const [userStats, setUserStats] = useState(null);
+  const [resRevenue, setResRevenue] = useState([]); // per-restaurant revenue
+  const [loadingRevenue, setLoadingRevenue] = useState(false);
+
   // Modals
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -243,15 +252,53 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
   const showSnack = (message, severity = "success") =>
     setSnackbar({ open: true, message, severity });
 
+  const fetchDashboardStats = async () => {
+    try {
+      const [oStats, uStats] = await Promise.all([
+        getOrderStatsApi().catch(() => null),
+        getUserStatsApi().catch(() => null),
+      ]);
+      if (oStats) setOrderStats(oStats);
+      if (uStats) setUserStats(uStats);
+    } catch (e) { console.error("fetchDashboardStats error", e); }
+  };
+
+  const fetchRestaurantRevenues = async (restaurants) => {
+    setLoadingRevenue(true);
+    try {
+      const results = await Promise.all(
+        restaurants.map(async (r) => {
+          try {
+            const stats = await getRestaurantStatsApi(r._id);
+            return { ...r, revenue: stats };
+          } catch {
+            return { ...r, revenue: null };
+          }
+        })
+      );
+      setResRevenue(results);
+    } catch (e) { console.error(e); }
+    setLoadingRevenue(false);
+  };
+
   useEffect(() => {
     if (activeTab === "users") fetchUsers();
     else if (activeTab === "restaurants") fetchRestaurants();
     else if (activeTab === "dashboard") {
-      // fetch both for chart data
       fetchUsers();
       fetchRestaurants();
+      fetchDashboardStats();
     }
+    // eslint-disable-next-line
   }, [activeTab]);
+
+  // When restaurantsList loads on dashboard, fetch per-restaurant revenues
+  useEffect(() => {
+    if (activeTab === "dashboard" && restaurantsList.length > 0) {
+      fetchRestaurantRevenues(restaurantsList);
+    }
+    // eslint-disable-next-line
+  }, [activeTab, restaurantsList]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -343,12 +390,22 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
   const handleOpenCreateRestaurant = (u) => {
     setSelectedUser(u);
     setRestaurantForm({ ...defaultRestaurantForm, owner: u._id || "" });
+    fetchRestaurants(); // ensure list is loaded for duplicate name check
     setIsCreateRestaurantModalOpen(true);
   };
 
   const submitCreateRestaurant = async (e) => {
     e.preventDefault();
     if (!selectedUser) return;
+    // Check duplicate restaurant name
+    const trimmedName = restaurantForm.name.trim().toLowerCase();
+    const isDuplicate = restaurantsList.some(
+      (r) => r.name?.trim().toLowerCase() === trimmedName
+    );
+    if (isDuplicate) {
+      showSnack("Tên cửa hàng \"" + restaurantForm.name.trim() + "\" đã tồn tại! Vui lòng chọn tên khác.", "error");
+      return;
+    }
     try {
       await adminCreateRestaurantApi({
         ownerId: selectedUser._id,
@@ -358,6 +415,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
       setIsCreateRestaurantModalOpen(false);
       setRestaurantForm(defaultRestaurantForm);
       fetchUsers();
+      fetchRestaurants();
     } catch (error) {
       showSnack("Lỗi: " + error.message, "error");
     }
@@ -705,31 +763,42 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
                 <Box
                   sx={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gridTemplateColumns: "repeat(4, 1fr)",
                     gap: 3,
                   }}
                 >
                   {[
                     {
                       icon: <ShoppingCartIcon />,
-                      label: "Đơn hàng tuần này",
-                      value: "1,204",
+                      label: "Tổng đơn hàng",
+                      value: orderStats ? orderStats.total?.toLocaleString() : "--",
+                      sub: orderStats ? `Hôm nay: ${orderStats.todayCount || 0}` : "",
                       color: "#ee4d2d",
                       bg: "#fff0eb",
                     },
                     {
                       icon: <AttachMoneyIcon />,
-                      label: "Doanh thu tháng",
-                      value: "₫245M",
+                      label: "Tổng doanh thu",
+                      value: orderStats ? `₫${(orderStats.totalRevenue || 0).toLocaleString()}` : "--",
+                      sub: orderStats?.byStatus ? `Đã giao: ${orderStats.byStatus.delivered || 0}` : "",
                       color: "#26aa99",
                       bg: "#e8f5e9",
                     },
                     {
                       icon: <PeopleIcon />,
                       label: "Tổng người dùng",
-                      value: usersList.length || "--",
+                      value: userStats ? userStats.total?.toLocaleString() : (usersList.length || "--"),
+                      sub: userStats ? `Mới tháng này: +${userStats.newThisMonth || 0}` : "",
                       color: "#2aa1ff",
                       bg: "#e6f4ff",
+                    },
+                    {
+                      icon: <StorefrontIcon />,
+                      label: "Tổng cửa hàng",
+                      value: restaurantsList.length || "--",
+                      sub: `Đang mở: ${restaurantsList.filter(r => r.isOpen).length}`,
+                      color: "#ffb700",
+                      bg: "#fffbeb",
                     },
                   ].map((s, i) => (
                     <Card
@@ -762,6 +831,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
                           <Typography variant="h5" fontWeight={700}>
                             {s.value}
                           </Typography>
+                          {s.sub && <Typography variant="caption" color="text.secondary">{s.sub}</Typography>}
                         </Box>
                       </CardContent>
                     </Card>
@@ -1135,6 +1205,90 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
                         </AreaChart>
                       </ResponsiveContainer>
                     </Box>
+                  </CardContent>
+                </Card>
+
+                {/* ═══ PER-RESTAURANT REVENUE TABLE ═══ */}
+                <Card elevation={0} sx={{ border: "1px solid rgba(0,0,0,0.06)", mt: 3 }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 1 }}>💰 Doanh thu từng cửa hàng</Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: "block" }}>
+                      Doanh thu thực tế (đã trừ phí giao hàng) của mỗi cửa hàng trên hệ thống
+                    </Typography>
+                    {loadingRevenue ? (
+                      <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+                        <CircularProgress color="primary" />
+                      </Box>
+                    ) : (
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: "#fafafa" }}>
+                            <TableCell sx={{ fontWeight: 700 }}>Cửa hàng</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 700 }}>Tổng đơn</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 700 }}>Đã giao</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 700 }}>Đang giao</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 700 }}>Đã huỷ</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 700 }}>Doanh thu (₫)</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {resRevenue
+                            .sort((a, b) => (b.revenue?.totalRevenue || 0) - (a.revenue?.totalRevenue || 0))
+                            .map((r) => (
+                            <TableRow key={r._id} hover>
+                              <TableCell>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                                  <Avatar variant="rounded" src={r.image} sx={{ width: 36, height: 36 }}>
+                                    {r.name?.charAt(0)}
+                                  </Avatar>
+                                  <Box>
+                                    <Typography variant="body2" fontWeight={600}>{r.name}</Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {r.owner?.fullName || "Vô chủ"}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+                              </TableCell>
+                              <TableCell align="right">
+                                <Chip label={r.revenue?.totalOrders || 0} size="small" variant="outlined" />
+                              </TableCell>
+                              <TableCell align="right">
+                                <Typography variant="body2" color="success.main" fontWeight={600}>
+                                  {r.revenue?.countByStatus?.delivered || 0}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right">
+                                <Typography variant="body2" color="info.main" fontWeight={600}>
+                                  {(r.revenue?.countByStatus?.delivering || 0) + (r.revenue?.countByStatus?.shipper_accepted || 0)}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right">
+                                <Typography variant="body2" color="error.main" fontWeight={600}>
+                                  {r.revenue?.countByStatus?.cancelled || 0}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right">
+                                <Typography variant="body2" fontWeight={700} color="primary.main" sx={{ fontSize: "0.95rem" }}>
+                                  {r.revenue?.totalRevenue?.toLocaleString() || "0"}₫
+                                </Typography>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {resRevenue.length > 0 && (
+                            <TableRow sx={{ bgcolor: "#f8f9fa" }}>
+                              <TableCell colSpan={5}>
+                                <Typography variant="body2" fontWeight={700}>TỔNG CỘNG</Typography>
+                              </TableCell>
+                              <TableCell align="right">
+                                <Typography variant="body1" fontWeight={800} color="primary.main">
+                                  {resRevenue.reduce((s, r) => s + (r.revenue?.totalRevenue || 0), 0).toLocaleString()}₫
+                                </Typography>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -1946,6 +2100,36 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
               }
               sx={{ mb: 2 }}
             />
+            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+              <TextField
+                fullWidth
+                label="Thời gian giao (phút)"
+                type="number"
+                required
+                inputProps={{ min: 0 }}
+                value={restaurantForm.deliveryTime}
+                onChange={(e) =>
+                  setRestaurantForm({
+                    ...restaurantForm,
+                    deliveryTime: parseInt(e.target.value, 10) || 0,
+                  })
+                }
+              />
+              <TextField
+                fullWidth
+                label="Phí giao hàng (đ)"
+                type="number"
+                required
+                inputProps={{ min: 0, step: 1000 }}
+                value={restaurantForm.deliveryFee}
+                onChange={(e) =>
+                  setRestaurantForm({
+                    ...restaurantForm,
+                    deliveryFee: parseInt(e.target.value, 10) || 0,
+                  })
+                }
+              />
+            </Stack>
             <Stack direction="row" spacing={2}>
               <TextField
                 fullWidth
