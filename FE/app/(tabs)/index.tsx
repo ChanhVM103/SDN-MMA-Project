@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, Redirect } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/constants/auth-context';
 import TopRatedSection from '@/components/home/TopRatedSection';
@@ -298,6 +298,11 @@ export default function HomeScreen() {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1200);
   }, []);
+
+  // Redirect shipper to their dashboard (must be after all hooks)
+  if (user?.role === 'shipper') {
+    return <Redirect href="/(tabs)/shipper-dashboard" />;
+  }
 
   return (
     <View style={styles.container}>

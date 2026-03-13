@@ -5,10 +5,13 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { HapticTab } from '@/components/haptic-tab';
 import { AppColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { useAuth } from '@/constants/auth-context';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { user } = useAuth();
+  const isShipper = user?.role === 'shipper';
 
   return (
     <Tabs
@@ -42,6 +45,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Trang chủ',
+          href: isShipper ? null : undefined, // Hide for shippers
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeIcon : undefined}>
               <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
@@ -53,6 +57,7 @@ export default function TabLayout() {
         name="orders"
         options={{
           title: 'Đơn hàng',
+          href: isShipper ? null : undefined, // Hide for shippers
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeIcon : undefined}>
               <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={24} color={color} />
@@ -64,9 +69,23 @@ export default function TabLayout() {
         name="favorites"
         options={{
           title: 'Đã thích',
+          href: isShipper ? null : undefined, // Hide for shippers
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeIcon : undefined}>
               <Ionicons name={focused ? 'heart' : 'heart-outline'} size={24} color={color} />
+            </View>
+          ),
+        }}
+      />
+      {/* Shipper Dashboard Tab */}
+      <Tabs.Screen
+        name="shipper-dashboard"
+        options={{
+          title: 'Giao hàng',
+          href: isShipper ? undefined : null, // Only show for shippers
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? styles.activeIcon : undefined}>
+              <MaterialIcons name="two-wheeler" size={24} color={color} />
             </View>
           ),
         }}
