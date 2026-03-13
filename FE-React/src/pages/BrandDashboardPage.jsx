@@ -214,6 +214,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
   const defaultRestaurantForm = {
     name: "",
     image: "",
+    thumbnail: "",
     distance: "",
     tags: "",
     type: "food",
@@ -508,6 +509,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
     setRestaurantForm({
       name: restaurant.name || "",
       image: restaurant.image || "",
+      thumbnail: restaurant.thumbnail || "",
       distance: restaurant.distance || "",
       tags: Array.isArray(restaurant.tags) ? restaurant.tags.join(", ") : "",
       type: restaurant.type || "food",
@@ -2175,7 +2177,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
             </Stack>
             <TextField
               fullWidth
-              label="Link hình ảnh bìa (URL)"
+              label="Link hình ảnh logo (URL)"
               type="url"
               required
               value={restaurantForm.image}
@@ -2183,6 +2185,18 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
                 setRestaurantForm({ ...restaurantForm, image: e.target.value })
               }
               sx={{ mb: 2 }}
+            />
+            <TextField
+              fullWidth
+              label="Link ảnh banner (URL) — ảnh nền rộng phía trên trang"
+              type="url"
+              placeholder="https://... (để trống sẽ dùng ảnh logo làm nền)"
+              value={restaurantForm.thumbnail}
+              onChange={(e) =>
+                setRestaurantForm({ ...restaurantForm, thumbnail: e.target.value })
+              }
+              sx={{ mb: 2 }}
+              helperText="Nên dùng ảnh ngang tỷ lệ 16:9 hoặc 3:1 để đẹp nhất"
             />
             <TextField
               fullWidth
