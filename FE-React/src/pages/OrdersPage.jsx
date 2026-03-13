@@ -119,6 +119,7 @@ function ReviewModal({ order, onClose, onSuccess }) {
   ];
 
   const [ratings, setRatings] = useState(buildInitialRatings);
+  const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -133,7 +134,7 @@ function ReviewModal({ order, onClose, onSuccess }) {
       await submitBulkReviews(
         order._id,
         restaurantId,
-        ratings.map((r) => ({ rating: r.rating, comment: "", productId: r.productId, productName: r.productName }))
+        ratings.map((r) => ({ rating: r.rating, comment: r.key === "restaurant" ? comment : "", productId: r.productId, productName: r.productName }))
       );
       onSuccess();
     } catch (err) {
@@ -166,17 +167,43 @@ function ReviewModal({ order, onClose, onSuccess }) {
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px" }}>
           {ratings.map((r, idx) => (
             <div key={r.key} style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
               padding: "12px 0",
               borderBottom: idx < ratings.length - 1 ? "1px solid #f5f5f5" : "none",
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: 24, flexShrink: 0 }}>{r.emoji}</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {idx === 0 ? r.label : r.label}
-                </span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 24, flexShrink: 0 }}>{r.emoji}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {r.label}
+                  </span>
+                </div>
+                <StarRating value={r.rating} onChange={(v) => setRating(idx, v)} size={30} />
               </div>
-              <StarRating value={r.rating} onChange={(v) => setRating(idx, v)} size={30} />
+              {/* Comment box chỉ hiện cho nhà hàng (idx 0) */}
+              {idx === 0 && (
+                <div style={{ marginTop: 10 }}>
+                  <textarea
+                    value={comment}
+                    onChange={e => setComment(e.target.value)}
+                    placeholder="Chia sẻ cảm nhận của bạn về nhà hàng này... (tuỳ chọn)"
+                    rows={3}
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      border: "1.5px solid #e5e7eb", borderRadius: 10,
+                      padding: "10px 12px", fontSize: 13,
+                      fontFamily: "inherit", resize: "none", outline: "none",
+                      lineHeight: 1.6, color: "#374151",
+                      transition: "border-color 0.15s",
+                      background: "#fafafa",
+                    }}
+                    onFocus={e => e.target.style.borderColor = "#ee4d2d"}
+                    onBlur={e => e.target.style.borderColor = "#e5e7eb"}
+                  />
+                  <div style={{ fontSize: 11, color: "#9ca3af", textAlign: "right", marginTop: 3 }}>
+                    {comment.length}/500
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -226,6 +253,16 @@ function EditReviewModal({ reviews, order, onClose, onSuccess }) {
     });
   });
 
+  const [comments, setComments] = useState(() => {
+    const map = {};
+    ratings.forEach(r => {
+      const existing = reviews.find(rv =>
+        r.productId ? rv.product === r.productId || rv.product?._id === r.productId : !rv.product
+      );
+      map[r.key] = existing?.comment || "";
+    });
+    return map;
+  });
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -237,7 +274,7 @@ function EditReviewModal({ reviews, order, onClose, onSuccess }) {
     setErrorMsg("");
     try {
       await Promise.all(
-        ratings.map((r) => r.reviewId ? updateReview(r.reviewId, { rating: r.rating }) : null).filter(Boolean)
+        ratings.map((r) => r.reviewId ? updateReview(r.reviewId, { rating: r.rating, comment: comments[r.key] || "" }) : null).filter(Boolean)
       );
       onSuccess();
     } catch (err) {
@@ -270,19 +307,42 @@ function EditReviewModal({ reviews, order, onClose, onSuccess }) {
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px" }}>
           {ratings.map((r, idx) => (
             <div key={r.key} style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
               padding: "12px 0",
               borderBottom: idx < ratings.length - 1 ? "1px solid #f5f5f5" : "none",
               opacity: r.reviewId ? 1 : 0.4,
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: 24, flexShrink: 0 }}>{r.emoji}</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {r.label}
-                </span>
-                {!r.reviewId && <span style={{ fontSize: 11, color: "#9ca3af" }}>(chưa đánh giá)</span>}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 24, flexShrink: 0 }}>{r.emoji}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {r.label}
+                  </span>
+                  {!r.reviewId && <span style={{ fontSize: 11, color: "#9ca3af" }}>(chưa đánh giá)</span>}
+                </div>
+                <StarRating value={r.rating} onChange={r.reviewId ? (v) => setRating(idx, v) : null} size={30} />
               </div>
-              <StarRating value={r.rating} onChange={r.reviewId ? (v) => setRating(idx, v) : null} size={30} />
+              {/* Comment box cho từng mục có reviewId */}
+              {r.reviewId && (
+                <div style={{ marginTop: 10 }}>
+                  <textarea
+                    value={comments[r.key] || ""}
+                    onChange={e => setComments(prev => ({ ...prev, [r.key]: e.target.value }))}
+                    placeholder={idx === 0 ? "Nhận xét về nhà hàng... (tuỳ chọn)" : `Nhận xét về ${r.label}... (tuỳ chọn)`}
+                    rows={2}
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      border: "1.5px solid #e5e7eb", borderRadius: 10,
+                      padding: "9px 12px", fontSize: 13,
+                      fontFamily: "inherit", resize: "none", outline: "none",
+                      lineHeight: 1.6, color: "#374151",
+                      transition: "border-color 0.15s",
+                      background: "#fafafa",
+                    }}
+                    onFocus={e => e.target.style.borderColor = "#3b82f6"}
+                    onBlur={e => e.target.style.borderColor = "#e5e7eb"}
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>
