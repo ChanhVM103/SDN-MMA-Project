@@ -78,24 +78,24 @@ const CarouselSection = ({ title, restaurants, navigate }) => {
           className={`nav-arrow left ${showLeftArrow ? 'visible' : ''}`}
           style={{
             position: "absolute",
-            left: "0",
+            left: "-22px",
             top: "50%",
-            transform: "translate(-50%, -50%)",
+            transform: "translateY(-50%)",
             zIndex: 10,
             width: "44px",
             height: "44px",
             borderRadius: "50%",
             backgroundColor: "white",
-            border: "none",
-            boxShadow: "0 3px 12px rgba(0,0,0,0.15)",
+            border: "1px solid var(--border-color)",
+            boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-            opacity: 0,
-            visibility: "hidden",
-            pointerEvents: showLeftArrow ? "auto" : "none"
+            transition: "all 0.3s ease",
+            opacity: showLeftArrow ? 1 : 0,
+            visibility: showLeftArrow ? "visible" : "hidden",
+            color: "var(--shopee-orange)"
           }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -138,24 +138,24 @@ const CarouselSection = ({ title, restaurants, navigate }) => {
           className={`nav-arrow right ${showRightArrow ? 'visible' : ''}`}
           style={{
             position: "absolute",
-            right: "0",
+            right: "-22px",
             top: "50%",
-            transform: "translate(50%, -50%)",
+            transform: "translateY(-50%)",
             zIndex: 10,
             width: "44px",
             height: "44px",
             borderRadius: "50%",
             backgroundColor: "white",
-            border: "none",
-            boxShadow: "0 3px 12px rgba(0,0,0,0.15)",
+            border: "1px solid var(--border-color)",
+            boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-            opacity: 0,
-            visibility: "hidden",
-            pointerEvents: showRightArrow ? "auto" : "none"
+            transition: "all 0.3s ease",
+            opacity: showRightArrow ? 1 : 0,
+            visibility: showRightArrow ? "visible" : "hidden",
+            color: "var(--shopee-orange)"
           }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -166,18 +166,11 @@ const CarouselSection = ({ title, restaurants, navigate }) => {
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
         }
-        .carousel-container:hover .nav-arrow.visible {
-          opacity: 1;
-          visibility: visible;
-        }
         .nav-arrow:hover {
           background-color: var(--shopee-orange) !important;
           color: white !important;
-          transform: translate(calc(var(--dir, 0) * 1px - 50%), -50%) scale(1.1) !important;
+          transform: translateY(-50%) scale(1.1) !important;
         }
-        .nav-arrow.right:hover { --dir: 5; }
-        .nav-arrow.left:hover { --dir: -5; }
-        
         .carousel-item:hover {
           transform: translateY(-5px);
         }
