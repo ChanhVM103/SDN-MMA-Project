@@ -5,6 +5,7 @@ import {
   getAllRestaurants,
 } from "../services/restaurant-api";
 import CarouselSection from "../components/CarouselSection";
+import ChatBox from '../components/ChatBox';
 
 function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
   const [activeType, setActiveType] = useState("all-type");
@@ -396,6 +397,8 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
           </div>
         </div>
       </div>
+      {/* Chat Box AI fixed on screen */}
+      <ChatBox />
     </div>
   );
 }
