@@ -49,25 +49,31 @@ const getAllProducts = async (
       .skip(skip)
       .limit(limit);
 
-    // Attach active promotions
-    const productDocs = await Promise.all(products.map(async (p) => {
-      const activePromo = await Promotion.findOne({
-        productIds: p._id,
-        isActive: true,
-        $or: [
-          { endDate: { $exists: false } },
-          { endDate: { $gt: new Date() } }
-        ]
-      });
+    // Attach active promotions efficiently
+    const pIds = products.map(p => p._id);
+    const activePromos = await Promotion.find({
+      productIds: { $in: pIds },
+      isActive: true,
+      $or: [
+        { endDate: { $exists: false } },
+        { endDate: null },
+        { endDate: { $gt: new Date() } }
+      ]
+    });
+
+    const productDocs = products.map(p => {
       const pObj = p.toObject();
-      if (activePromo) {
+      const promo = activePromos.find(pr => 
+        pr.productIds.some(pid => pid.toString() === p._id.toString())
+      );
+      if (promo) {
         pObj.promotion = {
-          name: activePromo.name,
-          discountPercent: activePromo.discountPercent
+          name: promo.name,
+          discountPercent: promo.discountPercent
         };
       }
       return pObj;
-    }));
+    });
 
     return {
       data: productDocs,
@@ -215,25 +221,31 @@ const getProductsByRestaurant = async (
       .skip(skip)
       .limit(limit);
 
-    // Attach active promotions
-    const productDocs = await Promise.all(products.map(async (p) => {
-      const activePromo = await Promotion.findOne({
-        productIds: p._id,
-        isActive: true,
-        $or: [
-          { endDate: { $exists: false } },
-          { endDate: { $gt: new Date() } }
-        ]
-      });
+    // Attach active promotions efficiently
+    const pIds = products.map(p => p._id);
+    const activePromos = await Promotion.find({
+      productIds: { $in: pIds },
+      isActive: true,
+      $or: [
+        { endDate: { $exists: false } },
+        { endDate: null },
+        { endDate: { $gt: new Date() } }
+      ]
+    });
+
+    const productDocs = products.map(p => {
       const pObj = p.toObject();
-      if (activePromo) {
+      const promo = activePromos.find(pr => 
+        pr.productIds.some(pid => pid.toString() === p._id.toString())
+      );
+      if (promo) {
         pObj.promotion = {
-          name: activePromo.name,
-          discountPercent: activePromo.discountPercent
+          name: promo.name,
+          discountPercent: promo.discountPercent
         };
       }
       return pObj;
-    }));
+    });
 
     return {
       data: productDocs,
@@ -366,9 +378,68 @@ const deleteProductForRestaurant = async (productId, restaurantId) => {
       throw new Error("You don't have permission to delete this product");
     }
 
-    return await Product.findByIdAndDelete(productId);
+    const deletedProduct = await Product.findByIdAndDelete(productId);
+    
+    if (deletedProduct) {
+      // Cleanup: Remove this product from all promotions
+      await Promotion.updateMany(
+        { productIds: productId },
+        { $pull: { productIds: productId } }
+      );
+      
+      // If a promotion becomes empty, we might want to deactivate it or keep it
+      // For now, just removing the reference is enough to prevent ghost products
+    }
+    
+    return deletedProduct;
   } catch (error) {
     throw new Error(`Error deleting product: ${error.message}`);
+  }
+};
+
+/**
+ * Get all products that have active promotions (Flash Sale)
+ */
+const getFlashSaleProducts = async (limit = 20) => {
+  try {
+    // Find all active promotions to get full coverage
+    const activePromos = await Promotion.find({
+      isActive: true,
+      $or: [
+        { endDate: { $exists: false } },
+        { endDate: null },
+        { endDate: { $gt: new Date() } }
+      ]
+    }).sort({ createdAt: -1 });
+
+    if (activePromos.length === 0) return [];
+
+    // Get unique product IDs across all brands
+    const productIds = Array.from(new Set(activePromos.flatMap(p => p.productIds.map(id => id.toString()))));
+    
+    // Fetch products, limit to requested amount
+    // We sort by createdAt of the product as a proxy, but could be randomized
+    const products = await Product.find({ _id: { $in: productIds }, isAvailable: true })
+      .select(PRODUCT_SELECT_FIELDS)
+      .populate("restaurantId", "name image deliveryTime deliveryFee rating")
+      .sort({ createdAt: -1 })
+      .limit(limit);
+
+    return products.map(p => {
+      const pObj = p.toObject();
+      const promo = activePromos.find(promo => 
+        promo.productIds.some(pid => pid.toString() === p._id.toString())
+      );
+      if (promo) {
+        pObj.promotion = {
+          name: promo.name,
+          discountPercent: promo.discountPercent
+        };
+      }
+      return pObj;
+    });
+  } catch (error) {
+    throw new Error(`Error fetching flash sale products: ${error.message}`);
   }
 };
 
@@ -382,7 +453,6 @@ module.exports = {
   getProductsByRestaurant,
   getProductsByCategory,
   getAvailableProducts,
-  createProductForRestaurant,
-  updateProductForRestaurant,
   deleteProductForRestaurant,
+  getFlashSaleProducts,
 };

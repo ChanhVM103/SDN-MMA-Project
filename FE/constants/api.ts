@@ -65,8 +65,10 @@ export const apiRequest = async (
     };
 
     try {
+        console.log(`API REQUEST [${options.method || 'GET'}]: ${url}`, options.body ? JSON.parse(options.body as string) : '');
         const response = await fetch(url, config);
         const data = await response.json();
+        console.log(`API RESPONSE [${response.status}]: ${url}`, data);
 
         if (!response.ok) {
             throw {
@@ -78,6 +80,7 @@ export const apiRequest = async (
 
         return data;
     } catch (error: any) {
+        console.error(`API ERROR: ${url}`, error);
         if (error.status) {
             throw error;
         }
@@ -173,6 +176,10 @@ export const productAPI = {
         if (params?.sortOrder) query += `&sortOrder=${params.sortOrder}`;
         return apiRequest(`/products${query}`, { method: 'GET' });
     },
+    getFlashSaleProducts: (params?: { limit?: number }) => {
+        let query = `?isFlashSale=true&limit=${params?.limit || 20}`;
+        return apiRequest(`/products${query}`, { method: 'GET' });
+    },
     getProductsByRestaurant: (restaurantId: string, params?: { limit?: number }) => {
         let query = params?.limit ? `?limit=${params.limit}` : '';
         return apiRequest(`/products/restaurant/${restaurantId}${query}`, { method: 'GET' });
@@ -189,14 +196,14 @@ export const productAPI = {
         }),
 
     updateProduct: (token: string, restaurantId: string, productId: string, data: any) =>
-        apiRequest(`/products/${productId}`, {
-            method: 'PATCH',
+        apiRequest(`/products/restaurant/${restaurantId}/products/${productId}`, {
+            method: 'PUT',
             headers: { Authorization: `Bearer ${token}` },
             body: JSON.stringify(data),
         }),
 
     deleteProduct: (token: string, restaurantId: string, productId: string) =>
-        apiRequest(`/products/${productId}`, {
+        apiRequest(`/products/restaurant/${restaurantId}/products/${productId}`, {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` },
         }),
@@ -301,6 +308,12 @@ export const userAPI = {
 export const promotionAPI = {
     createPromotion: async (token: string, data: any) =>
         apiRequest('/promotions', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: JSON.stringify(data)
+        }),
+    checkConflicts: async (token: string, data: { restaurantId: string, productIds: string[], editingPromotionId?: string }) =>
+        apiRequest('/promotions/check-conflicts', {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}` },
             body: JSON.stringify(data)
