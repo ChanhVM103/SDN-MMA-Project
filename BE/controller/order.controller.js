@@ -56,6 +56,7 @@ const createOrder = async (req, res) => {
       paymentMethod = "cash",
       note = "",
       estimatedDeliveryTime = 30,
+      voucherId = null,
     } = req.body;
 
     // Validate
@@ -93,7 +94,38 @@ const createOrder = async (req, res) => {
       (sum, item) => sum + item.price * item.quantity,
       0,
     );
-    const total = subtotal + deliveryFee - discount;
+
+    // ── Áp dụng Voucher (nếu có) ──────────────────
+    let finalDeliveryFee = deliveryFee;
+    let appliedVoucherName = null;
+
+    if (voucherId) {
+      const Voucher = require("../models/voucher.model");
+      const voucher = await Voucher.findById(voucherId);
+
+      if (!voucher) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Không tìm thấy voucher" });
+      }
+      if (!voucher.isActive) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Voucher này đã hết hạn hoặc bị tắt" });
+      }
+      if (subtotal < voucher.minOrderAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Đơn hàng phải từ ${voucher.minOrderAmount.toLocaleString()}₫ để dùng voucher này`,
+        });
+      }
+
+      // Áp dụng giảm ship: cap deliveryFee xuống maxDeliveryFee
+      finalDeliveryFee = Math.min(deliveryFee, voucher.maxDeliveryFee);
+      appliedVoucherName = voucher.name;
+    }
+
+    const total = subtotal + finalDeliveryFee - discount;
 
     const order = await Order.create({
       user: req.userId,
@@ -102,12 +134,14 @@ const createOrder = async (req, res) => {
       restaurantAddress: restaurant.address,
       items,
       subtotal,
-      deliveryFee,
+      deliveryFee: finalDeliveryFee,
       discount,
       total,
       deliveryAddress,
       paymentMethod,
-      note,
+      note: appliedVoucherName
+        ? `${note ? note + " | " : ""}Voucher: ${appliedVoucherName}`
+        : note,
       estimatedDeliveryTime,
       statusHistory: [
         {

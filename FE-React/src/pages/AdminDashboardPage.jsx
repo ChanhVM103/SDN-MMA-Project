@@ -11,7 +11,13 @@ import {
   getOrderStatsApi,
   getUserStatsApi,
   getRestaurantStatsApi,
+  getAllVouchersApi,
+  createVoucherApi,
+  updateVoucherApi,
+  deleteVoucherApi,
+  toggleVoucherApi,
 } from "../services/admin-api";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 
 // MUI Components
 import {
@@ -175,6 +181,16 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
   const [resRevenue, setResRevenue] = useState([]); // per-restaurant revenue
   const [loadingRevenue, setLoadingRevenue] = useState(false);
 
+  // Voucher state
+  const [vouchersList, setVouchersList] = useState([]);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
+  const [isCreateVoucherOpen, setIsCreateVoucherOpen] = useState(false);
+  const [isEditVoucherOpen, setIsEditVoucherOpen] = useState(false);
+  const [isDeleteVoucherOpen, setIsDeleteVoucherOpen] = useState(false);
+  const [selectedVoucher, setSelectedVoucher] = useState(null);
+  const defaultVoucherForm = { name: "", description: "", minOrderAmount: 0, maxDeliveryFee: 0, isActive: true };
+  const [voucherForm, setVoucherForm] = useState(defaultVoucherForm);
+
   // Modals
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -222,9 +238,9 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
   const toRestaurantPayload = (form) => ({
     name: form.name,
     image: form.image,
-    rating: Number(form.rating),
-    reviews: Number(form.reviews),
-    distance: form.distance,
+    rating: Number(form.rating) || 0,
+    reviews: Number(form.reviews) || 0,
+    distance: form.distance || "1.0 km",
     tags: form.tags
       .split(",")
       .map((tag) => tag.trim())
@@ -491,6 +507,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
   });
 
   const filteredRestaurants = restaurantsList.filter((r) => {
+    if (!r.address) return false;
     const term = resSearchQuery.toLowerCase();
     return (
       r.name?.toLowerCase().includes(term) ||
@@ -499,17 +516,60 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
   });
 
   // ─── Sidebar Nav Items ──────────────────────
+  // ─── Voucher CRUD ────────────────────────────────
+  const fetchVouchers = async () => {
+    setLoadingVouchers(true);
+    try {
+      const data = await getAllVouchersApi();
+      setVouchersList(data || []);
+    } catch (e) {
+      showSnack("Lỗi tải voucher: " + e.message, "error");
+    } finally {
+      setLoadingVouchers(false);
+    }
+  };
+  useEffect(() => { if (activeTab === "vouchers") fetchVouchers(); }, [activeTab]);
+
+  const submitCreateVoucher = async (e) => {
+    e.preventDefault();
+    try {
+      await createVoucherApi(voucherForm);
+      showSnack("Tạo voucher thành công!");
+      setIsCreateVoucherOpen(false);
+      setVoucherForm(defaultVoucherForm);
+      fetchVouchers();
+    } catch (err) { showSnack("Lỗi: " + err.message, "error"); }
+  };
+  const submitEditVoucher = async (e) => {
+    e.preventDefault();
+    try {
+      await updateVoucherApi(selectedVoucher._id, voucherForm);
+      showSnack("Cập nhật voucher thành công!");
+      setIsEditVoucherOpen(false);
+      fetchVouchers();
+    } catch (err) { showSnack("Lỗi: " + err.message, "error"); }
+  };
+  const submitDeleteVoucher = async () => {
+    try {
+      await deleteVoucherApi(selectedVoucher._id);
+      showSnack("Đã xoá voucher.");
+      setIsDeleteVoucherOpen(false);
+      fetchVouchers();
+    } catch (err) { showSnack("Lỗi: " + err.message, "error"); }
+  };
+  const handleToggleVoucher = async (v) => {
+    try {
+      await toggleVoucherApi(v._id);
+      showSnack(v.isActive ? "Đã tắt voucher" : "Đã bật voucher");
+      fetchVouchers();
+    } catch (err) { showSnack("Lỗi: " + err.message, "error"); }
+  };
+
   const navItems = [
     { key: "dashboard", label: "Tổng quan", icon: <DashboardIcon /> },
     { key: "users", label: "Quản lý User", icon: <PeopleIcon /> },
     { key: "restaurants", label: "Cửa hàng", icon: <StorefrontIcon /> },
-    {
-      key: "products",
-      label: "Sản phẩm",
-      icon: <InventoryIcon />,
-      disabled: true,
-    },
-    { key: "orders", label: "Đơn hàng", icon: <ReceiptIcon />, disabled: true },
+    { key: "vouchers", label: "Voucher", icon: <LocalOfferIcon /> },
   ];
 
   const getRoleChip = (role) => {
@@ -1233,6 +1293,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
                         </TableHead>
                         <TableBody>
                           {resRevenue
+                            .filter((r) => r.address)
                             .sort((a, b) => (b.revenue?.totalRevenue || 0) - (a.revenue?.totalRevenue || 0))
                             .map((r) => (
                             <TableRow key={r._id} hover>
@@ -1274,14 +1335,14 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
                               </TableCell>
                             </TableRow>
                           ))}
-                          {resRevenue.length > 0 && (
+                          {resRevenue.filter((r) => r.address).length > 0 && (
                             <TableRow sx={{ bgcolor: "#f8f9fa" }}>
                               <TableCell colSpan={5}>
                                 <Typography variant="body2" fontWeight={700}>TỔNG CỘNG</Typography>
                               </TableCell>
                               <TableCell align="right">
                                 <Typography variant="body1" fontWeight={800} color="primary.main">
-                                  {resRevenue.reduce((s, r) => s + (r.revenue?.totalRevenue || 0), 0).toLocaleString()}₫
+                                  {resRevenue.filter((r) => r.address).reduce((s, r) => s + (r.revenue?.totalRevenue || 0), 0).toLocaleString()}₫
                                 </Typography>
                               </TableCell>
                             </TableRow>
@@ -1385,6 +1446,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
                               }}
                             >
                               <Avatar
+                                src={u.avatar}
                                 sx={{
                                   bgcolor:
                                     u.role === "admin"
@@ -1706,6 +1768,98 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
                 </TableContainer>
               </Paper>
             )}
+
+            {/* ═══ VOUCHERS TAB ═══ */}
+            {activeTab === "vouchers" && (
+              <Paper elevation={0} sx={{ border: "1px solid #f0f0f0" }}>
+                <Box sx={{ p: 2.5, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <Typography variant="h6">Quản lý Voucher ({vouchersList.length})</Typography>
+                  <Stack direction="row" spacing={1.5}>
+                    <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchVouchers} disabled={loadingVouchers}>
+                      {loadingVouchers ? "Đang tải..." : "Làm mới"}
+                    </Button>
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setVoucherForm(defaultVoucherForm); setIsCreateVoucherOpen(true); }}>
+                      Tạo Voucher
+                    </Button>
+                  </Stack>
+                </Box>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: "#fafafa" }}>
+                        <TableCell sx={{ fontWeight: 700 }}>Tên voucher</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Đơn tối thiểu (₫)</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Phí ship tối đa (₫)</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Trạng thái</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Hành động</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {vouchersList.map((v) => (
+                        <TableRow key={v._id} hover>
+                          <TableCell>
+                            <Box>
+                              <Typography variant="body2" fontWeight={600}>{v.name}</Typography>
+                              {v.description && <Typography variant="caption" color="text.secondary">{v.description}</Typography>}
+                            </Box>
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography variant="body2" fontWeight={600}>{v.minOrderAmount?.toLocaleString()}₫</Typography>
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography variant="body2" fontWeight={700} color={v.maxDeliveryFee === 0 ? "success.main" : "primary.main"}>
+                              {v.maxDeliveryFee === 0 ? "Free Ship" : `${v.maxDeliveryFee?.toLocaleString()}₫`}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={v.isActive ? "Đang bật" : "Đã tắt"}
+                              color={v.isActive ? "success" : "default"}
+                              size="small"
+                              onClick={() => handleToggleVoucher(v)}
+                              sx={{ cursor: "pointer" }}
+                            />
+                          </TableCell>
+                          <TableCell align="right">
+                            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                              <Tooltip title="Chỉnh sửa">
+                                <IconButton size="small" onClick={() => {
+                                  setSelectedVoucher(v);
+                                  setVoucherForm({ name: v.name, description: v.description || "", minOrderAmount: v.minOrderAmount, maxDeliveryFee: v.maxDeliveryFee, isActive: v.isActive });
+                                  setIsEditVoucherOpen(true);
+                                }}>
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Xoá">
+                                <IconButton size="small" color="error" onClick={() => { setSelectedVoucher(v); setIsDeleteVoucherOpen(true); }}>
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {vouchersList.length === 0 && !loadingVouchers && (
+                        <TableRow>
+                          <TableCell colSpan={5} sx={{ textAlign: "center", py: 8, color: "text.secondary" }}>
+                            <LocalOfferIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} /><br />
+                            Chưa có voucher nào. Hãy tạo voucher đầu tiên!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {loadingVouchers && (
+                        <TableRow>
+                          <TableCell colSpan={5} sx={{ textAlign: "center", py: 8 }}>
+                            <CircularProgress color="primary" />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
+            )}
           </Box>
         </Box>
       </Box>
@@ -1915,67 +2069,22 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
               }
               sx={{ mb: 2 }}
             />
-            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-              <TextField
-                fullWidth
-                label="Đánh giá (0-5)"
-                type="number"
-                required
-                inputProps={{ min: 0, max: 5, step: 0.1 }}
-                value={restaurantForm.rating}
+            <FormControl fullWidth required sx={{ mb: 2 }}>
+              <InputLabel>Loại cửa hàng</InputLabel>
+              <Select
+                value={restaurantForm.type}
+                label="Loại cửa hàng"
                 onChange={(e) =>
                   setRestaurantForm({
                     ...restaurantForm,
-                    rating: parseFloat(e.target.value) || 0,
+                    type: e.target.value,
                   })
                 }
-              />
-              <TextField
-                fullWidth
-                label="Số lượt đánh giá"
-                type="number"
-                required
-                inputProps={{ min: 0 }}
-                value={restaurantForm.reviews}
-                onChange={(e) =>
-                  setRestaurantForm({
-                    ...restaurantForm,
-                    reviews: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-              />
-            </Stack>
-            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-              <TextField
-                fullWidth
-                label="Khoảng cách"
-                required
-                placeholder="VD: 1.2 km"
-                value={restaurantForm.distance}
-                onChange={(e) =>
-                  setRestaurantForm({
-                    ...restaurantForm,
-                    distance: e.target.value,
-                  })
-                }
-              />
-              <FormControl fullWidth required>
-                <InputLabel>Loại cửa hàng</InputLabel>
-                <Select
-                  value={restaurantForm.type}
-                  label="Loại cửa hàng"
-                  onChange={(e) =>
-                    setRestaurantForm({
-                      ...restaurantForm,
-                      type: e.target.value,
-                    })
-                  }
-                >
-                  <MenuItem value="food">Đồ ăn</MenuItem>
-                  <MenuItem value="drink">Thức uống</MenuItem>
-                </Select>
-              </FormControl>
-            </Stack>
+              >
+                <MenuItem value="food">Đồ ăn</MenuItem>
+                <MenuItem value="drink">Thức uống</MenuItem>
+              </Select>
+            </FormControl>
             <TextField
               fullWidth
               label="Tags (phân tách bằng dấu phẩy)"
@@ -2205,67 +2314,22 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
               }
               sx={{ mb: 2 }}
             />
-            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-              <TextField
-                fullWidth
-                label="Đánh giá (0-5)"
-                type="number"
-                required
-                inputProps={{ min: 0, max: 5, step: 0.1 }}
-                value={restaurantForm.rating}
+            <FormControl fullWidth required sx={{ mb: 2 }}>
+              <InputLabel>Loại cửa hàng</InputLabel>
+              <Select
+                value={restaurantForm.type}
+                label="Loại cửa hàng"
                 onChange={(e) =>
                   setRestaurantForm({
                     ...restaurantForm,
-                    rating: parseFloat(e.target.value) || 0,
+                    type: e.target.value,
                   })
                 }
-              />
-              <TextField
-                fullWidth
-                label="Số lượt đánh giá"
-                type="number"
-                required
-                inputProps={{ min: 0 }}
-                value={restaurantForm.reviews}
-                onChange={(e) =>
-                  setRestaurantForm({
-                    ...restaurantForm,
-                    reviews: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-              />
-            </Stack>
-            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-              <TextField
-                fullWidth
-                label="Khoảng cách"
-                required
-                placeholder="VD: 1.2 km"
-                value={restaurantForm.distance}
-                onChange={(e) =>
-                  setRestaurantForm({
-                    ...restaurantForm,
-                    distance: e.target.value,
-                  })
-                }
-              />
-              <FormControl fullWidth required>
-                <InputLabel>Loại cửa hàng</InputLabel>
-                <Select
-                  value={restaurantForm.type}
-                  label="Loại cửa hàng"
-                  onChange={(e) =>
-                    setRestaurantForm({
-                      ...restaurantForm,
-                      type: e.target.value,
-                    })
-                  }
-                >
-                  <MenuItem value="food">Đồ ăn</MenuItem>
-                  <MenuItem value="drink">Thức uống</MenuItem>
-                </Select>
-              </FormControl>
-            </Stack>
+              >
+                <MenuItem value="food">Đồ ăn</MenuItem>
+                <MenuItem value="drink">Thức uống</MenuItem>
+              </Select>
+            </FormControl>
             <TextField
               fullWidth
               label="Tags (phân tách bằng dấu phẩy)"
@@ -2498,6 +2562,70 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
           >
             Có, Xoá ngay
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Create Voucher Dialog ─── */}
+      <Dialog open={isCreateVoucherOpen} onClose={() => setIsCreateVoucherOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle><Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><LocalOfferIcon color="primary" /> Tạo Voucher mới</Box></DialogTitle>
+        <DialogContent>
+          <form id="createVoucherForm" onSubmit={submitCreateVoucher}>
+            <TextField fullWidth label="Tên voucher" required value={voucherForm.name} onChange={(e) => setVoucherForm({ ...voucherForm, name: e.target.value })} sx={{ mb: 2, mt: 1 }} placeholder="VD: Giảm ship đơn 50k" />
+            <TextField fullWidth label="Mô tả (tuỳ chọn)" value={voucherForm.description} onChange={(e) => setVoucherForm({ ...voucherForm, description: e.target.value })} sx={{ mb: 2 }} />
+            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+              <TextField fullWidth label="Đơn tối thiểu (₫)" type="number" required inputProps={{ min: 0 }} value={voucherForm.minOrderAmount} onChange={(e) => setVoucherForm({ ...voucherForm, minOrderAmount: parseInt(e.target.value, 10) || 0 })} helperText="Giá trị đơn hàng tối thiểu để áp dụng voucher" />
+              <TextField fullWidth label="Phí ship tối đa (₫)" type="number" required inputProps={{ min: 0 }} value={voucherForm.maxDeliveryFee} onChange={(e) => setVoucherForm({ ...voucherForm, maxDeliveryFee: parseInt(e.target.value, 10) || 0 })} helperText="0 = Free Ship" />
+            </Stack>
+            <FormControl fullWidth>
+              <InputLabel>Trạng thái</InputLabel>
+              <Select value={voucherForm.isActive ? "true" : "false"} label="Trạng thái" onChange={(e) => setVoucherForm({ ...voucherForm, isActive: e.target.value === "true" })}>
+                <MenuItem value="true">Bật</MenuItem>
+                <MenuItem value="false">Tắt</MenuItem>
+              </Select>
+            </FormControl>
+          </form>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setIsCreateVoucherOpen(false)}>Huỷ</Button>
+          <Button type="submit" form="createVoucherForm" variant="contained" startIcon={<AddIcon />}>Tạo Voucher</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Edit Voucher Dialog ─── */}
+      <Dialog open={isEditVoucherOpen} onClose={() => setIsEditVoucherOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle><Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><EditIcon color="primary" /> Chỉnh sửa Voucher</Box></DialogTitle>
+        <DialogContent>
+          <form id="editVoucherForm" onSubmit={submitEditVoucher}>
+            <TextField fullWidth label="Tên voucher" required value={voucherForm.name} onChange={(e) => setVoucherForm({ ...voucherForm, name: e.target.value })} sx={{ mb: 2, mt: 1 }} />
+            <TextField fullWidth label="Mô tả" value={voucherForm.description} onChange={(e) => setVoucherForm({ ...voucherForm, description: e.target.value })} sx={{ mb: 2 }} />
+            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+              <TextField fullWidth label="Đơn tối thiểu (₫)" type="number" required inputProps={{ min: 0 }} value={voucherForm.minOrderAmount} onChange={(e) => setVoucherForm({ ...voucherForm, minOrderAmount: parseInt(e.target.value, 10) || 0 })} />
+              <TextField fullWidth label="Phí ship tối đa (₫)" type="number" required inputProps={{ min: 0 }} value={voucherForm.maxDeliveryFee} onChange={(e) => setVoucherForm({ ...voucherForm, maxDeliveryFee: parseInt(e.target.value, 10) || 0 })} helperText="0 = Free Ship" />
+            </Stack>
+            <FormControl fullWidth>
+              <InputLabel>Trạng thái</InputLabel>
+              <Select value={voucherForm.isActive ? "true" : "false"} label="Trạng thái" onChange={(e) => setVoucherForm({ ...voucherForm, isActive: e.target.value === "true" })}>
+                <MenuItem value="true">Bật</MenuItem>
+                <MenuItem value="false">Tắt</MenuItem>
+              </Select>
+            </FormControl>
+          </form>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setIsEditVoucherOpen(false)}>Huỷ</Button>
+          <Button type="submit" form="editVoucherForm" variant="contained">Lưu thay đổi</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Delete Voucher Dialog ─── */}
+      <Dialog open={isDeleteVoucherOpen} onClose={() => setIsDeleteVoucherOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle color="error.main">⚠️ Xoá Voucher</DialogTitle>
+        <DialogContent>
+          <Typography>Xoá voucher <strong>{selectedVoucher?.name}</strong>? Không thể phục hồi!</Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setIsDeleteVoucherOpen(false)}>Quay lại</Button>
+          <Button variant="contained" color="error" onClick={submitDeleteVoucher}>Có, Xoá ngay</Button>
         </DialogActions>
       </Dialog>
 
