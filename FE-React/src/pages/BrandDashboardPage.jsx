@@ -53,6 +53,7 @@ import {
   CircularProgress,
   Stack,
   alpha,
+  Badge,
 } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 
@@ -170,7 +171,7 @@ const brandTheme = createTheme({
 });
 
 const BrandDashboardPage = ({ user, onLogout, navigate }) => {
-  const [activeTab, setActiveTab] = useState("products");
+  const [activeTab, setActiveTab] = useState("overview");
   const [restaurant, setRestaurant] = useState(null);
   const [productsList, setProductsList] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -264,6 +265,22 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
     }, 15000);
     return () => clearInterval(interval);
   }, [activeTab, restaurant, orderStatusFilter]);
+
+  // Background refresh for "New Order" notification dot on sidebar
+  useEffect(() => {
+    if (!restaurant) return;
+    
+    // Luôn fetch stats và all orders để cập nhật chấm đỏ
+    fetchStats();
+    fetchAllOrders();
+
+    const interval = setInterval(() => {
+      fetchStats();
+      fetchAllOrders();
+    }, 30000); // Mỗi 30 giây kiểm tra đơn mới
+    
+    return () => clearInterval(interval);
+  }, [restaurant]);
 
   const fetchRestaurant = async () => {
     setLoading(true);
@@ -630,57 +647,53 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
           </Box>
           <Divider />
 
-          <Box sx={{ p: 2 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<HomeIcon />}
-              onClick={() => navigate("/home")}
-              sx={{
-                justifyContent: "flex-start",
-                borderColor: alpha("#ee4d2d", 0.35),
-                color: "primary.main",
-                fontWeight: 700,
-                "&:hover": {
-                  borderColor: "primary.main",
-                  bgcolor: alpha("#ee4d2d", 0.06),
-                },
-              }}
-            >
-              Về trang chủ
-            </Button>
-          </Box>
-          <Divider />
+
 
           {/* Nav */}
           <List sx={{ px: 1.5, mt: 1 }}>
-            {navItems.map((item) => (
-              <ListItemButton
-                key={item.key}
-                selected={activeTab === item.key}
-                onClick={() => setActiveTab(item.key)}
-                sx={{
-                  borderRadius: 2,
-                  mb: 0.5,
-                  py: 1.2,
-                  "&.Mui-selected": {
-                    bgcolor: alpha("#ee4d2d", 0.08),
-                    color: "primary.main",
-                    "& .MuiListItemIcon-root": { color: "primary.main" },
-                  },
-                  "&:hover": { bgcolor: alpha("#ee4d2d", 0.04) },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{
-                    fontSize: "0.9rem",
-                    fontWeight: activeTab === item.key ? 600 : 400,
+            {navItems.map((item) => {
+              const pendingOrdersCount = allOrders.filter(o => o.status === "pending").length;
+              return (
+                <ListItemButton
+                  key={item.key}
+                  selected={activeTab === item.key}
+                  onClick={() => setActiveTab(item.key)}
+                  sx={{
+                    borderRadius: 2,
+                    mb: 0.5,
+                    py: 1.2,
+                    "&.Mui-selected": {
+                      bgcolor: alpha("#ee4d2d", 0.08),
+                      color: "primary.main",
+                      "& .MuiListItemIcon-root": { color: "primary.main" },
+                    },
+                    "&:hover": { bgcolor: alpha("#ee4d2d", 0.04) },
                   }}
-                />
-              </ListItemButton>
-            ))}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    {item.key === "orders" ? (
+                      <Badge 
+                        color="error" 
+                        variant="dot" 
+                        invisible={pendingOrdersCount === 0}
+                        sx={{ "& .MuiBadge-badge": { top: 2, right: 2 } }}
+                      >
+                        {item.icon}
+                      </Badge>
+                    ) : (
+                      item.icon
+                    )}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.label}
+                    primaryTypographyProps={{
+                      fontSize: "0.9rem",
+                      fontWeight: activeTab === item.key ? 600 : 400,
+                    }}
+                  />
+                </ListItemButton>
+              );
+            })}
           </List>
 
           {/* Bottom Area */}
