@@ -1,6 +1,7 @@
 const Order = require("../models/order.model");
 const Restaurant = require("../models/restaurant.model");
 const User = require("../models/user.model");
+const Product = require("../models/product.model");
 
 const incrementRestaurantOrders = async (restaurantId) => {
   await Restaurant.findByIdAndUpdate(restaurantId, {
@@ -18,6 +19,18 @@ const addShipperRevenue = async (shipperId, amount) => {
   await User.findByIdAndUpdate(shipperId, {
     $inc: { totalRevenue: amount },
   });
+};
+
+const incrementProductSoldCounts = async (items) => {
+  if (!items || !Array.isArray(items)) return;
+  
+  const updatePromises = items.map(item => {
+    return Product.findByIdAndUpdate(item.productId, {
+      $inc: { sold: item.quantity }
+    });
+  });
+  
+  await Promise.all(updatePromises);
 };
 
 const decrementRestaurantOrders = async (restaurantId) => {
@@ -358,6 +371,10 @@ const updateOrderStatus = async (req, res) => {
       await addRestaurantRevenue(order.restaurant, order.total);
     }
 
+    if (status === "delivered") {
+      await incrementProductSoldCounts(order.items);
+    }
+
     order.statusHistory.push({
       status,
       changedBy: req.userId,
@@ -605,6 +622,10 @@ const updateOrderStatusByBrand = async (req, res) => {
       await addRestaurantRevenue(order.restaurant._id, order.total);
     }
 
+    if (status === "delivered") {
+      await incrementProductSoldCounts(order.items);
+    }
+
     const statusLabels = {
       confirmed: "Nhà hàng đã xác nhận đơn",
       preparing: "Đang chuẩn bị hàng",
@@ -697,6 +718,8 @@ const brandConfirmDelivered = async (req, res) => {
         await addShipperRevenue(order.shipper, order.deliveryFee || 0);
       }
     }
+
+    await incrementProductSoldCounts(order.items);
     order.statusHistory.push({
       status: "delivered",
       changedBy: req.userId,
@@ -878,6 +901,8 @@ const confirmOrderReceived = async (req, res) => {
     if (order.shipper && shipperFee > 0) {
       await addShipperRevenue(order.shipper, shipperFee);
     }
+
+    await incrementProductSoldCounts(order.items);
 
     order.statusHistory.push({
       status: "delivered",

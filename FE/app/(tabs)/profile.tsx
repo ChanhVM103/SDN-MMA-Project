@@ -151,8 +151,12 @@ export default function ProfileScreen() {
             : []),
         { icon: 'create-outline' as const, label: 'Chỉnh sửa hồ sơ', color: '#FF6B35', route: '/edit-profile' },
         { icon: 'key-outline' as const, label: 'Đổi mật khẩu', color: '#6C5CE7', route: '/change-password' },
-        { icon: 'receipt-outline' as const, label: 'Lịch sử đơn hàng', color: '#FF6B35', route: '/(tabs)/orders' },
-        { icon: 'heart-outline' as const, label: 'Yêu thích', color: '#EF4444', route: '/(tabs)/favorites' },
+        ...(user?.role !== 'brand' 
+            ? [
+                { icon: 'receipt-outline' as const, label: 'Lịch sử đơn hàng', color: '#FF6B35', route: '/(tabs)/orders' },
+                { icon: 'heart-outline' as const, label: 'Yêu thích', color: '#EF4444', route: '/(tabs)/favorites' }
+              ]
+            : [])
     ];
 
     return (
@@ -240,29 +244,31 @@ export default function ProfileScreen() {
                 </Animated.View>
 
                 {/* Delivery Address Card */}
-                <Animated.View style={[s.addressSection, { opacity: fadeAnim }]}>
-                    <View style={s.addressCard}>
-                        <View style={s.addressHeader}>
-                            <View style={[s.menuIconContainer, { backgroundColor: '#2D6A4F15' }]}>
-                                <Ionicons name="location" size={20} color="#2D6A4F" />
+                {user?.role !== 'brand' && (
+                    <Animated.View style={[s.addressSection, { opacity: fadeAnim }]}>
+                        <View style={s.addressCard}>
+                            <View style={s.addressHeader}>
+                                <View style={[s.menuIconContainer, { backgroundColor: '#2D6A4F15' }]}>
+                                    <Ionicons name="location" size={20} color="#2D6A4F" />
+                                </View>
+                                <Text style={s.addressCardTitle}>Địa chỉ giao hàng</Text>
+                                <TouchableOpacity
+                                    style={s.editBtn}
+                                    onPress={() => setShowAddressModal(true)}
+                                >
+                                    <Ionicons name="pencil" size={14} color={AppColors.primary} />
+                                    <Text style={s.editBtnText}>Sửa</Text>
+                                </TouchableOpacity>
                             </View>
-                            <Text style={s.addressCardTitle}>Địa chỉ giao hàng</Text>
-                            <TouchableOpacity
-                                style={s.editBtn}
-                                onPress={() => setShowAddressModal(true)}
-                            >
-                                <Ionicons name="pencil" size={14} color={AppColors.primary} />
-                                <Text style={s.editBtnText}>Sửa</Text>
-                            </TouchableOpacity>
+                            <View style={s.addressContent}>
+                                <Ionicons name="location-outline" size={16} color={AppColors.gray} />
+                                <Text style={s.addressValue}>
+                                    {user.address || 'Chưa có địa chỉ — nhấn Sửa để thêm'}
+                                </Text>
+                            </View>
                         </View>
-                        <View style={s.addressContent}>
-                            <Ionicons name="location-outline" size={16} color={AppColors.gray} />
-                            <Text style={s.addressValue}>
-                                {user.address || 'Chưa có địa chỉ — nhấn Sửa để thêm'}
-                            </Text>
-                        </View>
-                    </View>
-                </Animated.View>
+                    </Animated.View>
+                )}
 
                 {/* Address Picker */}
                 <AddressPicker

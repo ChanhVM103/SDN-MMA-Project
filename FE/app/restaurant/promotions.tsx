@@ -216,43 +216,55 @@ export default function PromotionsScreen() {
     };
 
     const renderItem = ({ item }: { item: any }) => (
-        <View style={[s.card, !item.isActive && s.cardInactive]}>
-            <View style={[s.statusLine, { backgroundColor: item.isActive ? AppColors.primary : '#CBD5E1' }]} />
-            <View style={s.cardBody}>
-                <View style={s.cardHeader}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={s.cardTitle}>{item.name}</Text>
-                        <View style={s.cardMeta}>
-                            <View style={[s.statusBadge, { backgroundColor: item.isActive ? '#FFF3ED' : '#F1F5F9' }]}>
-                                <Text style={[s.statusBadgeText, { color: item.isActive ? AppColors.primary : '#64748B' }]}>
-                                    {item.isActive ? 'Đang chạy' : 'Tạm dừng'}
-                                </Text>
-                            </View>
-                            <Text style={s.productCount}>{item.productIds?.length || 0} sản phẩm</Text>
-                        </View>
+        <View style={s.promoCard}>
+            <View style={s.cardTop}>
+                <View style={s.promoInfo}>
+                    <Text style={s.promoName}>{item.name}</Text>
+                    <View style={s.discountRow}>
+                        <Ionicons name="flash" size={14} color="#FF6B35" />
+                        <Text style={s.discountText}>Giảm {item.discountPercent}% cho {item.productIds?.length || 0} sản phẩm</Text>
                     </View>
-                    <LinearGradient colors={item.isActive ? ['#FF6B35', '#E55A2B'] : ['#94A3B8', '#64748B']} style={s.discountBox}>
-                        <Text style={s.discountText}>-{item.discountPercent}%</Text>
-                    </LinearGradient>
                 </View>
+                <View style={[s.statusTag, { backgroundColor: item.isActive ? '#10B98115' : '#F1F5F9' }]}>
+                    <View style={[s.statusDot, { backgroundColor: item.isActive ? '#10B981' : '#94A3B8' }]} />
+                    <Text style={[s.statusTagText, { color: item.isActive ? '#10B981' : '#64748B' }]}>
+                        {item.isActive ? 'Đang chạy' : 'Đang tạm dừng'}
+                    </Text>
+                </View>
+            </View>
 
-                <View style={s.cardActions}>
-                    <TouchableOpacity style={s.actionBtn} onPress={() => toggleStatus(item)}>
-                        <Ionicons name={item.isActive ? "pause-circle-outline" : "play-circle-outline"} size={20} color={item.isActive ? '#64748B' : AppColors.primary} />
-                        <Text style={[s.actionText, { color: item.isActive ? '#64748B' : AppColors.primary }]}>
-                            {item.isActive ? 'Tạm dừng' : 'Kích hoạt'}
+            <View style={s.cardDivider} />
+
+            <View style={s.cardBottom}>
+                <Text style={s.dateRange}>
+                    ID: {item._id.slice(-6).toUpperCase()}
+                </Text>
+                <View style={s.actionRow}>
+                    <TouchableOpacity 
+                        style={s.iconActionBtn} 
+                        onPress={() => handleDelete(item._id)}
+                    >
+                        <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={s.iconActionBtn} 
+                        onPress={() => openEdit(item)}
+                    >
+                        <Ionicons name="pencil-outline" size={20} color="#3B82F6" />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[s.toggleBtn, item.isActive ? s.toggleBtnPause : s.toggleBtnActive]}
+                        onPress={() => toggleStatus(item)}
+                    >
+                        <Ionicons 
+                            name={item.isActive ? "pause" : "play"} 
+                            size={16} 
+                            color="#fff" 
+                        />
+                        <Text style={s.toggleBtnText}>
+                            {item.isActive ? 'Dừng' : 'Chạy'}
                         </Text>
                     </TouchableOpacity>
-                    <View style={{ flexDirection: 'row', gap: 16 }}>
-                        <TouchableOpacity style={s.actionBtn} onPress={() => openEdit(item)}>
-                            <Ionicons name="pencil-outline" size={18} color="#3B82F6" />
-                            <Text style={[s.actionText, { color: '#3B82F6' }]}>Sửa</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={s.actionBtn} onPress={() => handleDelete(item._id)}>
-                            <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                            <Text style={[s.actionText, { color: '#EF4444' }]}>Xóa</Text>
-                        </TouchableOpacity>
-                    </View>
                 </View>
             </View>
         </View>
@@ -262,36 +274,61 @@ export default function PromotionsScreen() {
         <View style={s.container}>
             <Stack.Screen options={{ headerShown: false }} />
             
-            {/* Header */}
-            <View style={s.header}>
-                <TouchableOpacity onPress={() => router.back()} style={s.roundBtn}>
-                    <Ionicons name="arrow-back" size={24} color={AppColors.charcoal} />
-                </TouchableOpacity>
-                <Text style={s.headerTitle}>Quản lý Flash Sale</Text>
-                <TouchableOpacity onPress={() => { resetForm(); setShowModal(true); }} style={s.roundBtn}>
-                    <Ionicons name="add" size={28} color={AppColors.primary} />
-                </TouchableOpacity>
-            </View>
+            <LinearGradient
+                colors={['#FF6B35', '#E55A2B']}
+                style={s.headerGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+            >
+                <View style={s.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+                        <Ionicons name="arrow-back" size={24} color="#fff" />
+                    </TouchableOpacity>
+                    <Text style={s.headerTitle}>Chương trình Flash Sale</Text>
+                    <View style={s.headerStats}>
+                        <Text style={s.statText}>{promotions.filter(p => p.isActive).length} Đang chạy</Text>
+                    </View>
+                </View>
+            </LinearGradient>
 
             {loading && !promotions.length ? (
-                <View style={s.centered}><ActivityIndicator size="large" color={AppColors.primary} /></View>
+                <View style={s.centered}><ActivityIndicator size="large" color="#FF6B35" /></View>
             ) : (
                 <FlatList
                     data={promotions}
                     renderItem={renderItem}
                     keyExtractor={item => item._id}
                     contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+                    showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
                         <View style={s.emptyState}>
-                            <Ionicons name="pricetags-outline" size={80} color="#E2E8F0" />
+                            <View style={s.emptyIconCircle}>
+                                <Ionicons name="megaphone-outline" size={60} color="#E2E8F0" />
+                            </View>
                             <Text style={s.emptyTitle}>Chưa có Flash Sale nào</Text>
                             <Text style={s.emptySub}>Tạo chương trình khuyến mãi đầu tiên của bạn ngay!</Text>
-                            <TouchableOpacity style={s.primaryBtn} onPress={() => { resetForm(); setShowModal(true); }}>
-                                <Text style={s.primaryBtnText}>Tạo Flash Sale</Text>
+                            <TouchableOpacity style={s.emptyActionBtn} onPress={() => { resetForm(); setShowModal(true); }}>
+                                <Text style={s.emptyActionBtnText}>+ Tạo Flash Sale ngay</Text>
                             </TouchableOpacity>
                         </View>
                     }
                 />
+            )}
+
+            {/* Floating Action Button */}
+            {promotions.length > 0 && (
+                <TouchableOpacity 
+                    style={s.fab} 
+                    onPress={() => { resetForm(); setShowModal(true); }}
+                    activeOpacity={0.9}
+                >
+                    <LinearGradient
+                        colors={['#FF6B35', '#E55A2B']}
+                        style={s.fabGradient}
+                    >
+                        <Ionicons name="add" size={30} color="#fff" />
+                    </LinearGradient>
+                </TouchableOpacity>
             )}
 
             {/* Create/Edit Modal */}
@@ -301,7 +338,7 @@ export default function PromotionsScreen() {
                         <View style={s.modalHeader}>
                             <Text style={s.modalTitle}>{editingId ? 'Sửa Flash Sale' : 'Tạo Flash Sale mới'}</Text>
                             <TouchableOpacity onPress={() => setShowModal(false)}>
-                                <Ionicons name="close" size={24} color={AppColors.charcoal} />
+                                <Ionicons name="close" size={24} color="#94A3B8" />
                             </TouchableOpacity>
                         </View>
 
@@ -341,10 +378,10 @@ export default function PromotionsScreen() {
                                         >
                                             <Ionicons 
                                                 name={isSelected ? "checkbox" : "square-outline"} 
-                                                size={20} 
-                                                color={isSelected ? AppColors.primary : '#94A3B8'} 
+                                                size={22} 
+                                                color={isSelected ? "#FF6B35" : '#CBD5E1'} 
                                             />
-                                            <View style={{ flex: 1, marginLeft: 10 }}>
+                                            <View style={{ flex: 1, marginLeft: 12 }}>
                                                 <Text style={s.productName}>{p.name}</Text>
                                                 <Text style={s.productPrice}>{p.price.toLocaleString()}đ</Text>
                                             </View>
@@ -373,51 +410,82 @@ export default function PromotionsScreen() {
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    headerGradient: {
+        paddingTop: Platform.OS === 'ios' ? 50 : 30,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
+    },
     header: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingTop: Platform.OS === 'ios' ? 50 : 30, paddingBottom: 16, paddingHorizontal: 16,
-        backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
+        paddingHorizontal: 20,
     },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: AppColors.charcoal },
-    roundBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
-    card: {
-        backgroundColor: '#fff', borderRadius: 16, marginBottom: 16,
-        flexDirection: 'row', overflow: 'hidden',
-        ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12 }, android: { elevation: 3 } })
+    backBtn: { padding: 4 },
+    headerTitle: { fontSize: 18, fontWeight: '900', color: '#fff', flex: 1, marginLeft: 15 },
+    headerStats: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
+    statText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+
+    promoCard: {
+        backgroundColor: '#fff', borderRadius: 24, marginBottom: 16, padding: 20,
+        ...Platform.select({
+            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.05, shadowRadius: 12 },
+            android: { elevation: 3 },
+        }),
     },
-    cardInactive: { opacity: 0.8 },
-    statusLine: { width: 4 },
-    cardBody: { flex: 1, padding: 16 },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-    cardTitle: { fontSize: 17, fontWeight: '700', color: AppColors.charcoal, marginBottom: 4 },
-    cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-    statusBadgeText: { fontSize: 11, fontWeight: '700' },
-    productCount: { fontSize: 12, color: '#64748B', fontWeight: '500' },
-    discountBox: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-    discountText: { color: '#fff', fontSize: 16, fontWeight: '900' },
-    cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 12 },
-    actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    actionText: { fontSize: 13, fontWeight: '700' },
-    emptyState: { alignItems: 'center', justifyContent: 'center', marginTop: 100, paddingHorizontal: 40 },
-    emptyTitle: { fontSize: 20, fontWeight: '800', color: AppColors.charcoal, marginTop: 16 },
-    emptySub: { fontSize: 14, color: '#64748B', textAlign: 'center', marginTop: 8, marginBottom: 24 },
-    primaryBtn: { backgroundColor: AppColors.primary, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12 },
-    primaryBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+    cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+    promoInfo: { flex: 1 },
+    promoName: { fontSize: 17, fontWeight: '800', color: '#1E293B', marginBottom: 6 },
+    discountRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    discountText: { fontSize: 13, color: '#64748B', fontWeight: '600' },
+    statusTag: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, gap: 6 },
+    statusDot: { width: 6, height: 6, borderRadius: 3 },
+    statusTagText: { fontSize: 11, fontWeight: '800' },
+
+    cardDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 15 },
+    
+    cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    dateRange: { fontSize: 12, color: '#94A3B8', fontWeight: '700' },
+    actionRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    iconActionBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
+    toggleBtn: { 
+        flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, 
+        borderRadius: 14, gap: 6, minWidth: 100, justifyContent: 'center' 
+    },
+    toggleBtnActive: { backgroundColor: '#10B981' },
+    toggleBtnPause: { backgroundColor: '#FF6B35' },
+    toggleBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+
+    emptyState: { alignItems: 'center', justifyContent: 'center', marginTop: 80, paddingHorizontal: 40 },
+    emptyIconCircle: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+    emptyTitle: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
+    emptySub: { fontSize: 14, color: '#94A3B8', textAlign: 'center', marginTop: 10, marginBottom: 30, lineHeight: 20 },
+    emptyActionBtn: { backgroundColor: '#FF6B35', paddingHorizontal: 24, paddingVertical: 15, borderRadius: 16 },
+    emptyActionBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+
+    fab: {
+        position: 'absolute', bottom: 30, right: 20,
+        width: 60, height: 60, borderRadius: 30,
+        ...Platform.select({
+            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 15 },
+            android: { elevation: 8 },
+        }),
+    },
+    fabGradient: { flex: 1, borderRadius: 30, justifyContent: 'center', alignItems: 'center' },
+
     modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
     modalContent: { backgroundColor: '#fff', height: '90%', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-    modalTitle: { fontSize: 24, fontWeight: '800', color: AppColors.charcoal },
+    modalTitle: { fontSize: 22, fontWeight: '900', color: '#1E293B' },
     modalBody: { flex: 1 },
-    label: { fontSize: 14, fontWeight: '700', color: '#64748B', marginBottom: 8, marginTop: 16 },
-    input: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 16, fontSize: 16, borderWidth: 1, borderColor: '#E2E8F0', color: AppColors.charcoal },
+    label: { fontSize: 14, fontWeight: '800', color: '#64748B', marginBottom: 8, marginTop: 16 },
+    input: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, fontSize: 16, borderWidth: 1, borderColor: '#E2E8F0', color: '#1E293B' },
     productGrid: { gap: 12, marginTop: 8 },
-    productItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9' },
-    productItemSelected: { borderColor: AppColors.primary, backgroundColor: '#FFF7F5' },
-    productName: { fontSize: 15, fontWeight: '600', color: AppColors.charcoal },
-    productPrice: { fontSize: 13, color: AppColors.primary, fontWeight: '700', marginTop: 2 },
-    submitBtn: { marginTop: 20, borderRadius: 16, overflow: 'hidden' },
+    productItem: { flexDirection: 'row', alignItems: 'center', padding: 15, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9' },
+    productItemSelected: { borderColor: '#FF6B35', backgroundColor: '#FFF7F5' },
+    productName: { fontSize: 15, fontWeight: '700', color: '#1E293B' },
+    productPrice: { fontSize: 13, color: '#FF6B35', fontWeight: '800', marginTop: 2 },
+    submitBtn: { marginTop: 20, borderRadius: 18, overflow: 'hidden' },
     submitGradient: { padding: 16, alignItems: 'center' },
-    submitText: { color: '#fff', fontSize: 16, fontWeight: '800' }
+    submitText: { color: '#fff', fontSize: 16, fontWeight: '900' }
 });
 

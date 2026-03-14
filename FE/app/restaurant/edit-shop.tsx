@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/constants/auth-context';
 import { restaurantAPI } from '@/constants/api';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 
 const TAG_SUGGESTIONS = [
@@ -163,162 +164,234 @@ export default function EditShopScreen() {
 
     return (
         <View style={st.container}>
-            {/* Header */}
-            <View style={st.header}>
-                <TouchableOpacity onPress={() => router.back()} style={st.backBtn}>
-                    <Ionicons name="arrow-back" size={24} color={AppColors.charcoal} />
-                </TouchableOpacity>
-                <Text style={st.headerTitle}>Chỉnh sửa Shop</Text>
-                <TouchableOpacity onPress={handleSave} disabled={saving} style={st.saveBtn}>
-                    {saving ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                        <Text style={st.saveBtnText}>Lưu</Text>
-                    )}
-                </TouchableOpacity>
-            </View>
+            <LinearGradient
+                colors={['#FF6B35', '#E55A2B']}
+                style={st.headerGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+            >
+                <View style={st.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={st.backBtn}>
+                        <Ionicons name="arrow-back" size={24} color="#fff" />
+                    </TouchableOpacity>
+                    <Text style={st.headerTitle}>Hồ sơ Cửa hàng</Text>
+                    <View style={{ width: 40 }} />
+                </View>
+            </LinearGradient>
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-                <ScrollView contentContainerStyle={st.scrollContent} showsVerticalScrollIndicator={false}>
-
-                    {/* Shop Image */}
-                    <Text style={st.sectionLabel}>Ảnh bìa Shop</Text>
-                    <TouchableOpacity style={st.imagePickerBox} onPress={pickImage} activeOpacity={0.8}>
+                <ScrollView 
+                    style={st.content} 
+                    contentContainerStyle={{ paddingBottom: 100 }}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* Shop Image Section */}
+                    <Text style={st.sectionLabel}>Ảnh bìa shop</Text>
+                    <TouchableOpacity style={st.imagePickerBox} onPress={pickImage} activeOpacity={0.9}>
                         {image ? (
                             <ExpoImage source={{ uri: image }} style={st.coverImage} contentFit="cover" />
                         ) : (
                             <View style={st.imagePlaceholder}>
-                                <Ionicons name="camera-outline" size={40} color={AppColors.gray} />
-                                <Text style={st.imagePlaceholderText}>Chọn ảnh bìa</Text>
+                                <Ionicons name="camera-outline" size={40} color="#94A3B8" />
+                                <Text style={st.imagePlaceholderText}>Nhấn để tải ảnh lên</Text>
                             </View>
                         )}
                         <View style={st.imageEditBadge}>
-                            <Ionicons name="pencil" size={14} color="#fff" />
+                            <Ionicons name="camera" size={16} color="#fff" />
                         </View>
                     </TouchableOpacity>
 
                     {/* Basic Info */}
                     <Text style={st.sectionLabel}>Thông tin cơ bản</Text>
                     <View style={st.card}>
-                        <View style={st.fieldRow}>
-                            <Text style={st.fieldLabel}>Tên Shop *</Text>
-                            <TextInput style={st.input} value={name} onChangeText={setName} placeholder="Nhập tên shop" placeholderTextColor="#aaa" />
+                        <View style={st.fieldGroup}>
+                            <Text style={st.fieldLabel}>Tên cửa hàng *</Text>
+                            <TextInput 
+                                style={st.input} 
+                                value={name} 
+                                onChangeText={setName} 
+                                placeholder="VD: Bún Chả Obama" 
+                                placeholderTextColor="#94A3B8" 
+                            />
                         </View>
-                        <View style={st.divider} />
-                        <View style={st.fieldRow}>
-                            <Text style={st.fieldLabel}>Mô tả</Text>
-                            <TextInput style={[st.input, st.textArea]} value={description} onChangeText={setDescription}
-                                placeholder="Mô tả về shop của bạn" placeholderTextColor="#aaa"
-                                multiline numberOfLines={3} textAlignVertical="top" />
+                        
+                        <View style={st.fieldGroup}>
+                            <Text style={st.fieldLabel}>Mô tả ngắn</Text>
+                            <TextInput 
+                                style={[st.input, st.textArea]} 
+                                value={description} 
+                                onChangeText={setDescription}
+                                placeholder="Giới thiệu về hương vị đặc trưng của shop..." 
+                                placeholderTextColor="#94A3B8"
+                                multiline 
+                                numberOfLines={3} 
+                                textAlignVertical="top" 
+                            />
                         </View>
-                        <View style={st.divider} />
-                        <View style={st.fieldRow}>
-                            <Text style={st.fieldLabel}>Loại hình</Text>
+
+                        <View style={st.fieldGroup}>
+                            <Text style={st.fieldLabel}>Loại hình kinh doanh</Text>
                             <View style={st.typeRow}>
-                                <TouchableOpacity style={[st.typeBtn, type === 'food' && st.typeBtnActive]} onPress={() => setType('food')}>
-                                    <Text style={[st.typeBtnText, type === 'food' && st.typeBtnTextActive]}>🍽️ Đồ ăn</Text>
+                                <TouchableOpacity 
+                                    style={[st.typeBtn, type === 'food' && st.typeBtnActive]} 
+                                    onPress={() => setType('food')}
+                                >
+                                    <Ionicons name="fast-food" size={18} color={type === 'food' ? '#FF6B35' : '#64748B'} />
+                                    <Text style={[st.typeBtnText, type === 'food' && st.typeBtnTextActive]}>Đồ ăn</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={[st.typeBtn, type === 'drink' && st.typeBtnActive]} onPress={() => setType('drink')}>
-                                    <Text style={[st.typeBtnText, type === 'drink' && st.typeBtnTextActive]}>🥤 Đồ uống</Text>
+                                <TouchableOpacity 
+                                    style={[st.typeBtn, type === 'drink' && st.typeBtnActive]} 
+                                    onPress={() => setType('drink')}
+                                >
+                                    <Ionicons name="cafe" size={18} color={type === 'drink' ? '#FF6B35' : '#64748B'} />
+                                    <Text style={[st.typeBtnText, type === 'drink' && st.typeBtnTextActive]}>Đồ uống</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
                     </View>
 
                     {/* Contact & Address */}
-                    <Text style={st.sectionLabel}>Liên hệ & Địa chỉ</Text>
+                    <Text style={st.sectionLabel}>Liên hệ & Vận hành</Text>
                     <View style={st.card}>
-                        <View style={st.fieldRow}>
-                            <Text style={st.fieldLabel}>Địa chỉ</Text>
-                            <TextInput style={st.input} value={address} onChangeText={setAddress}
-                                placeholder="Nhập địa chỉ shop" placeholderTextColor="#aaa" />
+                        <View style={st.fieldGroup}>
+                            <Text style={st.fieldLabel}>Địa chỉ cửa hàng</Text>
+                            <View style={st.inputIconWrapper}>
+                                <Ionicons name="location-outline" size={18} color="#94A3B8" style={st.inputIcon} />
+                                <TextInput 
+                                    style={[st.input, { paddingLeft: 45 }]} 
+                                    value={address} 
+                                    onChangeText={setAddress}
+                                    placeholder="Số nhà, tên đường, quận/huyện..." 
+                                    placeholderTextColor="#94A3B8" 
+                                />
+                            </View>
                         </View>
-                        <View style={st.divider} />
+
                         <View style={st.fieldRow}>
-                            <Text style={st.fieldLabel}>Số điện thoại</Text>
-                            <TextInput style={st.input} value={phone} onChangeText={setPhone}
-                                placeholder="Nhập số điện thoại" placeholderTextColor="#aaa"
-                                keyboardType="phone-pad" />
+                            <View style={[st.fieldGroup, { flex: 1 }]}>
+                                <Text style={st.fieldLabel}>Số điện thoại</Text>
+                                <TextInput 
+                                    style={st.input} 
+                                    value={phone} 
+                                    onChangeText={setPhone}
+                                    placeholder="09xx..." 
+                                    placeholderTextColor="#94A3B8"
+                                    keyboardType="phone-pad" 
+                                />
+                            </View>
+                            <View style={{ width: 12 }} />
+                            <View style={[st.fieldGroup, { flex: 1 }]}>
+                                <Text style={st.fieldLabel}>Giờ mở cửa</Text>
+                                <TextInput 
+                                    style={st.input} 
+                                    value={openingHours} 
+                                    onChangeText={setOpeningHours}
+                                    placeholder="07:00 - 22:00" 
+                                    placeholderTextColor="#94A3B8" 
+                                />
+                            </View>
                         </View>
+
                         <View style={st.divider} />
-                        <View style={st.fieldRow}>
-                            <Text style={st.fieldLabel}>Giờ mở cửa</Text>
-                            <TextInput style={st.input} value={openingHours} onChangeText={setOpeningHours}
-                                placeholder="VD: 7:00 - 22:00" placeholderTextColor="#aaa" />
+
+                        <View style={st.fieldGroup}>
+                            <Text style={st.fieldLabel}>Cài đặt giao hàng</Text>
+                            <View style={st.fieldRow}>
+                                <View style={st.settingItem}>
+                                    <Text style={st.settingLabel}>Phí ship (đ)</Text>
+                                    <TextInput 
+                                        style={st.settingInput} 
+                                        value={deliveryFee} 
+                                        onChangeText={setDeliveryFee}
+                                        keyboardType="numeric" 
+                                    />
+                                </View>
+                                <View style={st.settingItem}>
+                                    <Text style={st.settingLabel}>TG chuẩn bị (phút)</Text>
+                                    <TextInput 
+                                        style={st.settingInput} 
+                                        value={deliveryTime} 
+                                        onChangeText={setDeliveryTime}
+                                        keyboardType="numeric" 
+                                    />
+                                </View>
+                            </View>
                         </View>
                     </View>
 
-                    {/* Delivery Settings */}
-                    <Text style={st.sectionLabel}>Cài đặt giao hàng</Text>
-                    <View style={st.card}>
-                        <View style={st.fieldRow}>
-                            <Text style={st.fieldLabel}>Thời gian giao (phút)</Text>
-                            <TextInput style={st.input} value={deliveryTime} onChangeText={setDeliveryTime}
-                                placeholder="VD: 30" placeholderTextColor="#aaa" keyboardType="numeric" />
+                    {/* Store Status */}
+                    <View style={st.statusCard}>
+                        <View>
+                            <Text style={st.statusCardTitle}>Trạng thái cửa hàng</Text>
+                            <Text style={st.statusCardSub}>{isOpen ? 'Khách hàng có thể đặt đơn ngay' : 'Tạm thời ngừng nhận đơn mới'}</Text>
                         </View>
-                        <View style={st.divider} />
-                        <View style={st.fieldRow}>
-                            <Text style={st.fieldLabel}>Phí giao hàng (đ)</Text>
-                            <TextInput style={st.input} value={deliveryFee} onChangeText={setDeliveryFee}
-                                placeholder="VD: 15000" placeholderTextColor="#aaa" keyboardType="numeric" />
-                        </View>
-                        <View style={st.divider} />
-                        <View style={st.fieldRow}>
-                            <Text style={st.fieldLabel}>Trạng thái cửa hàng</Text>
-                            <TouchableOpacity
-                                style={[st.toggleBtn, isOpen ? st.toggleOn : st.toggleOff]}
-                                onPress={() => setIsOpen(!isOpen)}
-                            >
-                                <Text style={[st.toggleText, isOpen ? st.toggleTextOn : st.toggleTextOff]}>
-                                    {isOpen ? '🟢 Đang mở' : '🔴 Đã đóng'}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity 
+                            style={[st.statusToggle, isOpen ? st.statusToggleOn : st.statusToggleOff]}
+                            onPress={() => setIsOpen(!isOpen)}
+                            activeOpacity={0.8}
+                        >
+                            <View style={[st.toggleCircle, isOpen ? st.toggleCircleOn : st.toggleCircleOff]} />
+                        </TouchableOpacity>
                     </View>
 
                     {/* Tags */}
-                    <Text style={st.sectionLabel}>Tags (Phân loại)</Text>
+                    <Text style={st.sectionLabel}>Phân loại (Tags)</Text>
                     <View style={st.card}>
-                        {/* Selected tags */}
-                        {tags.length > 0 && (
-                            <View style={st.selectedTagsRow}>
-                                {tags.map(tag => (
-                                    <TouchableOpacity key={tag} style={st.selectedTag} onPress={() => removeTag(tag)}>
-                                        <Text style={st.selectedTagText}>{tag}</Text>
-                                        <Ionicons name="close-circle" size={16} color={AppColors.primary} />
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        )}
+                        <View style={st.tagsContainer}>
+                            {tags.map(tag => (
+                                <TouchableOpacity key={tag} style={st.tagItem} onPress={() => removeTag(tag)}>
+                                    <Text style={st.tagText}>{tag}</Text>
+                                    <Ionicons name="close" size={14} color="#FF6B35" />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
 
-                        {/* Custom tag input */}
-                        <View style={st.addTagRow}>
-                            <TextInput style={[st.input, { flex: 1 }]} value={newTag} onChangeText={setNewTag}
-                                placeholder="Thêm tag mới..." placeholderTextColor="#aaa"
-                                onSubmitEditing={addCustomTag} returnKeyType="done" />
+                        <View style={st.addTagContainer}>
+                            <TextInput 
+                                style={st.tagInput} 
+                                value={newTag} 
+                                onChangeText={setNewTag}
+                                placeholder="Thêm tag tự định nghĩa..." 
+                                placeholderTextColor="#94A3B8"
+                                onSubmitEditing={addCustomTag} 
+                            />
                             <TouchableOpacity style={st.addTagBtn} onPress={addCustomTag}>
-                                <Ionicons name="add" size={20} color="#fff" />
+                                <Ionicons name="add" size={24} color="#fff" />
                             </TouchableOpacity>
                         </View>
 
-                        {/* Suggested tags */}
-                        <Text style={st.suggestedLabel}>Gợi ý tags:</Text>
-                        <View style={st.suggestedTagsRow}>
-                            {TAG_SUGGESTIONS.map(tag => (
-                                <TouchableOpacity
-                                    key={tag}
-                                    style={[st.suggestedTag, tags.includes(tag) && st.suggestedTagActive]}
+                        <Text style={st.suggestedTitle}>Gợi ý phổ biến:</Text>
+                        <View style={st.suggestionsGrid}>
+                            {TAG_SUGGESTIONS.filter(t => !tags.includes(t)).slice(0, 10).map(tag => (
+                                <TouchableOpacity 
+                                    key={tag} 
+                                    style={st.suggestedTag}
                                     onPress={() => toggleTag(tag)}
                                 >
-                                    <Text style={[st.suggestedTagText, tags.includes(tag) && st.suggestedTagTextActive]}>
-                                        {tag}
-                                    </Text>
+                                    <Text style={st.suggestedTagText}>{tag}</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
                     </View>
 
-                    <View style={{ height: 40 }} />
+                    {/* Save Button */}
+                    <TouchableOpacity 
+                        style={[st.saveActionBtn, saving && { opacity: 0.8 }]} 
+                        onPress={handleSave}
+                        disabled={saving}
+                    >
+                        <LinearGradient colors={['#FF6B35', '#E55A2B']} style={st.saveGradient}>
+                            {saving ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <>
+                                    <Ionicons name="checkmark-circle" size={20} color="#fff" style={{ marginRight: 8 }} />
+                                    <Text style={st.saveActionText}>Lưu tất cả thay đổi</Text>
+                                </>
+                            )}
+                        </LinearGradient>
+                    </TouchableOpacity>
+
                 </ScrollView>
             </KeyboardAvoidingView>
         </View>
@@ -326,108 +399,111 @@ export default function EditShopScreen() {
 }
 
 const st = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F3F4F6' },
+    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    headerGradient: {
+        paddingTop: Platform.OS === 'ios' ? 50 : 30,
+        paddingBottom: 15,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+    },
     header: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingTop: Platform.OS === 'ios' ? 50 : 30, paddingBottom: 12, paddingHorizontal: 16,
-        backgroundColor: '#fff',
+        paddingHorizontal: 20,
+    },
+    backBtn: { padding: 4 },
+    headerTitle: { fontSize: 18, fontWeight: '900', color: '#fff' },
+
+    content: { flex: 1, paddingHorizontal: 20 },
+    sectionLabel: { fontSize: 13, fontWeight: '800', color: '#64748B', marginTop: 24, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
+
+    // Image Picker
+    imagePickerBox: {
+        borderRadius: 24, overflow: 'hidden', position: 'relative',
+        backgroundColor: '#fff', 
         ...Platform.select({
-            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 },
+            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10 },
             android: { elevation: 3 },
         }),
     },
-    backBtn: { padding: 4 },
-    headerTitle: { flex: 1, marginLeft: 12, fontSize: 18, fontWeight: '700', color: AppColors.charcoal },
-    saveBtn: {
-        backgroundColor: AppColors.primary, borderRadius: BorderRadius.md,
-        paddingHorizontal: 20, paddingVertical: 8,
-    },
-    saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-    scrollContent: { padding: 16 },
-
-    // Image Picker
-    sectionLabel: {
-        fontSize: 14, fontWeight: '700', color: AppColors.charcoal,
-        marginTop: 16, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5,
-    },
-    imagePickerBox: {
-        borderRadius: BorderRadius.lg, overflow: 'hidden', position: 'relative',
-        backgroundColor: '#fff', marginBottom: 8,
-    },
-    coverImage: { width: '100%', height: 180, borderRadius: BorderRadius.lg },
+    coverImage: { width: '100%', height: 180 },
     imagePlaceholder: {
         width: '100%', height: 180, justifyContent: 'center', alignItems: 'center',
-        backgroundColor: '#F9FAFB', borderWidth: 2, borderColor: '#E5E7EB',
-        borderStyle: 'dashed', borderRadius: BorderRadius.lg,
+        backgroundColor: '#F1F5F9', borderStyle: 'dashed', borderWidth: 2, borderColor: '#CBD5E1', borderRadius: 24,
     },
-    imagePlaceholderText: { marginTop: 8, fontSize: 14, color: AppColors.gray },
+    imagePlaceholderText: { marginTop: 10, fontSize: 14, color: '#94A3B8', fontWeight: '600' },
     imageEditBadge: {
-        position: 'absolute', bottom: 12, right: 12, width: 32, height: 32,
-        borderRadius: 16, backgroundColor: AppColors.primary,
-        justifyContent: 'center', alignItems: 'center',
-        ...Platform.select({
-            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3 },
-            android: { elevation: 4 },
-        }),
+        position: 'absolute', bottom: 15, right: 15, width: 36, height: 36,
+        borderRadius: 18, backgroundColor: '#FF6B35',
+        justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff',
     },
 
-    // Cards
+    // Card
     card: {
-        backgroundColor: '#fff', borderRadius: BorderRadius.lg, padding: 16,
-        marginBottom: 8,
+        backgroundColor: '#fff', borderRadius: 24, padding: 20,
         ...Platform.select({
-            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
-            android: { elevation: 1 },
+            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 },
+            android: { elevation: 2 },
         }),
     },
-    fieldRow: { marginBottom: 4 },
-    fieldLabel: { fontSize: 13, fontWeight: '600', color: AppColors.gray, marginBottom: 6 },
+    fieldGroup: { marginBottom: 20 },
+    fieldRow: { flexDirection: 'row', alignItems: 'center' },
+    fieldLabel: { fontSize: 14, fontWeight: '800', color: '#475569', marginBottom: 8 },
     input: {
-        fontSize: 15, color: AppColors.charcoal, backgroundColor: '#F9FAFB',
-        borderRadius: BorderRadius.sm, paddingHorizontal: 12, paddingVertical: 10,
-        borderWidth: 1, borderColor: '#E5E7EB',
+        backgroundColor: '#F8FAFC', borderRadius: 16, padding: 14, fontSize: 15,
+        borderWidth: 1, borderColor: '#E2E8F0', color: '#1E293B',
     },
-    textArea: { minHeight: 80, textAlignVertical: 'top' },
-    divider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 },
+    textArea: { minHeight: 90 },
+    inputIconWrapper: { position: 'relative' },
+    inputIcon: { position: 'absolute', left: 16, top: 16, zIndex: 1 },
 
-    // Type selector
-    typeRow: { flexDirection: 'row', gap: 10 },
+    typeRow: { flexDirection: 'row', gap: 12 },
     typeBtn: {
-        flex: 1, paddingVertical: 10, borderRadius: BorderRadius.md,
-        borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center',
+        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        gap: 8, paddingVertical: 12, borderRadius: 14, borderWidth: 1.5, borderColor: '#F1F5F9', backgroundColor: '#F8FAFC',
     },
-    typeBtnActive: { borderColor: AppColors.primary, backgroundColor: '#FFF5F0' },
-    typeBtnText: { fontSize: 14, fontWeight: '600', color: AppColors.gray },
-    typeBtnTextActive: { color: AppColors.primary },
+    typeBtnActive: { borderColor: '#FF6B35', backgroundColor: '#FFF7F5' },
+    typeBtnText: { fontSize: 14, fontWeight: '700', color: '#64748B' },
+    typeBtnTextActive: { color: '#FF6B35' },
 
-    // Toggle
-    toggleBtn: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: BorderRadius.md, alignSelf: 'flex-start' },
-    toggleOn: { backgroundColor: '#ECFDF5' },
-    toggleOff: { backgroundColor: '#FEF2F2' },
-    toggleText: { fontSize: 14, fontWeight: '600' },
-    toggleTextOn: { color: '#059669' },
-    toggleTextOff: { color: '#EF4444' },
+    divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 10, marginBottom: 20 },
+    settingItem: { flex: 1 },
+    settingLabel: { fontSize: 12, fontWeight: '700', color: '#94A3B8', marginBottom: 6 },
+    settingInput: {
+        backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, fontSize: 14,
+        fontWeight: '700', color: '#1E293B', borderWidth: 1, borderColor: '#E2E8F0',
+    },
+
+    // Status Card
+    statusCard: { 
+        backgroundColor: '#1E293B', borderRadius: 24, padding: 20, marginTop: 20,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' 
+    },
+    statusCardTitle: { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 4 },
+    statusCardSub: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '500' },
+    statusToggle: { width: 56, height: 32, borderRadius: 16, padding: 4, justifyContent: 'center' },
+    statusToggleOn: { backgroundColor: '#10B981' },
+    statusToggleOff: { backgroundColor: '#64748B' },
+    toggleCircle: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff' },
+    toggleCircleOn: { alignSelf: 'flex-end' },
+    toggleCircleOff: { alignSelf: 'flex-start' },
 
     // Tags
-    selectedTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-    selectedTag: {
-        flexDirection: 'row', alignItems: 'center', gap: 4,
-        backgroundColor: '#FFF5F0', borderRadius: 20, paddingVertical: 6, paddingHorizontal: 12,
-        borderWidth: 1, borderColor: AppColors.primary,
+    tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 15 },
+    tagItem: { 
+        flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF7F5',
+        paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FF6B35' 
     },
-    selectedTagText: { fontSize: 13, fontWeight: '600', color: AppColors.primary },
-    addTagRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-    addTagBtn: {
-        width: 40, height: 40, borderRadius: 20, backgroundColor: AppColors.primary,
-        justifyContent: 'center', alignItems: 'center',
-    },
-    suggestedLabel: { fontSize: 12, color: AppColors.gray, marginBottom: 8 },
-    suggestedTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    suggestedTag: {
-        paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20,
-        borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB',
-    },
-    suggestedTagActive: { borderColor: AppColors.primary, backgroundColor: '#FFF5F0' },
-    suggestedTagText: { fontSize: 13, color: AppColors.gray },
-    suggestedTagTextActive: { color: AppColors.primary, fontWeight: '600' },
+    tagText: { color: '#FF6B35', fontSize: 13, fontWeight: '800' },
+    addTagContainer: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+    tagInput: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 14, paddingHorizontal: 15, paddingVertical: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+    addTagBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#FF6B35', justifyContent: 'center', alignItems: 'center' },
+    suggestedTitle: { fontSize: 12, fontWeight: '800', color: '#94A3B8', marginBottom: 10 },
+    suggestionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    suggestedTag: { backgroundColor: '#F1F5F9', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
+    suggestedTagText: { fontSize: 12, color: '#64748B', fontWeight: '700' },
+
+    // Bottom Action
+    saveActionBtn: { marginTop: 40, borderRadius: 20, overflow: 'hidden' },
+    saveGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18 },
+    saveActionText: { color: '#fff', fontSize: 16, fontWeight: '900' },
 });

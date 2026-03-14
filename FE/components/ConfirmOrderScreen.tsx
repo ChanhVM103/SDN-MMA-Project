@@ -159,49 +159,67 @@ export default function ConfirmOrderScreen({
                         <Text style={s.sectionTitle}>🎟️ Voucher giảm phí ship</Text>
                         {loadingVouchers ? (
                             <ActivityIndicator color={AppColors.primary} />
-                        ) : eligibleVouchers.length === 0 ? (
+                        ) : vouchers.length === 0 ? (
                             <View style={s.noVoucher}>
                                 <Ionicons name="ticket-outline" size={20} color={AppColors.gray} />
-                                <Text style={s.noVoucherText}>
-                                    {vouchers.length === 0
-                                        ? 'Chưa có voucher nào'
-                                        : `Đơn chưa đủ điều kiện (tối thiểu ${vouchers[0]?.minOrderAmount?.toLocaleString('vi-VN')}đ)`}
-                                </Text>
+                                <Text style={s.noVoucherText}>Chưa có voucher nào</Text>
                             </View>
                         ) : (
                             <View style={s.voucherList}>
-                                {eligibleVouchers.map((v) => {
+                                {vouchers.map((v) => {
+                                    const isEligible = totalPrice >= v.minOrderAmount;
                                     const isSelected = selectedVoucherId === v._id;
                                     const saving = deliveryFee - Math.min(deliveryFee, v.maxDeliveryFee);
+                                    
                                     return (
                                         <TouchableOpacity
                                             key={v._id}
-                                            style={[s.voucherCard, isSelected && s.voucherCardSelected]}
-                                            onPress={() => setSelectedVoucherId(isSelected ? null : v._id)}
-                                            activeOpacity={0.7}
+                                            style={[
+                                                s.voucherCard, 
+                                                isSelected && s.voucherCardSelected,
+                                                !isEligible && { opacity: 0.5, backgroundColor: '#f9f9f9', borderColor: '#eee' }
+                                            ]}
+                                            onPress={() => isEligible && setSelectedVoucherId(isSelected ? null : v._id)}
+                                            activeOpacity={isEligible ? 0.7 : 1}
                                         >
                                             <View style={s.voucherLeft}>
-                                                <View style={[s.voucherIcon, isSelected && s.voucherIconSelected]}>
-                                                    <Ionicons name="pricetag" size={18} color={isSelected ? '#fff' : AppColors.primary} />
+                                                <View style={[
+                                                    s.voucherIcon, 
+                                                    isSelected && s.voucherIconSelected,
+                                                    !isEligible && { backgroundColor: '#e5e7eb' }
+                                                ]}>
+                                                    <Ionicons 
+                                                        name="pricetag" 
+                                                        size={18} 
+                                                        color={isSelected ? '#fff' : (isEligible ? AppColors.primary : '#9ca3af')} 
+                                                    />
                                                 </View>
                                             </View>
                                             <View style={s.voucherInfo}>
-                                                <Text style={s.voucherName}>{v.name}</Text>
+                                                <Text style={[s.voucherName, !isEligible && { color: '#6b7280' }]}>{v.name}</Text>
                                                 <Text style={s.voucherDesc}>
                                                     {v.maxDeliveryFee === 0
                                                         ? `🚀 Free ship cho đơn từ ${v.minOrderAmount.toLocaleString('vi-VN')}đ`
                                                         : `Ship chỉ ${v.maxDeliveryFee.toLocaleString('vi-VN')}đ cho đơn từ ${v.minOrderAmount.toLocaleString('vi-VN')}đ`}
                                                 </Text>
-                                                {saving > 0 && (
-                                                    <Text style={s.voucherSaving}>Tiết kiệm {saving.toLocaleString('vi-VN')}đ</Text>
+                                                {!isEligible ? (
+                                                    <Text style={[s.voucherSaving, { color: '#ef4444' }]}>
+                                                        Còn thiếu {(v.minOrderAmount - totalPrice).toLocaleString('vi-VN')}đ để áp dụng
+                                                    </Text>
+                                                ) : (
+                                                    saving > 0 && <Text style={s.voucherSaving}>Tiết kiệm {saving.toLocaleString('vi-VN')}đ</Text>
                                                 )}
                                             </View>
                                             <View style={s.voucherCheck}>
-                                                <Ionicons
-                                                    name={isSelected ? "checkmark-circle" : "ellipse-outline"}
-                                                    size={24}
-                                                    color={isSelected ? AppColors.primary : '#D1D5DB'}
-                                                />
+                                                {isEligible ? (
+                                                    <Ionicons
+                                                        name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                                                        size={24}
+                                                        color={isSelected ? AppColors.primary : '#D1D5DB'}
+                                                    />
+                                                ) : (
+                                                    <Ionicons name="lock-closed" size={20} color="#D1D5DB" />
+                                                )}
                                             </View>
                                         </TouchableOpacity>
                                     );

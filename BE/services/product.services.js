@@ -2,7 +2,7 @@ const Product = require("../models/product.model");
 const Promotion = require("../models/promotion.model");
 
 const PRODUCT_SELECT_FIELDS =
-  "restaurantId name price image category type allowToppings toppings addons isBestSeller description isAvailable createdAt updatedAt";
+  "restaurantId name price image category type allowToppings toppings addons isBestSeller description isAvailable sold createdAt updatedAt";
 
 const sanitizeUpdateData = (updateData = {}) => {
   const safeData = { ...updateData };
@@ -453,6 +453,8 @@ module.exports = {
   getProductsByRestaurant,
   getProductsByCategory,
   getAvailableProducts,
+  createProductForRestaurant,
+  updateProductForRestaurant,
   deleteProductForRestaurant,
   getFlashSaleProducts,
 };

@@ -12,6 +12,7 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { user } = useAuth();
   const isShipper = user?.role === 'shipper';
+  const isBrand = user?.role === 'brand';
 
   return (
     <Tabs
@@ -26,6 +27,7 @@ export default function TabLayout() {
           height: Platform.OS === 'ios' ? 88 : 65,
           paddingBottom: Platform.OS === 'ios' ? 28 : 10,
           paddingTop: 8,
+          display: isBrand ? 'none' : 'flex',
           ...Platform.select({
             ios: {
               shadowColor: '#000',
@@ -45,7 +47,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Trang chủ',
-          href: isShipper ? null : undefined, // Hide for shippers
+          href: (isShipper || isBrand) ? null : undefined, // Hide for shippers & brands
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeIcon : undefined}>
               <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
@@ -57,7 +59,7 @@ export default function TabLayout() {
         name="orders"
         options={{
           title: 'Đơn hàng',
-          href: isShipper ? null : undefined, // Hide for shippers
+          href: (isShipper || isBrand) ? null : undefined, // Hide for shippers & brands
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeIcon : undefined}>
               <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={24} color={color} />
@@ -69,7 +71,7 @@ export default function TabLayout() {
         name="favorites"
         options={{
           title: 'Đã thích',
-          href: isShipper ? null : undefined, // Hide for shippers
+          href: (isShipper || isBrand) ? null : undefined, // Hide for shippers & brands
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeIcon : undefined}>
               <Ionicons name={focused ? 'heart' : 'heart-outline'} size={24} color={color} />
@@ -94,6 +96,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Tôi',
+          href: isBrand ? null : undefined, // Hide for brand as requested before
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeIcon : undefined}>
               <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />

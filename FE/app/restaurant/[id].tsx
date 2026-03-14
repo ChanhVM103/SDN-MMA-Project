@@ -270,7 +270,7 @@ export default function RestaurantDetailScreen() {
             } catch (e) {
                 console.error("Fetch products failed", e);
             } finally {
-                setTimeout(() => setLoading(false), 500);
+                setLoading(false);
             }
         };
 
@@ -439,9 +439,10 @@ export default function RestaurantDetailScreen() {
         setShowConfirmOrder(true);
     };
 
-    const handleConfirmOrder = async () => {
+    const handleConfirmOrder = async (voucherId?: string, finalDeliveryFeeArg?: number) => {
         try {
-            const deliveryFee = restaurant?.deliveryFee || 0;
+            const originalDeliveryFee = restaurant?.deliveryFee || 0;
+            const deliveryFee = finalDeliveryFeeArg !== undefined ? finalDeliveryFeeArg : originalDeliveryFee;
             const items = getCartItems();
 
             const order = {
@@ -473,7 +474,8 @@ export default function RestaurantDetailScreen() {
                     await orderAPI.createOrder(token, {
                         restaurantId: realRestId,
                         items: apiItems,
-                        deliveryFee,
+                        deliveryFee: originalDeliveryFee, // Backend recalculates based on voucherId
+                        voucherId,
                         deliveryAddress: '123 Test Street'
                     });
                 }

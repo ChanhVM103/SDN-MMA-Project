@@ -299,9 +299,14 @@ export default function HomeScreen() {
     setTimeout(() => setRefreshing(false), 1200);
   }, []);
 
-  // Redirect shipper to their dashboard (must be after all hooks)
+  // Redirect shipper to their dashboard
   if (user?.role === 'shipper') {
     return <Redirect href="/(tabs)/shipper-dashboard" />;
+  }
+
+  // Redirect brand to their management dashboard
+  if (user?.role === 'brand') {
+    return <Redirect href="/restaurant/dashboard" />;
   }
 
   return (
