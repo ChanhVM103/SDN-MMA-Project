@@ -371,3 +371,11 @@ export const shipperAPI = {
             headers: { Authorization: `Bearer ${token}` },
         }),
 };
+
+/**
+ * Voucher API endpoints (public)
+ */
+export const voucherAPI = {
+    getActiveVouchers: () =>
+        apiRequest('/vouchers/active', { method: 'GET' }),
+};

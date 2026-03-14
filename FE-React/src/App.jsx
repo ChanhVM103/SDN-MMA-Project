@@ -17,7 +17,9 @@ import { signInApi, signUpApi, socialLoginApi } from "./services/auth-api";
 import { clearStoredAuth, parseStoredAuth, persistAuth } from "./services/auth-storage";
 import { requestFacebookAccessToken, requestGoogleAccessToken } from "./services/social-auth";
 import { normalizePath } from "./utils/navigation";
-import { createOrder } from "./services/order-api";
+import { createOrder, getActiveVouchers } from "./services/order-api";
+import ChatBox from "./components/ChatBox";
+
 
 // ─── Cart helpers ──────────────────────────────────
 const EMPTY_CART = { restaurantId: null, restaurantName: null, deliveryAddress: "", deliveryFee: 0, items: [] };
@@ -119,14 +121,14 @@ function App() {
     });
   };
 
-  const handlePlaceOrder = async (deliveryAddress, note, paymentMethod) => {
+  const handlePlaceOrder = async (deliveryAddress, note, paymentMethod, voucherId = null) => {
     if (!auth?.user) { navigate("/sign-in"); return; }
     if (!cart.items.length) return;
     const subtotal = cart.items.reduce((s, i) => s + i.price * i.quantity, 0);
     const deliveryFee = cart.deliveryFee || 0;
     const total = subtotal + deliveryFee;
     try {
-      const order = await createOrder({
+      const orderPayload = {
         restaurantId: cart.restaurantId,
         items: cart.items.map(({ variantKey, ...rest }) => rest),
         deliveryAddress,
@@ -135,7 +137,9 @@ function App() {
         deliveryFee,
         total,
         paymentMethod,
-      });
+      };
+      if (voucherId) orderPayload.voucherId = voucherId;
+      const order = await createOrder(orderPayload);
       setCart(EMPTY_CART);
       setCartOpen(false);
 
@@ -292,6 +296,8 @@ function App() {
           onCancel={() => setConfirmModal(null)}
         />
       )}
+
+      <ChatBox path={path} restaurantId={restaurantId} />
     </div>
   );
 }
@@ -305,16 +311,35 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [placing, setPlacing] = useState(false);
 
+  // Voucher state
+  const [vouchers, setVouchers] = useState([]);
+  const [selectedVoucherId, setSelectedVoucherId] = useState(null);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
+
   const subtotal = cart.items.reduce((s, i) => s + i.price * i.quantity, 0);
   const deliveryFee = cart.deliveryFee || 0;
-  const total = subtotal + deliveryFee;
   const itemCount = cart.items.reduce((s, i) => s + i.quantity, 0);
+
+  // Voucher logic
+  const selectedVoucher = vouchers.find(v => v._id === selectedVoucherId);
+  const finalDeliveryFee = selectedVoucher ? Math.min(deliveryFee, selectedVoucher.maxDeliveryFee) : deliveryFee;
+  const deliverySaving = deliveryFee - finalDeliveryFee;
+  const total = subtotal + finalDeliveryFee;
+  const eligibleVouchers = vouchers.filter(v => subtotal >= v.minOrderAmount);
+
+  // Fetch vouchers when entering checkout step
+  useEffect(() => {
+    if (step === "checkout" && vouchers.length === 0) {
+      setLoadingVouchers(true);
+      getActiveVouchers().then(data => setVouchers(data || [])).catch(() => {}).finally(() => setLoadingVouchers(false));
+    }
+  }, [step]);
 
   const handleOrder = async () => {
     if (!user) { onClose(); navigate("/sign-in"); return; }
     if (!address.trim()) { showToast("Vui lòng nhập địa chỉ giao hàng!", "warning"); return; }
     setPlacing(true);
-    await onPlaceOrder(address, note, paymentMethod);
+    await onPlaceOrder(address, note, paymentMethod, selectedVoucherId);
     setPlacing(false);
   };
 
@@ -542,6 +567,54 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
               </div>
             </div>
 
+            {/* Voucher section */}
+            <div style={{ padding: "16px 20px", borderTop: "1px solid #f5f5f5" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>🎟️ Voucher giảm phí ship</div>
+              {loadingVouchers ? (
+                <div style={{ textAlign: "center", padding: 12, color: "#9ca3af", fontSize: 13 }}>Đang tải voucher...</div>
+              ) : eligibleVouchers.length === 0 ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", background: "#f9fafb", borderRadius: 8, border: "1.5px solid #e5e7eb" }}>
+                  <span style={{ fontSize: 16 }}>🎫</span>
+                  <span style={{ fontSize: 13, color: "#9ca3af" }}>
+                    {vouchers.length === 0 ? "Chưa có voucher nào" : `Đơn chưa đủ điều kiện (tối thiểu ${vouchers[0]?.minOrderAmount?.toLocaleString("vi-VN")}đ)`}
+                  </span>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {eligibleVouchers.map(v => {
+                    const isSelected = selectedVoucherId === v._id;
+                    const saving = deliveryFee - Math.min(deliveryFee, v.maxDeliveryFee);
+                    return (
+                      <div key={v._id} onClick={() => setSelectedVoucherId(isSelected ? null : v._id)} style={{
+                        display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 10, cursor: "pointer",
+                        border: isSelected ? "2px solid #ee4d2d" : "1.5px solid #e5e7eb",
+                        background: isSelected ? "#fff8f5" : "#fff", transition: "all 0.15s",
+                      }}>
+                        <div style={{
+                          width: 36, height: 36, borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center",
+                          background: isSelected ? "#ee4d2d" : "#fff3ed", transition: "all 0.15s",
+                        }}>
+                          <span style={{ fontSize: 16 }}>{isSelected ? "✓" : "🏷️"}</span>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a" }}>{v.name}</div>
+                          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 1 }}>
+                            {v.maxDeliveryFee === 0 ? `🚀 Free ship cho đơn từ ${v.minOrderAmount.toLocaleString("vi-VN")}đ` : `Ship chỉ ${v.maxDeliveryFee.toLocaleString("vi-VN")}đ cho đơn từ ${v.minOrderAmount.toLocaleString("vi-VN")}đ`}
+                          </div>
+                          {saving > 0 && <div style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", marginTop: 2 }}>Tiết kiệm {saving.toLocaleString("vi-VN")}đ</div>}
+                        </div>
+                        <div style={{
+                          width: 20, height: 20, borderRadius: "50%",
+                          border: isSelected ? "6px solid #ee4d2d" : "2px solid #d1d5db",
+                          transition: "all 0.15s", flexShrink: 0,
+                        }} />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* Footer */}
             <div style={{ padding: "14px 20px 20px", borderTop: "1px solid #f0f0f0", flexShrink: 0 }}>
               <div style={{ marginBottom: 12 }}>
@@ -549,10 +622,20 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
                   <span>Tạm tính</span>
                   <span>{subtotal.toLocaleString("vi-VN")}đ</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#6b7280", marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#6b7280", marginBottom: 4 }}>
                   <span>🚚 Phí giao hàng</span>
-                  <span>{deliveryFee.toLocaleString("vi-VN")}đ</span>
+                  {deliverySaving > 0 ? (
+                    <span><span style={{ textDecoration: "line-through", color: "#9ca3af", marginRight: 6, fontSize: 12 }}>{deliveryFee.toLocaleString("vi-VN")}đ</span><span style={{ color: "#16a34a", fontWeight: 700 }}>{finalDeliveryFee === 0 ? "FREE" : `${finalDeliveryFee.toLocaleString("vi-VN")}đ`}</span></span>
+                  ) : (
+                    <span>{deliveryFee.toLocaleString("vi-VN")}đ</span>
+                  )}
                 </div>
+                {deliverySaving > 0 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f0fdf4", borderRadius: 8, padding: "6px 10px", marginBottom: 8 }}>
+                    <span style={{ fontSize: 13 }}>🎉</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#16a34a" }}>Tiết kiệm {deliverySaving.toLocaleString("vi-VN")}đ phí ship!</span>
+                  </div>
+                )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>Tổng thanh toán</span>
                   <span style={{ fontSize: 22, fontWeight: 800, color: "#ee4d2d" }}>{total.toLocaleString("vi-VN")}đ</span>

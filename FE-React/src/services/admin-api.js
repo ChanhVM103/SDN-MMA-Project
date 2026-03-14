@@ -77,3 +77,26 @@ export const getUserStatsApi = () =>
 
 export const getRestaurantStatsApi = (restaurantId) =>
   adminApiRequest(`/orders/restaurant/${restaurantId}/stats`, { method: "GET" });
+
+// --- VOUCHER MANAGEMENT ---
+
+export const getAllVouchersApi = () =>
+  adminApiRequest("/vouchers", { method: "GET" });
+
+export const createVoucherApi = (voucherData) =>
+  adminApiRequest("/vouchers", {
+    method: "POST",
+    body: JSON.stringify(voucherData),
+  });
+
+export const updateVoucherApi = (id, voucherData) =>
+  adminApiRequest(`/vouchers/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(voucherData),
+  });
+
+export const deleteVoucherApi = (id) =>
+  adminApiRequest(`/vouchers/${id}`, { method: "DELETE" });
+
+export const toggleVoucherApi = (id) =>
+  adminApiRequest(`/vouchers/${id}/toggle`, { method: "PATCH" });

@@ -36,6 +36,14 @@ export const createOrder = async (orderData) => apiRequest('/orders', {
     body: JSON.stringify(orderData)
 });
 
+export const getActiveVouchers = async () => {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+    const response = await fetch(`${API_BASE_URL}/vouchers/active`);
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.success) return [];
+    return payload.data || [];
+};
+
 export const cancelOrder = async (orderId, reason = "") => apiRequest(`/orders/${orderId}/cancel`, {
     method: 'PATCH',
     body: JSON.stringify({ reason })
