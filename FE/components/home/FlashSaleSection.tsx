@@ -113,9 +113,6 @@ export default function FlashSaleSection() {
                             >
                                 <Text style={s.discountText}>Giảm {item.discountPercent || 0}%</Text>
                             </LinearGradient>
-                            <TouchableOpacity style={s.heartBtn} onPress={() => toggleFavorite(item._id || item.id)} activeOpacity={0.7}>
-                                <Ionicons name={isFavorite(item._id || item.id) ? 'heart' : 'heart-outline'} size={16} color={isFavorite(item._id || item.id) ? '#EF4444' : '#ccc'} />
-                            </TouchableOpacity>
                             <View style={s.imageBox}>
                                 {showImage ? (
                                     <Image

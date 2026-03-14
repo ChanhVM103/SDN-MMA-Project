@@ -10,6 +10,7 @@ import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { useOrder } from '@/constants/order-context';
 import { useAuth } from '@/constants/auth-context';
 import { orderAPI, restaurantAPI, productAPI, API_BASE_URL } from '@/constants/api';
+import { useFavorites } from '@/constants/favorites-context';
 import CreateModalPage from './create.modal';
 import ConfirmOrderScreen from '@/components/ConfirmOrderScreen';
 
@@ -156,6 +157,7 @@ export default function RestaurantDetailScreen() {
     const router = useRouter();
     const { addOrder } = useOrder();
     const { user, token } = useAuth();
+    const { isFavorite, toggleFavorite } = useFavorites();
 
     const [restaurant, setRestaurant] = useState<any>(null);
     const [sections, setSections] = useState<SectionData[]>([]);
@@ -513,10 +515,20 @@ export default function RestaurantDetailScreen() {
                     <Ionicons name="arrow-back" size={22} color={AppColors.charcoal} />
                 </TouchableOpacity>
                 <Text style={s.navTitle} numberOfLines={1}>{restaurant.name}</Text>
-                <TouchableOpacity>
-                    <Ionicons name="share-outline" size={22} color={AppColors.charcoal} />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <TouchableOpacity onPress={() => toggleFavorite(restaurant._id || restaurant.id)}>
+                        <Ionicons 
+                            name={isFavorite(restaurant._id || restaurant.id) ? "heart" : "heart-outline"} 
+                            size={22} 
+                            color={isFavorite(restaurant._id || restaurant.id) ? "#EF4444" : AppColors.charcoal} 
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity>
+                        <Ionicons name="share-outline" size={22} color={AppColors.charcoal} />
+                    </TouchableOpacity>
+                </View>
             </Animated.View>
+
 
             <Animated.View style={[s.fabBack, { opacity: heroOpacity }]}>
                 <TouchableOpacity onPress={() => router.back()} style={s.fabBackBtn}>
@@ -545,11 +557,24 @@ export default function RestaurantDetailScreen() {
                         <View style={s.infoCard}>
                             <View style={s.infoTop}>
                                 <Text style={s.restName}>{restaurant.name}</Text>
-                                <View style={[s.statusChip, { backgroundColor: restaurant.isOpen !== false ? '#D1FAE5' : '#FEE2E2' }]}>
-                                    <View style={[s.statusDot, { backgroundColor: restaurant.isOpen !== false ? '#10B981' : '#EF4444' }]} />
-                                    <Text style={[s.statusText, { color: restaurant.isOpen !== false ? '#065F46' : '#991B1B' }]}>
-                                        {restaurant.isOpen !== false ? 'Đang mở' : 'Đóng cửa'}
-                                    </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                    <TouchableOpacity 
+                                        style={s.favBtnInfo} 
+                                        onPress={() => toggleFavorite(restaurant._id || restaurant.id)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Ionicons 
+                                            name={isFavorite(restaurant._id || restaurant.id) ? "heart" : "heart-outline"} 
+                                            size={24} 
+                                            color={isFavorite(restaurant._id || restaurant.id) ? "#EF4444" : AppColors.gray} 
+                                        />
+                                    </TouchableOpacity>
+                                    <View style={[s.statusChip, { backgroundColor: restaurant.isOpen !== false ? '#D1FAE5' : '#FEE2E2' }]}>
+                                        <View style={[s.statusDot, { backgroundColor: restaurant.isOpen !== false ? '#10B981' : '#EF4444' }]} />
+                                        <Text style={[s.statusText, { color: restaurant.isOpen !== false ? '#065F46' : '#991B1B' }]}>
+                                            {restaurant.isOpen !== false ? 'Đang mở' : 'Đóng cửa'}
+                                        </Text>
+                                    </View>
                                 </View>
                             </View>
 
@@ -802,6 +827,12 @@ const s = StyleSheet.create({
     hero: { width, height: HERO_HEIGHT, position: 'relative' },
     heroImg: { width: '100%', height: '100%' },
     heroOverlay: { ...StyleSheet.absoluteFillObject },
+    favBtnInfo: {
+        width: 44, height: 44, borderRadius: 22,
+        backgroundColor: '#F9FAFB',
+        justifyContent: 'center', alignItems: 'center',
+        borderWidth: 1, borderColor: '#F3F4F6',
+    },
     infoCard: {
         backgroundColor: '#fff',
         marginTop: -20,
