@@ -56,7 +56,8 @@ function App() {
     const role = auth.user.role;
     if (role === "admin" && path !== "/admin") {
       navigate("/admin");
-    } else if (role === "brand" && path !== "/brand-dashboard" && (path === "/sign-in" || path === "/sign-up")) {
+    } else if (role === "brand" && path !== "/brand-dashboard") {
+      // Brand phải luôn ở trang brand dashboard
       navigate("/brand-dashboard");
     } else if (role === "shipper" && path !== "/shipper-dashboard") {
       // Shipper phải luôn ở trang shipper dashboard
@@ -80,6 +81,10 @@ function App() {
 
   // ─── Cart actions ──────────────────────────────
   const handleAddToCart = (restaurant, product) => {
+    if (auth?.user?.role === "brand" || auth?.user?.role === "shipper") {
+      showToast("Tài khoản này không thể đặt món!", "warning");
+      return;
+    }
     setCart(prev => {
       // If different restaurant, reset cart
       if (prev.restaurantId && prev.restaurantId !== (restaurant._id || restaurant.id)) {
