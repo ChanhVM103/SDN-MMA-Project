@@ -18,6 +18,8 @@ import { clearStoredAuth, parseStoredAuth, persistAuth } from "./services/auth-s
 import { requestFacebookAccessToken, requestGoogleAccessToken } from "./services/social-auth";
 import { normalizePath } from "./utils/navigation";
 import { createOrder, getActiveVouchers } from "./services/order-api";
+import ChatBox from "./components/ChatBox";
+
 
 // ─── Cart helpers ──────────────────────────────────
 const EMPTY_CART = { restaurantId: null, restaurantName: null, deliveryAddress: "", deliveryFee: 0, items: [] };
@@ -294,6 +296,8 @@ function App() {
           onCancel={() => setConfirmModal(null)}
         />
       )}
+
+      <ChatBox path={path} restaurantId={restaurantId} />
     </div>
   );
 }
