@@ -1,5 +1,6 @@
 const Restaurant = require("../models/restaurant.model");
 const Promotion = require("../models/promotion.model");
+const Product = require("../models/product.model");
 
 /**
  * Helper to attach promotion info to restaurants
@@ -202,13 +203,21 @@ const updateRestaurant = async (id, updateData) => {
  */
 const deleteRestaurant = async (id) => {
   try {
+    // Check if restaurant has any products
+    const productCount = await Product.countDocuments({ restaurantId: id });
+    if (productCount > 0) {
+      throw new Error(
+        `Không thể xóa thương hiệu này vì đang có ${productCount} sản phẩm. Vui lòng xóa hết sản phẩm trước khi xóa thương hiệu.`,
+      );
+    }
+
     const restaurant = await Restaurant.findByIdAndDelete(id);
     if (!restaurant) {
       throw new Error("Restaurant not found");
     }
     return restaurant;
   } catch (error) {
-    throw new Error(`Error deleting restaurant: ${error.message}`);
+    throw new Error(error.message);
   }
 };
 
