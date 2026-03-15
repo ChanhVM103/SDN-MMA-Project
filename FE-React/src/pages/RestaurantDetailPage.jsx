@@ -3,6 +3,7 @@ import { getRestaurantProducts, getPromotions } from "../services/brand-api";
 import { getRestaurantReviews, submitReview } from "../services/review-api";
 import { getMyOrders } from "../services/order-api";
 import { parseStoredAuth } from "../services/auth-storage";
+import RestaurantMap from "../components/RestaurantMap";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
 
@@ -62,7 +63,7 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
           !o.isReviewed
         );
         setDeliveredOrder(found || null);
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [restaurantId]);
 
@@ -80,11 +81,11 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
 
   const handleAdd = (e, product) => {
     e.stopPropagation();
-    
+
     // Apply discount if exists
     const promo = getProductPromotion(product._id);
-    const finalPrice = promo 
-      ? product.price * (1 - promo.discountPercent / 100) 
+    const finalPrice = promo
+      ? product.price * (1 - promo.discountPercent / 100)
       : product.price;
 
     const discountedProduct = {
@@ -279,9 +280,9 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
                   fontSize: 18,
                 }}>
                   {activeCategory.toLowerCase().includes("uống") ? "🥤" :
-                   activeCategory.toLowerCase().includes("trà") ? "🍵" :
-                   activeCategory.toLowerCase().includes("milo") ? "🍫" :
-                   activeCategory.toLowerCase().includes("vặt") ? "🍢" : "🍽️"}
+                    activeCategory.toLowerCase().includes("trà") ? "🍵" :
+                      activeCategory.toLowerCase().includes("milo") ? "🍫" :
+                        activeCategory.toLowerCase().includes("vặt") ? "🍢" : "🍽️"}
                 </div>
                 <span style={{ fontSize: 18, fontWeight: 800, color: "#1a1a1a" }}>{activeCategory}</span>
               </div>
@@ -341,8 +342,8 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                 {bestSellers.slice(0, 3).map(product => {
                   const promo = getProductPromotion(product._id);
-                  const discountedPrice = promo 
-                    ? product.price * (1 - promo.discountPercent / 100) 
+                  const discountedPrice = promo
+                    ? product.price * (1 - promo.discountPercent / 100)
                     : product.price;
 
                   return (
@@ -455,14 +456,14 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
                       {restaurant.rating?.toFixed(1) || "–"}
                     </div>
                     <div style={{ display: "flex", gap: 1, justifyContent: "center", margin: "4px 0 2px" }}>
-                      {[1,2,3,4,5].map(s => (
+                      {[1, 2, 3, 4, 5].map(s => (
                         <span key={s} style={{ fontSize: 13, color: s <= Math.round(restaurant.rating || 0) ? "#f59e0b" : "#e5e7eb" }}>★</span>
                       ))}
                     </div>
                     <div style={{ fontSize: 11, color: "#9ca3af" }}>{restaurant.reviews || 0} đánh giá</div>
                   </div>
                   <div style={{ flex: 1 }}>
-                    {[5,4,3,2,1].map(star => {
+                    {[5, 4, 3, 2, 1].map(star => {
                       const count = reviews.filter(r => Math.round(r.rating) === star).length;
                       const pct = reviews.length ? (count / reviews.length) * 100 : 0;
                       return (
@@ -507,7 +508,7 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
                             {review.user?.fullName || "Người dùng"}
                           </span>
                           <div style={{ display: "flex", gap: 1 }}>
-                            {[1,2,3,4,5].map(s => (
+                            {[1, 2, 3, 4, 5].map(s => (
                               <span key={s} style={{ fontSize: 12, color: s <= review.rating ? "#f59e0b" : "#e5e7eb" }}>★</span>
                             ))}
                           </div>
@@ -528,6 +529,17 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
             )}
           </div>
         </div>
+        {/* ── LOCATION MAP ── */}
+        {(restaurant.latitude && restaurant.longitude) && (
+          <div style={{ marginTop: 12, background: "#fff", padding: "0px", borderRadius: 0 }}>
+            <RestaurantMap
+              lat={restaurant.latitude}
+              lng={restaurant.longitude}
+              restaurantName={restaurant.name}
+              address={restaurant.address}
+            />
+          </div>
+        )}
       </div>
 
       {/* ── STICKY CART BAR ── */}
@@ -679,8 +691,8 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
 
 // ── Product Card ──
 function ProductCard({ product, qty, isAdded, onView, onAdd, onUpdateQty, promotion }) {
-  const discountedPrice = promotion 
-    ? product.price * (1 - promotion.discountPercent / 100) 
+  const discountedPrice = promotion
+    ? product.price * (1 - promotion.discountPercent / 100)
     : product.price;
 
   return (
@@ -703,9 +715,9 @@ function ProductCard({ product, qty, isAdded, onView, onAdd, onUpdateQty, promot
           onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
         />
         {promotion ? (
-           <div style={{ position: "absolute", top: 8, left: 8, background: "linear-gradient(135deg,#ff424e,#ff7337)", color: "#fff", fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 8, boxShadow: "0 2px 8px rgba(255,66,78,0.4)" }}>
-             -{promotion.discountPercent}% OFF
-           </div>
+          <div style={{ position: "absolute", top: 8, left: 8, background: "linear-gradient(135deg,#ff424e,#ff7337)", color: "#fff", fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 8, boxShadow: "0 2px 8px rgba(255,66,78,0.4)" }}>
+            -{promotion.discountPercent}% OFF
+          </div>
         ) : product.isBestSeller && (
           <div style={{ position: "absolute", top: 8, left: 8, background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 8 }}>
             Hot
@@ -762,8 +774,8 @@ function ProductCard({ product, qty, isAdded, onView, onAdd, onUpdateQty, promot
 
 // ── Product Modal ──
 function ProductModal({ product, qty, onClose, onAdd, onUpdateQty, promotion }) {
-  const discountedPrice = promotion 
-    ? product.price * (1 - promotion.discountPercent / 100) 
+  const discountedPrice = promotion
+    ? product.price * (1 - promotion.discountPercent / 100)
     : product.price;
 
   return (
@@ -783,7 +795,7 @@ function ProductModal({ product, qty, onClose, onAdd, onUpdateQty, promotion }) 
           <img src={product.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=600&fit=crop"} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 80, background: "linear-gradient(to top, rgba(0,0,0,0.5), transparent)" }} />
           {promotion ? (
-             <div style={{ position: "absolute", top: 16, left: 16, background: "linear-gradient(135deg,#ff424e,#ff7337)", color: "#fff", fontSize: 13, fontWeight: 800, padding: "5px 14px", borderRadius: 20, boxShadow: "0 4px 12px rgba(255,66,78,0.4)" }}>⚡ FLASH SALE -{promotion.discountPercent}%</div>
+            <div style={{ position: "absolute", top: 16, left: 16, background: "linear-gradient(135deg,#ff424e,#ff7337)", color: "#fff", fontSize: 13, fontWeight: 800, padding: "5px 14px", borderRadius: 20, boxShadow: "0 4px 12px rgba(255,66,78,0.4)" }}>⚡ FLASH SALE -{promotion.discountPercent}%</div>
           ) : product.isBestSeller && (
             <div style={{ position: "absolute", top: 16, left: 16, background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", fontSize: 12, fontWeight: 800, padding: "5px 12px", borderRadius: 20 }}>⭐ Best Seller</div>
           )}
@@ -918,7 +930,7 @@ function ReviewForm({ deliveredOrder, submitLoading, submitSuccess, onSubmit }) 
 
       {/* Star picker */}
       <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
-        {[1,2,3,4,5].map(s => (
+        {[1, 2, 3, 4, 5].map(s => (
           <span
             key={s}
             onClick={() => setRating(s)}

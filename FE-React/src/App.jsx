@@ -261,7 +261,7 @@ function App() {
         />
       )}
 
-      <main className={hideNav ? "" : (isRestaurantDetail ? "" : "view-port")} style={{ flexGrow: 1 }}>
+      <main className={hideNav ? "" : (isRestaurantDetail ? "" : "view-port")} style={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
         {screen}
       </main>
 
@@ -309,7 +309,7 @@ function App() {
 
 
 // ─── Cart Drawer Component ─────────────────────────
-function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, showToast = () => {} }) {
+function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, showToast = () => { } }) {
   const [step, setStep] = useState("cart"); // "cart" | "checkout"
   const [address, setAddress] = useState(user?.address || "");
   const [note, setNote] = useState("");
@@ -336,7 +336,7 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
   useEffect(() => {
     if (step === "checkout" && vouchers.length === 0) {
       setLoadingVouchers(true);
-      getActiveVouchers().then(data => setVouchers(data || [])).catch(() => {}).finally(() => setLoadingVouchers(false));
+      getActiveVouchers().then(data => setVouchers(data || [])).catch(() => { }).finally(() => setLoadingVouchers(false));
     }
   }, [step]);
 
@@ -651,7 +651,7 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
                 fontSize: 15, fontWeight: 700, cursor: placing ? "not-allowed" : "pointer",
                 background: placing ? "#e5e7eb"
                   : paymentMethod === "vnpay" ? "linear-gradient(135deg,#0060af,#0078d4)"
-                  : "#ee4d2d",
+                    : "#ee4d2d",
                 color: placing ? "#9ca3af" : "#fff",
                 transition: "all 0.2s",
                 boxShadow: placing ? "none" : "0 4px 16px rgba(238,77,45,0.3)",
@@ -697,7 +697,7 @@ function PaymentResultPage({ navigate }) {
           headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ orderId }),
         });
-      } catch (_) {}
+      } catch (_) { }
     };
 
     fetch(`${API_BASE}/check-payment-vnpay?${query}`)
@@ -762,7 +762,7 @@ function PaymentResultPage({ navigate }) {
 function AppToast({ msg, type = "success", onClose }) {
   const config = {
     success: { bg: "#10b981", icon: "✅", border: "#059669" },
-    error:   { bg: "#ef4444", icon: "❌", border: "#dc2626" },
+    error: { bg: "#ef4444", icon: "❌", border: "#dc2626" },
     warning: { bg: "#f59e0b", icon: "⚠️", border: "#d97706" },
   };
   const c = config[type] || config.success;

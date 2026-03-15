@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Footer from "../components/layout/Footer";
 import { ShutterText } from "../components/ui/ShutterText";
 
 function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
@@ -114,16 +115,17 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
       <section className="auth-page">
         <div className="auth-container">
           <div className="auth-branding">
-            <img src="/logo.jpg" alt="FoodieHub" style={{ width: "100px", height: "auto", borderRadius: "12px", marginBottom: "20px" }} />
-            <h1 style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
+            <img src="/logo.jpg" alt="FoodieHub" style={{ width: "80px", height: "auto", borderRadius: "12px", marginBottom: "16px" }} />
+            <h1 style={{ display: "flex", alignItems: "center", marginBottom: "16px" }}>
               <ShutterText
                 text="FoodieHub"
                 trigger="auto"
                 sliceColor="#ffdd57"
                 textColor="#ffffff"
+                style={{ fontSize: "32px" }}
               />
             </h1>
-            <p style={{ fontSize: "16px", lineHeight: "1.5" }}>Nền tảng đặt đồ ăn trực tuyến<br />nhanh chóng & tiện lợi</p>
+            <p style={{ fontSize: "14px", lineHeight: "1.5" }}>Nền tảng đặt đồ ăn trực tuyến<br />nhanh chóng & tiện lợi</p>
           </div>
 
           <form className="auth-card" onSubmit={handleSubmit}>
@@ -215,6 +217,7 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
           </form>
         </div>
       </section>
+      <Footer />
     </>
   );
 }

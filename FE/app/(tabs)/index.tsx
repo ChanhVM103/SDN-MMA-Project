@@ -27,6 +27,7 @@ import SalePopup from '@/components/SalePopup';
 import BrandSection from '@/components/home/BrandSection';
 import NewArrivalsSection from '@/components/home/NewArrivalsSection';
 import { getRestaurantsByTags, getTopRatedRestaurants, getFlashSaleRestaurants } from '@/constants/restaurant-api';
+import { productAPI, API_BASE_URL } from '@/constants/api';
 
 const { width } = Dimensions.get('window');
 
@@ -138,6 +139,12 @@ const CAROUSEL_BANNERS = [
 ];
 
 const CAROUSEL_WIDTH = width - 48;
+const resolveProductImage = (image: string) => {
+  if (!image || typeof image !== 'string') return null;
+  if (image.startsWith('http')) return image;
+  const base = API_BASE_URL.replace(/\/api$/, '');
+  return image.startsWith('/') ? `${base}${image}` : `${base}/${image}`;
+};
 
 // ── Animated Component ────────────────────────────
 function FadeInView({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: any }) {
@@ -190,33 +197,25 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchPopular = async () => {
       try {
-        const res = await getTopRatedRestaurants();
-        if (res && Array.isArray(res) && res.length > 0) {
-          let dishes: any[] = [];
+        const res = await productAPI.getBestSellerProducts({ limit: 10 });
+        if (res && res.success && Array.isArray(res.data)) {
           const gradients: readonly [string, string][] = [
             ['#FF6B35', '#FF8F65'], ['#2D6A4F', '#52B788'],
             ['#6C5CE7', '#A29BFE'], ['#E17055', '#FAB1A0']
           ];
-          res.forEach((r: any) => {
-            if (r.menu) {
-              r.menu.forEach((m: any) => {
-                if (m.isBestSeller) {
-                  dishes.push({
-                    id: m._id || m.id || Math.random().toString(),
-                    name: m.name,
-                    price: m.price ? m.price.toLocaleString() + 'đ' : '50.000đ',
-                    rating: r.rating || 4.5,
-                    time: r.deliveryTime ? `${r.deliveryTime} phút` : '20 phút',
-                    emoji: m.emoji || '🍔',
-                    gradient: gradients[dishes.length % gradients.length],
-                  });
-                }
-              });
-            }
-          });
-          if (dishes.length > 0) {
-            setPopularDishes(dishes.slice(0, 10));
-          }
+
+          const dishes = res.data.map((m: any, index: number) => ({
+            id: m._id || m.id || Math.random().toString(),
+            name: m.name,
+            price: m.price ? m.price.toLocaleString() + 'đ' : '50.000đ',
+            rating: m.restaurantId?.rating || 4.5,
+            time: m.restaurantId?.deliveryTime ? `${m.restaurantId.deliveryTime} phút` : '20 phút',
+            emoji: m.emoji || '🍔',
+            gradient: gradients[index % gradients.length],
+            image: m.image, // In case we want to use the actual image later
+          }));
+
+          setPopularDishes(dishes);
         }
       } catch (e) {
         console.error("Failed to load popular dishes", e);
@@ -564,37 +563,48 @@ export default function HomeScreen() {
 
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dishesScroll}>
-                {popularDishes.map((dish) => (
-                  <TouchableOpacity key={dish.id} style={styles.dishCard} activeOpacity={0.85}>
-                    <LinearGradient
-                      colors={dish.gradient}
-                      style={styles.dishImageContainer}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                    >
-                      <Text style={styles.dishEmoji}>{dish.emoji}</Text>
-                    </LinearGradient>
-                    <View style={styles.dishInfo}>
-                      <Text style={styles.dishName} numberOfLines={1}>{dish.name}</Text>
-                      <View style={styles.dishMeta}>
-                        <View style={styles.ratingBadge}>
-                          <Ionicons name="star" size={12} color="#FFB627" />
-                          <Text style={styles.ratingText}>{dish.rating}</Text>
+                {popularDishes.map((dish) => {
+                  const imgUri = resolveProductImage(dish.image);
+                  return (
+                    <TouchableOpacity key={dish.id} style={styles.dishCard} activeOpacity={0.85}>
+                      <LinearGradient
+                        colors={dish.gradient}
+                        style={styles.dishImageContainer}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                      >
+                        {imgUri ? (
+                          <Image
+                            source={{ uri: imgUri }}
+                            style={{ width: '80%', height: '80%' }}
+                            resizeMode="contain"
+                          />
+                        ) : (
+                          <Text style={styles.dishEmoji}>{dish.emoji}</Text>
+                        )}
+                      </LinearGradient>
+                      <View style={styles.dishInfo}>
+                        <Text style={styles.dishName} numberOfLines={1}>{dish.name}</Text>
+                        <View style={styles.dishMeta}>
+                          <View style={styles.ratingBadge}>
+                            <Ionicons name="star" size={12} color="#FFB627" />
+                            <Text style={styles.ratingText}>{dish.rating}</Text>
+                          </View>
+                          <View style={styles.timeBadge}>
+                            <Ionicons name="time-outline" size={12} color={AppColors.gray} />
+                            <Text style={styles.timeText}>{dish.time}</Text>
+                          </View>
                         </View>
-                        <View style={styles.timeBadge}>
-                          <Ionicons name="time-outline" size={12} color={AppColors.gray} />
-                          <Text style={styles.timeText}>{dish.time}</Text>
+                        <View style={styles.dishBottom}>
+                          <Text style={styles.dishPrice}>{dish.price}</Text>
+                          <TouchableOpacity style={styles.addButton}>
+                            <Ionicons name="add" size={18} color="#fff" />
+                          </TouchableOpacity>
                         </View>
                       </View>
-                      <View style={styles.dishBottom}>
-                        <Text style={styles.dishPrice}>{dish.price}</Text>
-                        <TouchableOpacity style={styles.addButton}>
-                          <Ionicons name="add" size={18} color="#fff" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
             </FadeInView>
 

@@ -180,6 +180,10 @@ export const productAPI = {
         let query = `?isFlashSale=true&limit=${params?.limit || 20}`;
         return apiRequest(`/products${query}`, { method: 'GET' });
     },
+    getBestSellerProducts: (params?: { limit?: number }) => {
+        let query = params?.limit ? `?limit=${params.limit}` : '';
+        return apiRequest(`/products/special/best-seller${query}`, { method: 'GET' });
+    },
     getProductsByRestaurant: (restaurantId: string, params?: { limit?: number }) => {
         let query = params?.limit ? `?limit=${params.limit}` : '';
         return apiRequest(`/products/restaurant/${restaurantId}${query}`, { method: 'GET' });

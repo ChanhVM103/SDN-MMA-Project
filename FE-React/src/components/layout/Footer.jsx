@@ -8,18 +8,18 @@ export default function Footer() {
 
         .fd-footer-top {
           border-bottom: 1px solid rgba(255,255,255,0.08);
-          padding: 48px 24px 40px;
+          padding: 32px 24px 24px;
         }
         .fd-footer-grid {
           max-width: 1200px;
           margin: 0 auto;
           display: grid;
-          grid-template-columns: 2fr 1fr 1fr 1.5fr;
-          gap: 48px;
+          grid-template-columns: 1.5fr 1fr 1fr 1.5fr;
+          gap: 32px;
         }
         .fd-footer-brand-name {
           font-family: 'Poppins', sans-serif;
-          font-size: 22px;
+          font-size: 18px;
           font-weight: 800;
           color: #fff;
           display: flex;
@@ -28,20 +28,20 @@ export default function Footer() {
           margin-bottom: 14px;
         }
         .fd-footer-brand-desc {
-          font-size: 13px;
+          font-size: 12px;
           color: #888;
-          line-height: 1.7;
-          margin-bottom: 22px;
-          max-width: 260px;
+          line-height: 1.6;
+          margin-bottom: 18px;
+          max-width: 240px;
         }
         .fd-footer-socials {
           display: flex;
           gap: 10px;
         }
         .fd-social-icon {
-          width: 36px;
-          height: 36px;
-          border-radius: 8px;
+          width: 32px;
+          height: 32px;
+          border-radius: 6px;
           background: rgba(255,255,255,0.07);
           border: 1px solid rgba(255,255,255,0.1);
           display: flex;
@@ -60,7 +60,7 @@ export default function Footer() {
         }
         .fd-footer-col-title {
           font-family: 'Poppins', sans-serif;
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 1.2px;
@@ -73,7 +73,7 @@ export default function Footer() {
           gap: 11px;
         }
         .fd-footer-link {
-          font-size: 13px;
+          font-size: 12px;
           color: #888;
           cursor: pointer;
           transition: color 0.2s;
@@ -83,7 +83,7 @@ export default function Footer() {
         }
         .fd-footer-link:hover { color: #ee4d2d; }
         .fd-footer-newsletter {
-          font-size: 13px;
+          font-size: 12px;
           color: #888;
           line-height: 1.6;
           margin-bottom: 16px;
@@ -120,7 +120,7 @@ export default function Footer() {
         .fd-newsletter-btn:hover { background: #d44027; }
 
         .fd-footer-bottom {
-          padding: 20px 24px;
+          padding: 14px 24px;
           background: #111;
         }
         .fd-footer-bottom-inner {
@@ -164,7 +164,7 @@ export default function Footer() {
           {/* Brand column */}
           <div>
             <div className="fd-footer-brand-name">
-              <span style={{ fontSize: 24 }}>🍜</span>
+              <span style={{ fontSize: 20 }}>🍜</span>
               FoodieHub
             </div>
             <p className="fd-footer-brand-desc">

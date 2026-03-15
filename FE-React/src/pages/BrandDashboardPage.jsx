@@ -14,6 +14,7 @@ import {
   updatePromotion,
   deletePromotion,
 } from "../services/brand-api";
+import LocationPicker from "../components/LocationPicker";
 import {
   brandHandoverToShipper,
   brandConfirmDelivered,
@@ -236,6 +237,8 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
     description: "",
     openingHours: "",
     isOpen: true,
+    latitude: 0,
+    longitude: 0,
   };
   const [restaurantForm, setRestaurantForm] = useState(defaultRestaurantForm);
 
@@ -436,11 +439,11 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
   const buildProductPayload = () => {
     const normalizedToppings = Array.isArray(productForm.toppings)
       ? productForm.toppings
-          .map((item) => ({
-            name: String(item?.name || "").trim(),
-            extraPrice: Number(item?.extraPrice || 0),
-          }))
-          .filter((item) => item.name)
+        .map((item) => ({
+          name: String(item?.name || "").trim(),
+          extraPrice: Number(item?.extraPrice || 0),
+        }))
+        .filter((item) => item.name)
       : [];
 
     return {
@@ -516,9 +519,9 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
       allowToppings: Boolean(product.allowToppings),
       toppings: Array.isArray(product.toppings)
         ? product.toppings.map((item) => ({
-            name: item?.name || "",
-            extraPrice: Number(item?.extraPrice || 0),
-          }))
+          name: item?.name || "",
+          extraPrice: Number(item?.extraPrice || 0),
+        }))
         : [],
       isBestSeller: Boolean(product.isBestSeller),
       description: product.description || "",
@@ -578,8 +581,19 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
       description: restaurant.description || "",
       openingHours: restaurant.openingHours || "",
       isOpen: restaurant.isOpen !== false,
+      latitude: restaurant.latitude || 0,
+      longitude: restaurant.longitude || 0,
     });
     setIsEditRestaurantModalOpen(true);
+  };
+
+  const handleLocationChange = (lat, lng, address) => {
+    setRestaurantForm((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+      address: address || prev.address,
+    }));
   };
 
   const submitEditRestaurant = async (e) => {
@@ -1190,17 +1204,17 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
                 const cashRevenue = stats?.cashRevenue || 0;
                 const pendingOrders = stats?.countByStatus
                   ? ["pending", "confirmed", "preparing", "delivering"].reduce(
-                      (s, k) => s + (stats.countByStatus[k] || 0),
-                      0,
-                    )
+                    (s, k) => s + (stats.countByStatus[k] || 0),
+                    0,
+                  )
                   : allOrders.filter((o) =>
-                      [
-                        "pending",
-                        "confirmed",
-                        "preparing",
-                        "delivering",
-                      ].includes(o.status),
-                    ).length;
+                    [
+                      "pending",
+                      "confirmed",
+                      "preparing",
+                      "delivering",
+                    ].includes(o.status),
+                  ).length;
                 const completedOrders =
                   stats?.countByStatus?.delivered ||
                   allOrders.filter((o) => o.status === "delivered").length;
@@ -3301,7 +3315,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
             />
             <TextField
               fullWidth
-              label="Địa chỉ"
+              label="Địa chỉ (Tự động cập nhật khi chọn trên bản đồ)"
               required
               value={restaurantForm.address}
               onChange={(e) =>
@@ -3312,6 +3326,17 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
               }
               sx={{ mb: 2 }}
             />
+
+            <Typography variant="subtitle2" gutterBottom sx={{ mt: 1, fontWeight: 700 }}>
+              Vị trí trên bản đồ
+            </Typography>
+            <Box sx={{ mb: 3, borderRadius: 2, overflow: "hidden", border: "1px solid #ddd" }}>
+              <LocationPicker
+                lat={restaurantForm.latitude}
+                lng={restaurantForm.longitude}
+                onLocationChange={handleLocationChange}
+              />
+            </Box>
             <TextField
               fullWidth
               label="Số điện thoại"
@@ -3648,17 +3673,17 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
                           ?.toLowerCase()
                           .includes(promoProductSearch.toLowerCase()),
                     ).length === 0 && (
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          p: 2,
-                          textAlign: "center",
-                          color: "text.secondary",
-                        }}
-                      >
-                        Không tìm thấy sản phẩm nào
-                      </Typography>
-                    )}
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            p: 2,
+                            textAlign: "center",
+                            color: "text.secondary",
+                          }}
+                        >
+                          Không tìm thấy sản phẩm nào
+                        </Typography>
+                      )}
                   </List>
                 </Paper>
               </Box>
