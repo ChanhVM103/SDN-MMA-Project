@@ -113,6 +113,11 @@ export default function FlashSaleSection() {
                             >
                                 <Text style={s.discountText}>Giảm {item.discountPercent || 0}%</Text>
                             </LinearGradient>
+                            {item.isBestSeller && (
+                                <View style={s.hotBadge}>
+                                    <Text style={s.hotBadgeText}>HOT</Text>
+                                </View>
+                            )}
                             <View style={s.imageBox}>
                                 {showImage ? (
                                     <Image
@@ -149,6 +154,12 @@ const s = StyleSheet.create({
     card: { width: 140, backgroundColor: '#fff', borderRadius: BorderRadius.lg, padding: 12, alignItems: 'center', position: 'relative', overflow: 'hidden', ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10 }, android: { elevation: 4 } }) },
     discountBadge: { position: 'absolute', top: 0, left: 0, backgroundColor: '#EF4444', paddingHorizontal: 8, paddingVertical: 3, borderBottomRightRadius: 10, borderTopLeftRadius: BorderRadius.lg },
     discountText: { fontSize: 11, fontWeight: '800', color: '#fff' },
+    hotBadge: {
+        position: 'absolute', top: 0, right: 0,
+        backgroundColor: '#FFB627', paddingHorizontal: 6, paddingVertical: 3,
+        borderBottomLeftRadius: 10, borderTopRightRadius: BorderRadius.lg
+    },
+    hotBadgeText: { color: '#fff', fontSize: 9, fontWeight: '900' },
     heartBtn: { position: 'absolute', top: 8, right: 8, zIndex: 10 },
     imageBox: {
         marginTop: 10,

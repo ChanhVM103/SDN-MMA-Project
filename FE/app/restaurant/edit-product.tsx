@@ -34,6 +34,7 @@ export default function RestaurantEditProduct() {
     const [addons, setAddons] = useState<AddonGroup[]>([]);
     const [price, setPrice] = useState('');
     const [stock, setStock] = useState('0');
+    const [isBestSeller, setIsBestSeller] = useState(false);
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
 
@@ -56,6 +57,7 @@ export default function RestaurantEditProduct() {
                 setStock(p.stock?.toString() || '0');
                 setCategory(p.category || '');
                 setType(p.type || 'food');
+                setIsBestSeller(p.isBestSeller || false);
                 if (p.image) setImages([{ uri: p.image }]);
 
                 if (p.addons && Array.isArray(p.addons)) {
@@ -223,6 +225,7 @@ export default function RestaurantEditProduct() {
                 image: images[0]?.base64 || images[0]?.uri || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80',
                 type: type,
                 addons: formattedAddons,
+                isBestSeller: isBestSeller,
                 isAvailable: true,
             };
 
@@ -356,6 +359,19 @@ export default function RestaurantEditProduct() {
                                     <Text style={[s.typeBtnText, type === 'drink' && s.typeBtnTextActive]}>Nước uống</Text>
                                 </TouchableOpacity>
                             </View>
+                        </View>
+                        <View style={s.divider} />
+
+                        <View style={s.inputRow}>
+                            <View style={s.menuItemLeft}>
+                                <Ionicons name="flame-outline" size={20} color={AppColors.gray} />
+                                <Text style={s.menuItemLabel}>Sản phẩm bán chạy (Best Seller)</Text>
+                            </View>
+                            <Switch
+                                value={isBestSeller}
+                                onValueChange={setIsBestSeller}
+                                trackColor={{ false: '#E5E7EB', true: AppColors.primary }}
+                            />
                         </View>
                         <View style={s.divider} />
 

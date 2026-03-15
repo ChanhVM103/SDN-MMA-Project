@@ -33,6 +33,7 @@ export default function RestaurantAddProduct() {
     const [addons, setAddons] = useState<AddonGroup[]>([]);
     const [price, setPrice] = useState('');
     const [stock, setStock] = useState('0');
+    const [isBestSeller, setIsBestSeller] = useState(false);
     const [loading, setLoading] = useState(false);
     const [myRestaurant, setMyRestaurant] = useState<any>(null);
 
@@ -181,6 +182,7 @@ export default function RestaurantAddProduct() {
                 image: images[0]?.base64 || images[0]?.uri || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80',
                 type: type,
                 addons: formattedAddons,
+                isBestSeller: isBestSeller,
                 isAvailable: true,
             };
 
@@ -323,6 +325,19 @@ export default function RestaurantAddProduct() {
                                     <Text style={[s.typeBtnText, type === 'drink' && s.typeBtnTextActive]}>Nước uống</Text>
                                 </TouchableOpacity>
                             </View>
+                        </View>
+                        <View style={s.divider} />
+
+                        <View style={s.inputRow}>
+                            <View style={s.menuItemLeft}>
+                                <Ionicons name="flame-outline" size={20} color={AppColors.gray} />
+                                <Text style={s.menuItemLabel}>Sản phẩm bán chạy (Best Seller)</Text>
+                            </View>
+                            <Switch
+                                value={isBestSeller}
+                                onValueChange={setIsBestSeller}
+                                trackColor={{ false: '#E5E7EB', true: AppColors.primary }}
+                            />
                         </View>
                         <View style={s.divider} />
 

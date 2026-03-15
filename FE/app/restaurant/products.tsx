@@ -194,20 +194,42 @@ export default function RestaurantProducts() {
                                         ]} 
                                         contentFit="cover"
                                     />
+                                    {product.promotion && (
+                                        <View style={s.promoBadge}>
+                                            <Ionicons name="flash" size={10} color="#fff" />
+                                            <Text style={s.promoBadgeText}>-{product.promotion.discountPercent}%</Text>
+                                        </View>
+                                    )}
                                     <View style={s.productDetails}>
                                         <View>
-                                            <Text style={[s.productName, !product.isAvailable && { color: '#64748B' }]} numberOfLines={1}>{product.name}</Text>
-                                            <Text style={[s.productPrice, !product.isAvailable && { color: '#94A3B8' }]}>{product.price?.toLocaleString()}đ</Text>
+                                            <Text style={[s.productName, !product.isAvailable && { color: '#64748B' }]} numberOfLines={1}>
+                                                {product.name}
+                                            </Text>
+                                            <View style={s.priceRow}>
+                                                <Text style={[s.productPrice, !product.isAvailable && { color: '#FF6B3580' }]}>
+                                                    {product.promotion 
+                                                        ? (product.price * (1 - product.promotion.discountPercent / 100)).toLocaleString() 
+                                                        : product.price?.toLocaleString()}đ
+                                                </Text>
+                                                {product.promotion && (
+                                                    <Text style={s.originalPrice}>
+                                                        {product.price?.toLocaleString()}đ
+                                                    </Text>
+                                                )}
+                                            </View>
                                         </View>
                                         <View style={s.metaRow}>
-                                            <View style={s.metaItem}>
-                                                <Ionicons name="heart" size={12} color={product.isAvailable ? "#EF4444" : "#CBD5E1"} />
-                                                <Text style={s.metaText}>{product.likes || 0}</Text>
-                                            </View>
+                                           
                                             <View style={s.metaItem}>
                                                 <Ionicons name="cart" size={12} color="#64748B" />
                                                 <Text style={s.metaText}>Đã bán {product.sold || 0}</Text>
                                             </View>
+                                            {product.isBestSeller && (
+                                                <View style={[s.metaItem, s.bestSellerTag]}>
+                                                    <Ionicons name="flame" size={12} color="#FF6B35" />
+                                                    <Text style={[s.metaText, { color: '#FF6B35' }]}>Bán chạy</Text>
+                                                </View>
+                                            )}
                                         </View>
                                     </View>
                                     <View style={[s.statusTag, { backgroundColor: product.isAvailable ? '#10B98115' : '#E2E8F0' }]}>
@@ -329,10 +351,20 @@ const s = StyleSheet.create({
     productImage: { width: 80, height: 80, borderRadius: 16, backgroundColor: '#F1F5F9' },
     productDetails: { flex: 1, marginLeft: 16, justifyContent: 'space-between', height: 80, paddingVertical: 4 },
     productName: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
-    productPrice: { fontSize: 15, fontWeight: '800', color: '#FF6B35', marginTop: 2 },
-    metaRow: { flexDirection: 'row', gap: 12, marginTop: 4 },
+    productPrice: { fontSize: 16, fontWeight: '900', color: '#FF6B35' },
+    priceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+    originalPrice: { fontSize: 12, color: '#94A3B8', textDecorationLine: 'line-through', fontWeight: '600' },
+    promoBadge: {
+        position: 'absolute', top: 6, left: 6,
+        backgroundColor: '#EF4444', paddingHorizontal: 6, paddingVertical: 3,
+        borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 2,
+        shadowColor: '#EF4444', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 3
+    },
+    promoBadgeText: { color: '#fff', fontSize: 10, fontWeight: '900' },
+    metaRow: { flexDirection: 'row', gap: 12, marginTop: 1 },
     metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     metaText: { fontSize: 12, color: '#64748B', fontWeight: '600' },
+    bestSellerTag: { backgroundColor: '#FFEDD5', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 },
     statusTag: { 
         position: 'absolute', top: -4, right: -4,
         flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, gap: 4 

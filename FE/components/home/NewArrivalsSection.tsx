@@ -169,7 +169,7 @@ const s = StyleSheet.create({
         position: 'absolute',
         top: 8,
         left: 8,
-        backgroundColor: '#EF4444',
+        backgroundColor: '#FFB627',
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 4,

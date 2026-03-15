@@ -231,6 +231,7 @@ export default function RestaurantDetailScreen() {
                         category: category,
                         addons: product.addons || [],
                         isCustomizable: product.addons && product.addons.length > 0,
+                        isBestSeller: product.isBestSeller,
                         promotion: product.promotion
                     });
                 });

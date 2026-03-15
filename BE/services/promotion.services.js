@@ -7,7 +7,7 @@ const Promotion = require("../models/promotion.model");
 const getSafeProductIds = (productIds) => {
   if (!productIds || !Array.isArray(productIds)) return [];
   const uniqueIds = new Set();
-  
+
   productIds.forEach(id => {
     if (!id) return;
     // Extract ID if it's an object or a string
@@ -160,4 +160,4 @@ module.exports = {
   getPromotionById,
   updatePromotion,
   deletePromotion,
-};
+};
