@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Dimensions, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Dimensions, Alert, Modal } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -23,9 +23,36 @@ const menuGrid = [
 export default function RestaurantDashboard() {
     const router = useRouter();
     const { user, token, logout } = useAuth();
+    const isBrand = user?.role === 'brand';
     const [stats, setStats] = React.useState<any>(null);
     const [restaurant, setRestaurant] = React.useState<any>(null);
     const [restaurantId, setRestaurantId] = React.useState<string | null>(null);
+    const [isNotifVisible, setIsNotifVisible] = React.useState(false);
+
+    const handleLogout = () => {
+        if (Platform.OS === 'web') {
+            const confirmed = window.confirm('Bạn có chắc muốn đăng xuất?');
+            if (confirmed) {
+                logout().then(() => router.replace('/sign-in' as any));
+            }
+        } else {
+            Alert.alert(
+                'Đăng xuất',
+                'Bạn có chắc muốn đăng xuất?',
+                [
+                    { text: 'Hủy', style: 'cancel' },
+                    {
+                        text: 'Đăng xuất',
+                        style: 'destructive',
+                        onPress: async () => {
+                            await logout();
+                            router.replace('/sign-in' as any);
+                        },
+                    },
+                ]
+            );
+        }
+    };
 
     useFocusEffect(
         React.useCallback(() => {
@@ -79,229 +106,487 @@ export default function RestaurantDashboard() {
 
     const avatarUri = resolveShopImage(restaurant?.image);
 
+    // Build notifications from stats
+    const notifications = React.useMemo(() => {
+        const list = [];
+        // 1. New Orders (Pending)
+        if (stats?.countByStatus?.pending > 0) {
+            list.push({
+                id: 'notif-pending',
+                title: 'Đơn hàng mới',
+                message: `Bạn đang có ${stats.countByStatus.pending} đơn hàng đang chờ xác nhận.`,
+                icon: 'time',
+                color: '#F59E0B',
+                tab: 'pending'
+            });
+        }
+        // 2. Preparing Orders
+        if (stats?.countByStatus?.preparing > 0) {
+            list.push({
+                id: 'notif-preparing',
+                title: 'Đang chuẩn bị',
+                message: `Có ${stats.countByStatus.preparing} đơn hàng đang được chế biến.`,
+                icon: 'restaurant',
+                color: '#3B82F6',
+                tab: 'preparing'
+            });
+        }
+        // 3. Delivering Orders
+        if (stats?.countByStatus?.delivering > 0) {
+            list.push({
+                id: 'notif-delivering',
+                title: 'Đang giao hàng',
+                message: `${stats.countByStatus.delivering} đơn hàng đang trên đường tới khách hàng.`,
+                icon: 'bicycle',
+                color: '#10B981',
+                tab: 'delivering'
+            });
+        }
+        // 4. Shipper Delivered (Waiting for customer to confirm)
+        if (stats?.countByStatus?.shipper_delivered > 0) {
+            list.push({
+                id: 'notif-shipper-delivered',
+                title: 'Đã giao tới khách',
+                message: `${stats.countByStatus.shipper_delivered} đơn shipper báo đã giao xong. Đang chờ khách hàng xác nhận nhận đơn.`,
+                icon: 'checkmark-circle',
+                color: '#F472B6',
+                tab: 'delivered'
+            });
+        }
+        return list;
+    }, [stats]);
+
     return (
         <View style={s.container}>
-            {/* Header section identical to standard back header but styled for shop */}
-            <View style={s.header}>
-                <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-                    <Ionicons name="arrow-back" size={24} color={AppColors.primary} />
-                </TouchableOpacity>
-                <Text style={s.headerTitle}>Shop của tôi</Text>
-                <View style={s.headerIcons}>
-                    <TouchableOpacity style={s.headerIconButton} onPress={() => router.push('/restaurant/edit-shop' as any)}>
-                        <Ionicons name="settings-outline" size={22} color={AppColors.primary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={s.headerIconButton}>
-                        <Ionicons name="notifications-outline" size={22} color={AppColors.primary} />
-                        <View style={s.badge}><Text style={s.badgeText}>0</Text></View>
-                    </TouchableOpacity>
+            <LinearGradient
+                colors={['#FF6B35', '#E55A2B']}
+                style={s.topHero}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            >
+                <View style={s.header}>
+                    {!isBrand && (
+                        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+                            <Ionicons name="arrow-back" size={24} color="#fff" />
+                        </TouchableOpacity>
+                    )}
+                    <Text style={s.headerTitle}>Shop của tôi</Text>
+                    <View style={s.headerIcons}>
+                        <TouchableOpacity 
+                            style={s.headerIconButton} 
+                            onPress={() => router.push('/restaurant/edit-shop' as any)}
+                        >
+                            <Ionicons name="settings-outline" size={22} color="#fff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={s.headerIconButton} 
+                            onPress={handleLogout}
+                        >
+                            <Ionicons name="log-out-outline" size={22} color="#fff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={s.headerIconButton}
+                            onPress={() => setIsNotifVisible(true)}
+                        >
+                            <Ionicons name="notifications-outline" size={22} color="#fff" />
+                            {notifications.length > 0 && (
+                                <View style={s.badge}>
+                                    <Text style={s.badgeText}>{notifications.length}</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-                {/* Shop Banner / Info */}
-                <View style={s.shopInfoCard}>
-                    <View style={s.shopAvatarContainer}>
+                {/* Refined Shop Info - Now clickable to Edit Shop */}
+                <TouchableOpacity 
+                    style={s.shopHeroContent} 
+                    activeOpacity={0.9}
+                    onPress={() => router.push('/restaurant/edit-shop' as any)}
+                >
+                    <View style={s.shopAvatarWrapper}>
                         {avatarUri ? (
                             <ExpoImage source={{ uri: avatarUri }} style={s.shopAvatar} contentFit="cover" />
                         ) : (
-                            <View style={[s.shopAvatar, { backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' }]}>
-                                <Ionicons name="storefront" size={30} color={AppColors.gray} />
+                            <View style={[s.shopAvatar, { backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }]}>
+                                <Ionicons name="storefront" size={30} color="#fff" />
                             </View>
                         )}
-                    </View>
-                    <View style={s.shopDetails}>
-                        <Text style={s.shopNameText}>{restaurant?.name || user?.fullName || 'Shop của tôi'}</Text>
-                        <View style={s.shopLinkRow}>
-                            <Text style={s.shopLinkText}>foodiehub.com/{user?.id?.slice(-8) || 'shop'}</Text>
-                            <Ionicons name="copy-outline" size={12} color={AppColors.gray} />
+                        <View style={s.statusDotBorder}>
+                            <View style={[s.statusDot, { backgroundColor: restaurant?.isOpen ? '#10B981' : '#EF4444' }]} />
                         </View>
                     </View>
-                    <TouchableOpacity style={s.viewShopBtn} onPress={() => router.push('/restaurant/edit-shop' as any)}>
-                        <Text style={s.viewShopBtnText}>Xem Shop</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Promotional Banner (Placeholder similar to Shopee's Ad banner) */}
-                <View style={s.promoBannerContainer}>
-                    <LinearGradient
-                        colors={['#FF6B35', '#E55A2B']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={s.promoBanner}
-                    >
-                        <Text style={s.promoBannerTitle}>TỐI ĐA DOANH THU</Text>
-                        <Text style={s.promoBannerSubtitle}>DỊCH VỤ HIỂN THỊ FOODIEHUB</Text>
-                    </LinearGradient>
-                </View>
-
-                {/* Revenue Overview */}
-                <View style={s.sectionCard}>
-                    <View style={s.sectionHeader}>
-                        <Text style={s.sectionTitle}>💰 Doanh thu của bạn</Text>
+                    <View style={s.shopHeroText}>
+                        <Text style={s.shopNameText}>{restaurant?.name || user?.fullName || 'Shop của tôi'}</Text>
+                        <View style={s.shopStatusRow}>
+                            <Text style={s.shopStatusText}>
+                                {restaurant?.isOpen ? '● Đang mở cửa' : '○ Đang đóng cửa'}
+                            </Text>
+                        </View>
                     </View>
-                    <View style={s.revenueContainer}>
-                        <Text style={s.revenueAmount}>{(stats?.totalRevenue || 0).toLocaleString()} đ</Text>
-                        <Text style={s.revenueSubtext}>Doanh thu tiền đồ ăn (chưa tính phí giao hàng)</Text>
+                </TouchableOpacity>
+            </LinearGradient>
+
+            <ScrollView 
+                showsVerticalScrollIndicator={false} 
+                contentContainerStyle={{ paddingBottom: 100 }}
+                style={s.scrollView}
+            >
+                {/* Revenue Premium Card */}
+                <View style={[s.premiumCard, s.revenueCard]}>
+                    <View style={s.revenueHeader}>
+                        <Text style={s.revenueLabel}>Tổng doanh thu đồ ăn</Text>
+                        <Ionicons name="trending-up" size={20} color="#10B981" />
+                    </View>
+                    <Text style={s.revenueAmount}>{(stats?.totalRevenue || 0).toLocaleString()} <Text style={s.currencyText}>VNĐ</Text></Text>
+                    <View style={s.revenueFooter}>
+                        <Text style={s.revenueSubtext}>Cập nhật lần cuối: Vừa xong</Text>
                     </View>
                 </View>
 
                 {/* Orders Overview */}
-                <View style={s.sectionCard}>
-                    <View style={s.sectionHeader}>
-                        <Text style={s.sectionTitle}>Đơn hàng</Text>
-                        <TouchableOpacity style={s.viewHistoryBtn} onPress={() => router.push('/restaurant/orders')}>
-                            <Text style={s.viewHistoryText}>Xem lịch sử đơn hàng</Text>
-                            <Ionicons name="chevron-forward" size={16} color={AppColors.gray} />
-                        </TouchableOpacity>
-                    </View>
-                    <View style={s.orderStatsContainer}>
-                        <TouchableOpacity style={s.orderStatItem} onPress={() => router.push({ pathname: '/restaurant/orders', params: { tab: 'pending' } })}>
-                            <Text style={s.orderStatCount}>{stats?.countByStatus?.pending || 0}</Text>
-                            <Text style={s.orderStatLabel} numberOfLines={2}>Chờ xác nhận</Text>
-                        </TouchableOpacity>
-                        <View style={s.dividerVertical} />
-                        <TouchableOpacity style={s.orderStatItem} onPress={() => router.push({ pathname: '/restaurant/orders', params: { tab: 'preparing' } })}>
-                            <Text style={s.orderStatCount}>{stats?.countByStatus?.preparing || 0}</Text>
-                            <Text style={s.orderStatLabel} numberOfLines={2}>Đang chuẩn</Text>
-                        </TouchableOpacity>
-                        <View style={s.dividerVertical} />
-                        <TouchableOpacity style={s.orderStatItem} onPress={() => router.push({ pathname: '/restaurant/orders', params: { tab: 'delivering' } })}>
-                            <Text style={s.orderStatCount}>{stats?.countByStatus?.delivering || 0}</Text>
-                            <Text style={s.orderStatLabel} numberOfLines={2}>Đang giao</Text>
-                        </TouchableOpacity>
-                        <View style={s.dividerVertical} />
-                        <TouchableOpacity style={s.orderStatItem} onPress={() => router.push({ pathname: '/restaurant/orders', params: { tab: 'cancelled' } })}>
-                            <Text style={s.orderStatCount}>{stats?.countByStatus?.cancelled || 0}</Text>
-                            <Text style={s.orderStatLabel} numberOfLines={2}>Đơn hủy</Text>
-                        </TouchableOpacity>
-                    </View>
+                <View style={s.sectionHeaderContainer}>
+                    <Text style={s.sectionLabel}>Trạng thái đơn hàng</Text>
+                    <TouchableOpacity onPress={() => router.push('/restaurant/orders')}>
+                        <Text style={s.viewAllLink}>Tất cả ({stats?.totalOrders || 0})</Text>
+                    </TouchableOpacity>
                 </View>
 
-                {/* Menu Grid */}
-                <View style={s.sectionCard}>
-                    <View style={s.menuGridContainer}>
-                        {menuGrid.map((item, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                activeOpacity={0.7}
-                                style={s.menuGridItem}
-                                onPress={() => item.route && router.push(item.route as any)}
-                            >
-                                <View style={[s.menuGridIconWrapper, { backgroundColor: item.color }]}>
-                                    <Ionicons name={item.icon as any} size={24} color="#fff" />
-                                </View>
-                                <Text style={s.menuGridLabel}>{item.label}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                <View style={s.orderStatsGrid}>
+                    <TouchableOpacity 
+                        style={s.orderStatBox} 
+                        onPress={() => router.push({ pathname: '/restaurant/orders', params: { tab: 'pending' } })}
+                    >
+                        <View style={[s.orderIconCircle, { backgroundColor: '#FEF3C7' }]}>
+                            <Ionicons name="time" size={20} color="#D97706" />
+                        </View>
+                        <Text style={s.orderStatLabel}>Chờ xác nhận</Text>
+                        <Text style={[s.orderStatCount, { color: '#D97706' }]}>{stats?.countByStatus?.pending || 0}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                        style={s.orderStatBox} 
+                        onPress={() => router.push({ pathname: '/restaurant/orders', params: { tab: 'preparing' } })}
+                    >
+                        <View style={[s.orderIconCircle, { backgroundColor: '#DBEAFE' }]}>
+                            <Ionicons name="restaurant" size={20} color="#2563EB" />
+                        </View>
+                        <Text style={s.orderStatLabel}>Đang chuẩn bị</Text>
+                        <Text style={[s.orderStatCount, { color: '#2563EB' }]}>{stats?.countByStatus?.preparing || 0}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                        style={s.orderStatBox} 
+                        onPress={() => router.push({ pathname: '/restaurant/orders', params: { tab: 'delivering' } })}
+                    >
+                        <View style={[s.orderIconCircle, { backgroundColor: '#D1FAE5' }]}>
+                            <Ionicons name="bicycle" size={20} color="#059669" />
+                        </View>
+                        <Text style={s.orderStatLabel}>Đang giao</Text>
+                        <Text style={[s.orderStatCount, { color: '#059669' }]}>{stats?.countByStatus?.delivering || 0}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                        style={s.orderStatBox} 
+                        onPress={() => router.push({ pathname: '/restaurant/orders', params: { tab: 'cancelled' } })}
+                    >
+                        <View style={[s.orderIconCircle, { backgroundColor: '#FEE2E2' }]}>
+                            <Ionicons name="close-circle" size={20} color="#DC2626" />
+                        </View>
+                        <Text style={s.orderStatLabel}>Đã hủy</Text>
+                        <Text style={[s.orderStatCount, { color: '#DC2626' }]}>{stats?.countByStatus?.cancelled || 0}</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Management Grid */}
+                <View style={s.sectionHeaderContainer}>
+                    <Text style={s.sectionLabel}>Công cụ quản lý</Text>
+                </View>
+                
+                <View style={s.menuGrid}>
+                    {menuGrid.map((item, index) => (
+                        <TouchableOpacity
+                            key={index}
+                            activeOpacity={0.8}
+                            style={s.menuItemCard}
+                            onPress={() => item.route && router.push(item.route as any)}
+                        >
+                            <View style={[s.menuItemIcon, { backgroundColor: item.color + '15' }]}>
+                                <Ionicons name={item.icon as any} size={24} color={item.color} />
+                            </View>
+                            <Text style={s.menuItemLabel}>{item.label}</Text>
+                        </TouchableOpacity>
+                    ))}
                 </View>
             </ScrollView>
+
+            {/* Notification Modal */}
+            <Modal visible={isNotifVisible} transparent animationType="slide">
+                <View style={s.modalOverlay}>
+                    <View style={s.notifModalContainer}>
+                        <View style={s.modalHeader}>
+                            <Text style={s.modalTitle}>Thông báo Orders</Text>
+                            <TouchableOpacity onPress={() => setIsNotifVisible(false)} style={s.closeModalBtn}>
+                                <Ionicons name="close" size={24} color="#1E293B" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={s.notifList} showsVerticalScrollIndicator={false}>
+                            {notifications.length === 0 ? (
+                                <View style={s.emptyNotifView}>
+                                    <View style={s.emptyNotifIcon}>
+                                        <Ionicons name="notifications-off-outline" size={50} color="#CBD5E1" />
+                                    </View>
+                                    <Text style={s.emptyNotifText}>Hết thông báo quan trọng rồi!</Text>
+                                    <Text style={s.emptyNotifSub}>Các đơn hàng mới cần xử lý sẽ hiện ở đây.</Text>
+                                </View>
+                            ) : (
+                                notifications.map((notif) => (
+                                    <TouchableOpacity 
+                                        key={notif.id} 
+                                        style={s.notifItem}
+                                        onPress={() => {
+                                            setIsNotifVisible(false);
+                                            router.push({ pathname: '/restaurant/orders', params: { tab: notif.tab } });
+                                        }}
+                                    >
+                                        <View style={[s.notifIconBox, { backgroundColor: notif.color + '15' }]}>
+                                            <Ionicons name={notif.icon as any} size={22} color={notif.color} />
+                                        </View>
+                                        <View style={s.notifContent}>
+                                            <Text style={s.notifTitle}>{notif.title}</Text>
+                                            <Text style={s.notifMessage}>{notif.message}</Text>
+                                        </View>
+                                        <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
+                                    </TouchableOpacity>
+                                ))
+                            )}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
 
 const s = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F3F4F6' },
+    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    topHero: {
+        paddingTop: Platform.OS === 'ios' ? 50 : 30,
+        paddingBottom: 30,
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
+    },
     header: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingTop: Platform.OS === 'ios' ? 50 : 30,
-        paddingBottom: 12, paddingHorizontal: Spacing.lg,
-        backgroundColor: '#fff',
-        ...Platform.select({
-            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 },
-            android: { elevation: 3 },
-        }),
-        zIndex: 10,
+        paddingHorizontal: 20,
+        marginBottom: 25,
     },
-    backBtn: { padding: 4, marginRight: 8 },
-    headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: AppColors.charcoal },
-    headerIcons: { flexDirection: 'row', gap: 12 },
+    backBtn: { padding: 4 },
+    headerTitle: { flex: 1, fontSize: 18, fontWeight: '800', color: '#fff', marginLeft: 8 },
+    headerIcons: { flexDirection: 'row', gap: 15 },
     headerIconButton: { padding: 4, position: 'relative' },
     badge: {
-        position: 'absolute', top: -2, right: -6, backgroundColor: AppColors.primary,
-        borderRadius: 10, paddingHorizontal: 4, paddingVertical: 1,
-        borderWidth: 1.5, borderColor: '#fff',
+        position: 'absolute', top: -4, right: -6, backgroundColor: '#EF4444',
+        borderRadius: 10, paddingHorizontal: 5, paddingVertical: 1,
+        borderWidth: 2, borderColor: '#FF6B35',
     },
-    badgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+    badgeText: { color: '#fff', fontSize: 9, fontWeight: '900' },
 
-    shopInfoCard: {
-        flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
-        padding: Spacing.lg, marginBottom: 12,
-        borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+    shopHeroContent: {
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 20,
     },
-    shopAvatarContainer: { marginRight: 12 },
-    shopAvatar: { width: 60, height: 60, borderRadius: 30, borderWidth: 1, borderColor: '#E5E7EB' },
-    shopDetails: { flex: 1, justifyContent: 'center' },
-    shopNameText: { fontSize: 16, fontWeight: '700', color: AppColors.charcoal, marginBottom: 4 },
-    shopLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    shopLinkText: { fontSize: 13, color: AppColors.gray },
-    viewShopBtn: {
-        borderWidth: 1, borderColor: AppColors.primary, borderRadius: 4,
-        paddingHorizontal: 12, paddingVertical: 6,
+    shopAvatarWrapper: {
+        position: 'relative',
+        marginRight: 15,
     },
-    viewShopBtnText: { color: AppColors.primary, fontSize: 12, fontWeight: '600' },
+    shopAvatar: {
+        width: 70, height: 70, borderRadius: 35,
+        borderWidth: 3, borderColor: 'rgba(255,255,255,0.4)',
+    },
+    statusDotBorder: {
+        position: 'absolute', bottom: 2, right: 2,
+        backgroundColor: '#fff', borderRadius: 8, padding: 2,
+    },
+    statusDot: { width: 10, height: 10, borderRadius: 5 },
+    shopHeroText: { gap: 4 },
+    shopNameText: { fontSize: 22, fontWeight: '900', color: '#fff' },
+    shopStatusRow: { flexDirection: 'row', alignItems: 'center' },
+    shopStatusText: { color: '#fff', fontSize: 13, fontWeight: '600', opacity: 0.9 },
 
-    promoBannerContainer: { paddingHorizontal: 12, paddingBottom: 12 },
-    promoBanner: {
-        borderRadius: BorderRadius.md, padding: Spacing.lg,
-        height: 100, justifyContent: 'center', alignItems: 'flex-start',
-    },
-    promoBannerTitle: { color: '#fff', fontSize: 18, fontWeight: '900', marginBottom: 4, textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
-    promoBannerSubtitle: { color: '#fff', fontSize: 14, fontWeight: '600', opacity: 0.9 },
-
-    sectionCard: {
-        backgroundColor: '#fff', borderRadius: BorderRadius.md,
-        marginHorizontal: 12, marginBottom: 12, paddingVertical: 14,
+    scrollView: { flex: 1, marginTop: -20 },
+    
+    premiumCard: {
+        backgroundColor: '#fff',
+        borderRadius: 24,
+        marginHorizontal: 16,
+        padding: 24,
         ...Platform.select({
-            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6 },
-            android: { elevation: 2 },
+            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20 },
+            android: { elevation: 10 },
         }),
     },
-    sectionHeader: {
+    revenueCard: {
+        marginBottom: 25,
+    },
+    revenueHeader: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        paddingHorizontal: 16, marginBottom: 12,
-    },
-    sectionTitle: { fontSize: 15, fontWeight: '700', color: AppColors.charcoal },
-    viewHistoryBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-    viewHistoryText: { fontSize: 13, color: AppColors.gray },
-
-    orderStatsContainer: { flexDirection: 'row', alignItems: 'stretch' },
-    orderStatItem: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingHorizontal: 4 },
-    orderStatCount: { fontSize: 22, fontWeight: '700', color: AppColors.charcoal, marginBottom: 4 },
-    orderStatLabel: { fontSize: 12, color: AppColors.gray, textAlign: 'center', height: 40 },
-    dividerVertical: { width: 1, backgroundColor: '#F3F4F6' },
-
-    revenueContainer: { paddingHorizontal: 16, paddingBottom: 8 },
-    revenueAmount: { fontSize: 28, fontWeight: '900', color: '#10B981', marginBottom: 4 },
-    revenueSubtext: { fontSize: 13, color: AppColors.gray },
-
-    menuGridContainer: {
-        flexDirection: 'row', flexWrap: 'wrap', paddingTop: 8,
-    },
-    menuGridItem: {
-        width: '33.33%', alignItems: 'center', marginBottom: 20, paddingHorizontal: 8,
-    },
-    menuGridIconWrapper: {
-        width: 44, height: 44, borderRadius: 16,
-        justifyContent: 'center', alignItems: 'center',
         marginBottom: 8,
     },
-    menuGridLabel: {
-        fontSize: 12, color: AppColors.charcoal, textAlign: 'center',
+    revenueLabel: { color: '#64748B', fontSize: 13, fontWeight: '600' },
+    revenueAmount: { fontSize: 32, fontWeight: '900', color: '#0F172A' },
+    currencyText: { fontSize: 16, color: '#64748B', fontWeight: '700' },
+    revenueFooter: {
+        marginTop: 15, paddingTop: 15,
+        borderTopWidth: 1, borderTopColor: '#F1F5F9',
     },
+    revenueSubtext: { fontSize: 12, color: '#94A3B8' },
+
+    sectionHeaderContainer: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        paddingHorizontal: 20, marginBottom: 15,
+    },
+    sectionLabel: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+    viewAllLink: { fontSize: 13, color: '#FF6B35', fontWeight: '700' },
+
+    orderStatsGrid: {
+        flexDirection: 'row', flexWrap: 'wrap',
+        paddingHorizontal: 12, marginBottom: 25,
+    },
+    orderStatBox: {
+        width: '45.1%', // Just under 50% for 2 per row
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 16,
+        margin: '2.45%',
+        alignItems: 'center',
+        ...Platform.select({
+            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 8 },
+            android: { elevation: 3 },
+        }),
+    },
+    orderIconCircle: {
+        width: 40, height: 40, borderRadius: 20,
+        justifyContent: 'center', alignItems: 'center',
+        marginBottom: 10,
+    },
+    orderStatLabel: { fontSize: 11, color: '#64748B', fontWeight: '600', marginBottom: 4 },
+    orderStatCount: { fontSize: 20, fontWeight: '800' },
+
+    menuGrid: {
+        flexDirection: 'row', flexWrap: 'wrap',
+        paddingHorizontal: 12, marginBottom: 25,
+    },
+    menuItemCard: {
+        width: '45.1%',
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 20,
+        margin: '2.45%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        ...Platform.select({
+            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 8 },
+            android: { elevation: 3 },
+        }),
+    },
+    menuItemIcon: {
+        width: 42, height: 42, borderRadius: 14,
+        justifyContent: 'center', alignItems: 'center',
+        marginRight: 12,
+    },
+    menuItemLabel: { fontSize: 13, fontWeight: '700', color: '#1E293B', flex: 1 },
+
+    marketingBanner: {
+        marginHorizontal: 16, marginBottom: 30,
+        borderRadius: 20, overflow: 'hidden',
+    },
+    marketingGradient: {
+        flexDirection: 'row', alignItems: 'center',
+        padding: 20, justifyContent: 'space-between',
+    },
+    marketingTextWrapper: { flex: 0.8 },
+    marketingTitle: { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 4 },
+    marketingSub: { color: '#fff', fontSize: 11, fontWeight: '500', opacity: 0.8 },
+    marketingIcon: {},
 
     taskBanner: {
         marginHorizontal: 16, padding: 14,
         borderRadius: 8, borderWidth: 1, borderColor: '#FEE2E2', backgroundColor: '#FFFAFA',
         position: 'relative',
     },
-    taskTitle: { fontSize: 15, fontWeight: '600', color: AppColors.charcoal, marginBottom: 6 },
-    taskDesc: { fontSize: 13, color: AppColors.gray, flexWrap: 'wrap', paddingRight: 80 },
-    adBadge: { backgroundColor: AppColors.primary, color: '#fff', fontSize: 9, fontWeight: 'bold', paddingHorizontal: 4, borderRadius: 2, marginRight: 4, overflow: 'hidden' },
+    taskTitle: { fontSize: 15, fontWeight: '600', color: '#1E293B', marginBottom: 6 },
+    taskDesc: { fontSize: 13, color: '#64748B', flexWrap: 'wrap', paddingRight: 80 },
+    adBadge: { backgroundColor: '#FF6B35', color: '#fff', fontSize: 9, fontWeight: 'bold', paddingHorizontal: 4, borderRadius: 2, marginRight: 4, overflow: 'hidden' },
     startTaskBtn: {
         position: 'absolute', right: 14, bottom: 14,
-        backgroundColor: AppColors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 4,
+        backgroundColor: '#FF6B35', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 4,
     },
     startTaskText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+
+    // Notifications Premium Styles
+    modalOverlay: { 
+        flex: 1, 
+        backgroundColor: 'rgba(15, 23, 42, 0.4)', 
+        justifyContent: 'flex-end' 
+    },
+    notifModalContainer: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        height: '60%',
+        paddingTop: 20,
+        ...Platform.select({
+            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20 },
+            android: { elevation: 20 },
+        }),
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingBottom: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    modalTitle: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
+    closeModalBtn: { padding: 4 },
+    notifList: { flex: 1, padding: 20 },
+    emptyNotifView: { 
+        flex: 1, 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        paddingTop: 60 
+    },
+    emptyNotifIcon: {
+        width: 100, height: 100, borderRadius: 50,
+        backgroundColor: '#F8FAFC', justifyContent: 'center',
+        alignItems: 'center', marginBottom: 20
+    },
+    emptyNotifText: { fontSize: 18, fontWeight: '800', color: '#475569', marginBottom: 8 },
+    emptyNotifSub: { fontSize: 14, color: '#94A3B8', textAlign: 'center' },
+    notifItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        ...Platform.select({
+            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8 },
+            android: { elevation: 2 },
+        }),
+    },
+    notifIconBox: {
+        width: 48, height: 48, borderRadius: 16,
+        justifyContent: 'center', alignItems: 'center',
+        marginRight: 15
+    },
+    notifContent: { flex: 1, gap: 2 },
+    notifTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+    notifMessage: { fontSize: 13, color: '#64748B', lineHeight: 18 },
 });

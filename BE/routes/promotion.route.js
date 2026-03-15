@@ -7,6 +7,7 @@ const { authMiddleware } = require("../middleware/auth.middleware");
 router.get("/restaurant/:restaurantId", promotionController.getPromotions);
 
 // Private routes (Brand management)
+router.post("/check-conflicts", authMiddleware, promotionController.checkConflicts);
 router.post("/", authMiddleware, promotionController.createPromotion);
 router.delete("/:id", authMiddleware, promotionController.deletePromotion);
 router.put("/:id", authMiddleware, promotionController.updatePromotion);

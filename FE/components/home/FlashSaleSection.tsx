@@ -36,28 +36,18 @@ export default function FlashSaleSection() {
     useEffect(() => {
         const fetchDeals = async () => {
             try {
-                // Fetch restaurants and products in parallel
-                const [restaurantsData, productsRes] = await Promise.all([
-                    getFlashSaleRestaurants(),
-                    productAPI.getAllProducts({ limit: 20 })
-                ]);
+                // Fetch flash sale products
+                const flashSaleRes = await productAPI.getFlashSaleProducts({ limit: 20 });
                 
-                const restaurants = (restaurantsData || []).map((r: any) => ({ ...r, type: 'restaurant' }));
-                const promotionalProducts = (productsRes?.data || [])
-                    .filter((p: any) => p.promotion)
+                const flashDeals = (flashSaleRes?.data || [])
                     .map((p: any) => ({ 
                         ...p, 
                         type: 'product',
                         discountPercent: p.promotion.discountPercent,
-                        deliveryTime: p.restaurantId?.deliveryTime || 20 // Default or fallback
+                        deliveryTime: p.restaurantId?.deliveryTime || 20 
                     }));
                 
-                // Combine and sort by discount percent
-                const combined = [...restaurants, ...promotionalProducts].sort((a, b) => 
-                    (b.discountPercent || 0) - (a.discountPercent || 0)
-                );
-                
-                setFlashDeals(combined);
+                setFlashDeals(flashDeals);
             } catch (error) {
                 console.error("Failed to load flash deals:", error);
             }
@@ -123,9 +113,6 @@ export default function FlashSaleSection() {
                             >
                                 <Text style={s.discountText}>Giảm {item.discountPercent || 0}%</Text>
                             </LinearGradient>
-                            <TouchableOpacity style={s.heartBtn} onPress={() => toggleFavorite(item._id || item.id)} activeOpacity={0.7}>
-                                <Ionicons name={isFavorite(item._id || item.id) ? 'heart' : 'heart-outline'} size={16} color={isFavorite(item._id || item.id) ? '#EF4444' : '#ccc'} />
-                            </TouchableOpacity>
                             <View style={s.imageBox}>
                                 {showImage ? (
                                     <Image

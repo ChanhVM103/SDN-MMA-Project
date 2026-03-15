@@ -10,6 +10,7 @@ import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { useOrder } from '@/constants/order-context';
 import { useAuth } from '@/constants/auth-context';
 import { orderAPI, restaurantAPI, productAPI, API_BASE_URL } from '@/constants/api';
+import { useFavorites } from '@/constants/favorites-context';
 import CreateModalPage from './create.modal';
 import ConfirmOrderScreen from '@/components/ConfirmOrderScreen';
 
@@ -156,11 +157,12 @@ export default function RestaurantDetailScreen() {
     const router = useRouter();
     const { addOrder } = useOrder();
     const { user, token } = useAuth();
+    const { isFavorite, toggleFavorite } = useFavorites();
 
     const [restaurant, setRestaurant] = useState<any>(null);
     const [sections, setSections] = useState<SectionData[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('');
+    const [activeTab, setActiveTab] = useState('Tất cả');
     const [cartLines, setCartLines] = useState<{
         lineId: string;
         itemId: string;
@@ -235,7 +237,7 @@ export default function RestaurantDetailScreen() {
 
                 const secs = Object.keys(grouped).map(cat => ({ title: cat, data: grouped[cat] }));
                 setSections(secs);
-                if (secs.length > 0) setActiveTab(secs[0].title);
+                setActiveTab('Tất cả');
 
                 // Auto-highlight/open product if requested
                 if (highlightProduct) {
@@ -270,7 +272,7 @@ export default function RestaurantDetailScreen() {
             } catch (e) {
                 console.error("Fetch products failed", e);
             } finally {
-                setTimeout(() => setLoading(false), 500);
+                setLoading(false);
             }
         };
 
@@ -326,10 +328,19 @@ export default function RestaurantDetailScreen() {
 
     const handleTabPress = (title: string, idx: number) => {
         setActiveTab(title);
-        sectionListRef.current?.scrollToLocation({
-            sectionIndex: idx, itemIndex: 0,
-            animated: true, viewOffset: 100,
-        });
+        // Scroll to top when switching categories or to the specific section if displaying all
+        if (title === 'Tất cả') {
+            sectionListRef.current?.scrollToLocation({
+                sectionIndex: 0, itemIndex: 0,
+                animated: true, viewOffset: 0,
+            });
+        } else {
+            // Since we filter the list, the selected category will always be at index 0
+            sectionListRef.current?.scrollToLocation({
+                sectionIndex: 0, itemIndex: 0,
+                animated: true, viewOffset: 100,
+            });
+        }
     };
 
     const handleAdd = (itemId: string, item: MenuItem) => {
@@ -430,9 +441,10 @@ export default function RestaurantDetailScreen() {
         setShowConfirmOrder(true);
     };
 
-    const handleConfirmOrder = async () => {
+    const handleConfirmOrder = async (voucherId?: string, finalDeliveryFeeArg?: number) => {
         try {
-            const deliveryFee = restaurant?.deliveryFee || 0;
+            const originalDeliveryFee = restaurant?.deliveryFee || 0;
+            const deliveryFee = finalDeliveryFeeArg !== undefined ? finalDeliveryFeeArg : originalDeliveryFee;
             const items = getCartItems();
 
             const order = {
@@ -464,7 +476,8 @@ export default function RestaurantDetailScreen() {
                     await orderAPI.createOrder(token, {
                         restaurantId: realRestId,
                         items: apiItems,
-                        deliveryFee,
+                        deliveryFee: originalDeliveryFee, // Backend recalculates based on voucherId
+                        voucherId,
                         deliveryAddress: '123 Test Street'
                     });
                 }
@@ -502,20 +515,30 @@ export default function RestaurantDetailScreen() {
                     <Ionicons name="arrow-back" size={22} color={AppColors.charcoal} />
                 </TouchableOpacity>
                 <Text style={s.navTitle} numberOfLines={1}>{restaurant.name}</Text>
-                <TouchableOpacity>
-                    <Ionicons name="share-outline" size={22} color={AppColors.charcoal} />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <TouchableOpacity onPress={() => toggleFavorite(restaurant._id || restaurant.id)}>
+                        <Ionicons 
+                            name={isFavorite(restaurant._id || restaurant.id) ? "heart" : "heart-outline"} 
+                            size={22} 
+                            color={isFavorite(restaurant._id || restaurant.id) ? "#EF4444" : AppColors.charcoal} 
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity>
+                        <Ionicons name="share-outline" size={22} color={AppColors.charcoal} />
+                    </TouchableOpacity>
+                </View>
             </Animated.View>
+
 
             <Animated.View style={[s.fabBack, { opacity: heroOpacity }]}>
                 <TouchableOpacity onPress={() => router.back()} style={s.fabBackBtn}>
                     <Ionicons name="arrow-back" size={22} color="#fff" />
                 </TouchableOpacity>
             </Animated.View>
-
+            
             <SectionList
                 ref={sectionListRef}
-                sections={sections}
+                sections={activeTab === 'Tất cả' ? sections : sections.filter(s => s.title === activeTab)}
                 keyExtractor={(item, index) => item._id || item.id || `hlist-${index}`}
                 showsVerticalScrollIndicator={false}
                 stickySectionHeadersEnabled
@@ -534,11 +557,24 @@ export default function RestaurantDetailScreen() {
                         <View style={s.infoCard}>
                             <View style={s.infoTop}>
                                 <Text style={s.restName}>{restaurant.name}</Text>
-                                <View style={[s.statusChip, { backgroundColor: restaurant.isOpen !== false ? '#D1FAE5' : '#FEE2E2' }]}>
-                                    <View style={[s.statusDot, { backgroundColor: restaurant.isOpen !== false ? '#10B981' : '#EF4444' }]} />
-                                    <Text style={[s.statusText, { color: restaurant.isOpen !== false ? '#065F46' : '#991B1B' }]}>
-                                        {restaurant.isOpen !== false ? 'Đang mở' : 'Đóng cửa'}
-                                    </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                    <TouchableOpacity 
+                                        style={s.favBtnInfo} 
+                                        onPress={() => toggleFavorite(restaurant._id || restaurant.id)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Ionicons 
+                                            name={isFavorite(restaurant._id || restaurant.id) ? "heart" : "heart-outline"} 
+                                            size={24} 
+                                            color={isFavorite(restaurant._id || restaurant.id) ? "#EF4444" : AppColors.gray} 
+                                        />
+                                    </TouchableOpacity>
+                                    <View style={[s.statusChip, { backgroundColor: restaurant.isOpen !== false ? '#D1FAE5' : '#FEE2E2' }]}>
+                                        <View style={[s.statusDot, { backgroundColor: restaurant.isOpen !== false ? '#10B981' : '#EF4444' }]} />
+                                        <Text style={[s.statusText, { color: restaurant.isOpen !== false ? '#065F46' : '#991B1B' }]}>
+                                            {restaurant.isOpen !== false ? 'Đang mở' : 'Đóng cửa'}
+                                        </Text>
+                                    </View>
                                 </View>
                             </View>
 
@@ -588,6 +624,13 @@ export default function RestaurantDetailScreen() {
 
                         <View style={s.tabsWrapper}>
                             <ScrollView ref={tabScrollRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabsList}>
+                                <TouchableOpacity
+                                    style={[s.tab, activeTab === 'Tất cả' && s.tabActive]}
+                                    onPress={() => handleTabPress('Tất cả', -1)}
+                                >
+                                    <Text style={[s.tabText, activeTab === 'Tất cả' && s.tabTextActive]}>Tất cả</Text>
+                                    {activeTab === 'Tất cả' && <View style={s.tabLine} />}
+                                </TouchableOpacity>
                                 {sections.map((sec, idx) => (
                                     <TouchableOpacity
                                         key={sec.title}
@@ -784,6 +827,12 @@ const s = StyleSheet.create({
     hero: { width, height: HERO_HEIGHT, position: 'relative' },
     heroImg: { width: '100%', height: '100%' },
     heroOverlay: { ...StyleSheet.absoluteFillObject },
+    favBtnInfo: {
+        width: 44, height: 44, borderRadius: 22,
+        backgroundColor: '#F9FAFB',
+        justifyContent: 'center', alignItems: 'center',
+        borderWidth: 1, borderColor: '#F3F4F6',
+    },
     infoCard: {
         backgroundColor: '#fff',
         marginTop: -20,

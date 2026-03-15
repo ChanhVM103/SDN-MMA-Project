@@ -48,6 +48,13 @@ router.get("/special/best-seller", productController.getBestSellerProducts);
 // Get available products
 router.get("/special/available", productController.getAvailableProducts);
 
+// Get flash sale products
+router.get("/special/flash-sale", async (req, res) => {
+  // We can just reuse getAllProducts with isFlashSale=true query or handle it specifically
+  req.query.isFlashSale = "true";
+  return productController.getAllProducts(req, res);
+});
+
 // Get products by restaurant - Public
 router.get(
   "/restaurant/:restaurantId",

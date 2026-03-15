@@ -30,19 +30,9 @@ export default function RootLayout() {
       <OrderProvider>
         <FavoritesProvider>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <Stack initialRouteName="(tabs)">
+            <Stack initialRouteName="(tabs)" screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="restaurant/dashboard" options={{ headerShown: false }} />
-              <Stack.Screen name="restaurant/products" options={{ headerShown: false }} />
-              <Stack.Screen name="restaurant/add-product" options={{ headerShown: false }} />
-              <Stack.Screen name="restaurant/edit-product" options={{ headerShown: false }} />
-              <Stack.Screen name="restaurant/edit-shop" options={{ headerShown: false }} />
-              <Stack.Screen name="restaurant/orders" options={{ headerShown: false }} />
-              <Stack.Screen name="restaurant/finance" options={{ headerShown: false }} />
-              <Stack.Screen name="restaurant/performance" options={{ headerShown: false }} />
-              <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="restaurant/create.modal" options={{ headerShown: false }} />
-              <Stack.Screen name="restaurant/promotions" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant" options={{ headerShown: false }} />
 
               <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
               <Stack.Screen name="sign-in" options={{ headerShown: false }} />
@@ -59,7 +49,7 @@ export default function RootLayout() {
                 }}
               />
             </Stack>
-            <StatusBar style="light" />
+            <StatusBar style="auto" translucent backgroundColor="transparent" />
 
             {showCustomSplash && (
               <SplashScreen onFinish={() => setShowCustomSplash(false)} />

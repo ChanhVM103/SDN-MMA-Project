@@ -15,7 +15,16 @@ const getAllProducts = async (req, res) => {
       category = null,
       sortBy = "createdAt",
       sortOrder = -1,
+      isFlashSale = false,
     } = req.query;
+
+    if (isFlashSale === "true" || isFlashSale === true) {
+      const products = await productService.getFlashSaleProducts(parseInt(limit));
+      return res.status(200).json({
+        success: true,
+        data: products,
+      });
+    }
 
     const result = await productService.getAllProducts(
       parseInt(page),
