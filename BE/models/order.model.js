@@ -8,6 +8,7 @@ const orderItemSchema = new mongoose.Schema({
   originalPrice: { type: Number },
   quantity: { type: Number, required: true, min: 1 },
   emoji: { type: String, default: "🍽️" },
+  image: { type: String, default: "" },
   note: { type: String, default: "" },
 });
 

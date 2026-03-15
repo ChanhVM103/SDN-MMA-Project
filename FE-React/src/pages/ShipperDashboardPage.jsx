@@ -1,621 +1,423 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  getAvailableOrders,
-  getShipperOrders,
-  shipperAcceptOrder,
-  shipperPickedUp,
-  shipperCompleteDelivery,
+  getAvailableOrders, getShipperOrders,
+  shipperAcceptOrder, shipperPickedUp, shipperCompleteDelivery,
 } from "../services/order-api";
 
-// MUI Components
-import {
-  Box,
-  AppBar,
-  Toolbar,
-  Typography,
-  Avatar,
-  Button,
-  Chip,
-  Tabs,
-  Tab,
-  Card,
-  CardContent,
-  CircularProgress,
-  Stack,
-  Badge,
-  Divider,
-  Snackbar,
-  Alert,
-  Container,
-  Paper,
-  Grid,
-} from "@mui/material";
-import { ThemeProvider, createTheme, alpha } from "@mui/material/styles";
+const fmt  = n => (n||0).toLocaleString("vi-VN") + "đ";
+const fmtD = d => { const dt=new Date(d); return dt.toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"})+", "+dt.toLocaleDateString("vi-VN"); };
+const hour = () => { const h=new Date().getHours(); return h<12?"buổi sáng":h<18?"buổi chiều":"buổi tối"; };
 
-import {
-  PieChart,
-  Pie,
-  Cell,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RTooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
-
-// MUI Icons
-import TwoWheelerIcon from "@mui/icons-material/TwoWheeler";
-import LocalShippingIcon from "@mui/icons-material/LocalShipping";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import LogoutIcon from "@mui/icons-material/Logout";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import StorefrontIcon from "@mui/icons-material/Storefront";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
-import PersonIcon from "@mui/icons-material/Person";
-import DoneAllIcon from "@mui/icons-material/DoneAll";
-import AssignmentReturnIcon from "@mui/icons-material/AssignmentReturn";
-
-// ─── Theme configuration ─────────────────────────
-const shipperTheme = createTheme({
-  palette: {
-    primary: {
-      main: "#ee4d2d",
-      light: "#ff7337",
-      contrastText: "#fff",
-    },
-    secondary: {
-      main: "#3b82f6",
-    },
-    success: {
-      main: "#10b981",
-    },
-    warning: {
-      main: "#f59e0b",
-    },
-    info: {
-      main: "#0ea5e9",
-    },
-    background: {
-      default: "#f8fafc",
-      paper: "#ffffff",
-    },
-  },
-  typography: {
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    h5: { fontWeight: 700 },
-    h6: { fontWeight: 700 },
-    subtitle1: { fontWeight: 600 },
-  },
-  shape: {
-    borderRadius: 12,
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: "none",
-          fontWeight: 600,
-          borderRadius: 8,
-          padding: "8px 16px",
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          boxShadow: "0 2px 12px rgba(0,0,0,0.03)",
-          border: "1px solid #e2e8f0",
-        },
-      },
-    },
-    MuiTab: {
-      styleOverrides: {
-        root: {
-          textTransform: "none",
-          fontWeight: 600,
-          fontSize: "0.95rem",
-          minHeight: 56,
-        },
-      },
-    },
-  },
-});
-
-// ─── Status configuration ─────────────────────────
-const STATUS_CONFIG = {
-  pending: { label: "Chờ xác nhận", color: "warning" },
-  confirmed: { label: "Đã xác nhận", color: "info" },
-  preparing: { label: "Đang chuẩn bị", color: "info" },
-  ready_for_pickup: { label: "Sẵn sàng lấy hàng", color: "warning" },
-  shipper_accepted: { label: "Đã nhận đơn", color: "info" },
-  delivering: { label: "Đang giao hàng", color: "primary" },
-  shipper_delivered: { label: "Chờ khách hàng xác nhận", color: "warning" },
-  delivered: { label: "Đã giao thành công", color: "success" },
-  cancelled: { label: "Đã huỷ", color: "error" },
+const STATUS_CFG = {
+  ready_for_pickup:  { label:"CHỜ XÁC NHẬN", color:"#ee4d2d", bg:"#fff0ed" },
+  shipper_accepted:  { label:"ĐÃ NHẬN ĐƠN",  color:"#3b82f6", bg:"#eff6ff" },
+  delivering:        { label:"ĐANG GIAO",     color:"#10b981", bg:"#f0fdf4" },
+  shipper_delivered: { label:"ĐÃ GIAO",       color:"#10b981", bg:"#f0fdf4" },
+  delivered:         { label:"HOÀN THÀNH",    color:"#6b7280", bg:"#f9fafb" },
+  cancelled:         { label:"ĐÃ HỦY",        color:"#ef4444", bg:"#fef2f2" },
 };
 
-const fmt = (n) => Number(n || 0).toLocaleString("vi-VN");
-const fmtDate = (d) => (d ? new Date(d).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "");
+function StatCard({ label, value, icon, color }) {
+  return (
+    <div style={{ flex:1, background:"#fff", borderRadius:12, padding:"18px 20px", border:"1px solid #e5e7eb", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      <div>
+        <div style={{ fontSize:11, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.8px", marginBottom:8 }}>{label}</div>
+        <div style={{ fontSize:30, fontWeight:800, color }}>{value}</div>
+      </div>
+      <div style={{ fontSize:28, opacity:0.4 }}>{icon}</div>
+    </div>
+  );
+}
 
-// ─── Main Component ───────────────────────────────
-export default function ShipperDashboardPage({ user, onLogout }) {
-  const [tabIndex, setTabIndex] = useState(0); // 0: Chờ nhận, 1: Đang giao, 2: Lịch sử
-  const [available, setAvailable] = useState([]);
-  const [myOrders, setMyOrders] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [actioningId, setActioningId] = useState(null);
+// ── Order Card (left panel) ───────────────────────────────────
+function OrderInfoCard({ order }) {
+  const cfg = STATUS_CFG[order.status] || STATUS_CFG.ready_for_pickup;
+  return (
+    <div style={{ background:"#fff", borderRadius:16, border:"1px solid #e5e7eb", overflow:"hidden" }}>
+      {/* Card header */}
+      <div style={{ padding:"16px 20px", borderBottom:"1px solid #f3f4f6", display:"flex", alignItems:"center", gap:12 }}>
+        <div style={{ width:44,height:44,borderRadius:10,background:"#fff0ed",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0 }}>🏪</div>
+        <div style={{ flex:1 }}>
+          <div style={{ fontWeight:700, fontSize:16, color:"#1a1a1a" }}>{order.restaurantName}</div>
+          <div style={{ fontSize:12, color:"#9ca3af", marginTop:1 }}>ID: #{order._id.slice(-8).toUpperCase()} · {fmtD(order.createdAt)}</div>
+        </div>
+        <span style={{ fontSize:12, fontWeight:800, color:cfg.color, background:cfg.bg, padding:"5px 12px", borderRadius:20, border:`1px solid ${cfg.color}33`, letterSpacing:"0.4px" }}>{cfg.label}</span>
+      </div>
 
-  const [toast, setToast] = useState({ open: false, msg: "", severity: "success" });
+      {/* 2-col body: customer+address LEFT, note RIGHT */}
+      <div style={{ padding:"16px 20px", display:"flex", gap:24 }}>
+        <div style={{ flex:1, display:"flex", flexDirection:"column", gap:14 }}>
+          {/* Customer */}
+          <div style={{ display:"flex", gap:10 }}>
+            <span style={{ fontSize:15, color:"#9ca3af", marginTop:2 }}>👤</span>
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:4 }}>Khách hàng</div>
+              <div style={{ fontWeight:600, fontSize:14, color:"#1a1a1a" }}>{order.user?.fullName || "Khách hàng"}</div>
+              {order.user?.phone && <div style={{ fontSize:13, color:"#ee4d2d", fontWeight:600, marginTop:1 }}>{order.user.phone}</div>}
+            </div>
+          </div>
+          {/* Address */}
+          <div style={{ display:"flex", gap:10 }}>
+            <span style={{ fontSize:15, color:"#ee4d2d", marginTop:2 }}>📍</span>
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:4 }}>Địa chỉ giao hàng</div>
+              <div style={{ fontSize:13, color:"#374151", lineHeight:1.6 }}>{order.deliveryAddress}</div>
+            </div>
+          </div>
+        </div>
 
-  const showToast = (msg, severity = "success") => {
-    setToast({ open: true, msg, severity });
-  };
-  const closeToast = () => setToast((prev) => ({ ...prev, open: false }));
+        {/* Note box */}
+        {order.note && (
+          <div style={{ width:260, flexShrink:0, background:"#f9fafb", borderRadius:12, padding:"14px 16px", border:"1px solid #e5e7eb" }}>
+            <div style={{ fontSize:12, fontWeight:700, color:"#6b7280", marginBottom:8, display:"flex", alignItems:"center", gap:6 }}>
+              💬 GHI CHÚ TỪ KHÁCH
+            </div>
+            <div style={{ fontSize:13, color:"#374151", fontStyle:"italic", lineHeight:1.6 }}>"{order.note}"</div>
+          </div>
+        )}
+      </div>
 
-  const loadData = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    else setRefreshing(true);
-    try {
-      const [avail, mine] = await Promise.all([getAvailableOrders(), getShipperOrders()]);
-      setAvailable(avail || []);
-      setMyOrders(mine || []);
-    } catch (err) {
-      showToast("Lỗi tải dữ liệu: " + err.message, "error");
-    } finally {
-      if (!silent) setLoading(false);
-      else setRefreshing(false);
-    }
-  }, []);
+      {/* Items */}
+      <div style={{ padding:"0 20px 16px" }}>
+        <div style={{ fontSize:11, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Chi tiết món ăn</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+          {order.items?.map((item,i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", background:"#fafafa", borderRadius:8 }}>
+              <span style={{ width:28, height:28, borderRadius:6, background:"#e5e7eb", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#374151", flexShrink:0 }}>{item.quantity}x</span>
+              <span style={{ flex:1, fontSize:14, color:"#374151", fontWeight:500 }}>{item.name}</span>
+              <span style={{ fontWeight:700, fontSize:14, color:"#1a1a1a" }}>{fmt(item.price*item.quantity)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+// ── Right panel (summary + actions) ──────────────────────────
+function OrderSummaryPanel({ order, onAccept, onPickup, onComplete, onRefresh, mode }) {
+  const [busy, setBusy] = useState(false);
+  const income = Math.round((order.deliveryFee||0) * 0.7);
 
-  // Auto-refresh every 30s
-  useEffect(() => {
-    const t = setInterval(() => loadData(true), 30000);
-    return () => clearInterval(t);
-  }, [loadData]);
-
-  const doAction = async (orderId, fn, successMsg, onSuccess) => {
-    setActioningId(orderId);
-    try {
-      await fn(orderId);
-      showToast(successMsg, "success");
-      await loadData(true);
-      if (onSuccess) onSuccess();
-    } catch (err) {
-      showToast("Lỗi: " + err.message, "error");
-    } finally {
-      setActioningId(null);
-    }
-  };
-
-  // Derive data
-  const inProgress = myOrders.filter((o) => ["shipper_accepted", "delivering", "shipper_delivered"].includes(o.status));
-  const history = myOrders.filter((o) => ["delivered", "cancelled"].includes(o.status));
-  const completedOrders = myOrders.filter(o => o.status === "delivered").length;
-  const pendingOrders = inProgress.length;
-  const cancelledOrders = myOrders.filter(o => o.status === "cancelled").length;
-  const totalEarnings = myOrders.filter(o => o.status === "delivered").reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
-
-  // Determine current list to render
-  const currentList = tabIndex === 0 ? available : tabIndex === 1 ? inProgress : history;
-
-  // ─── Render Action Area per Order ─────────────────
-  const renderActionArea = (order) => {
-    const isBusy = actioningId === order._id;
-
-    if (tabIndex === 0) {
-      // Chờ nhận
-      return (
-        <Button
-          fullWidth
-          variant="contained"
-          size="large"
-          color="primary"
-          startIcon={isBusy ? <CircularProgress size={20} color="inherit" /> : <TwoWheelerIcon />}
-          disabled={isBusy}
-          onClick={() => doAction(order._id, shipperAcceptOrder, "Đã nhận đơn! Đến nhà hàng lấy hàng nhé.", () => setTabIndex(1))}
-        >
-          {isBusy ? "Đang xử lý..." : "Nhận Đơn Giao"}
-        </Button>
-      );
-    }
-
-    if (tabIndex === 1) {
-      // Đang giao
-      if (order.status === "shipper_accepted") {
-        return (
-          <Button
-            fullWidth
-            variant="contained"
-            size="large"
-            color="secondary"
-            startIcon={isBusy ? <CircularProgress size={20} color="inherit" /> : <LocalShippingIcon />}
-            disabled={isBusy}
-            onClick={() => doAction(order._id, shipperPickedUp, "Đã lấy hàng! Giao cho khách đi nào.")}
-          >
-            {isBusy ? "Đang xử lý..." : "Xác Nhận Đã Lấy Hàng"}
-          </Button>
-        );
-      }
-      if (order.status === "delivering") {
-        return (
-          <Button
-            fullWidth
-            variant="contained"
-            size="large"
-            color="success"
-            startIcon={isBusy ? <CircularProgress size={20} color="inherit" /> : <DoneAllIcon />}
-            disabled={isBusy}
-            onClick={() => doAction(order._id, shipperCompleteDelivery, "Tuyệt! Đã báo giao thành công.")}
-          >
-            {isBusy ? "Đang xử lý..." : "Xác Nhận Đã Giao"}
-          </Button>
-        );
-      }
-      if (order.status === "shipper_delivered") {
-        return (
-          <Alert severity="warning" sx={{ width: "100%", justifyContent: "center", "& .MuiAlert-message": { fontWeight: 600 } }}>
-            Đang chờ khách hàng xác nhận đã nhận...
-          </Alert>
-        );
-      }
-    }
-
-    return null;
+  const doAction = async (fn) => {
+    setBusy(true);
+    try { await fn(order._id); }
+    catch(e) { alert(e.message); }
+    finally { setBusy(false); }
   };
 
   return (
-    <ThemeProvider theme={shipperTheme}>
-      <Box sx={{ minHeight: "100vh", bgcolor: "background.default", pb: 6 }}>
-        {/* ── Header ── */}
-        <AppBar position="sticky" elevation={0} sx={{ bgcolor: "white", borderBottom: "1px solid #e2e8f0" }}>
-          <Container maxWidth="md">
-            <Toolbar disableGutters sx={{ justifyContent: "space-between", py: 1 }}>
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Avatar sx={{ bgcolor: alpha("#ee4d2d", 0.1), color: "primary.main", width: 44, height: 44 }}>
-                  <TwoWheelerIcon />
-                </Avatar>
-                <Box>
-                  <Typography variant="h6" color="text.primary" sx={{ lineHeight: 1.2 }}>
-                    Shipper Dashboard
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Xin chào, <b>{user?.fullName || "Shipper"}</b>
-                  </Typography>
-                </Box>
-              </Stack>
-              <Stack direction="row" spacing={1.5}>
-                <Button variant="outlined" color="primary" startIcon={refreshing ? <CircularProgress size={16} /> : <RefreshIcon />} onClick={() => loadData(true)}>
-                  Làm mới
-                </Button>
-                <Button variant="text" color="error" startIcon={<LogoutIcon />} onClick={onLogout}>
-                  Đăng xuất
-                </Button>
-              </Stack>
-            </Toolbar>
-          </Container>
-        </AppBar>
+    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+      {/* Summary box */}
+      <div style={{ background:"#fff", borderRadius:16, padding:"20px", border:"1px solid #e5e7eb" }}>
+        <div style={{ fontWeight:700, fontSize:16, color:"#1a1a1a", marginBottom:16 }}>Tổng kết đơn hàng</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          <SRow label="Giá trị món ăn" value={fmt(order.subtotal)}/>
+          <SRow label="Phí giao hàng (Khách trả)" value={fmt(order.deliveryFee)}/>
+          {order.discount>0 && <SRow label="Khuyến mãi" value={`-${fmt(order.discount)}`} green/>}
+        </div>
+        <div style={{ borderTop:"1px solid #f3f4f6", marginTop:14, paddingTop:14, display:"flex", justifyContent:"space-between", alignItems:"baseline" }}>
+          <span style={{ fontWeight:700, fontSize:15, color:"#1a1a1a" }}>Tổng thanh toán</span>
+          <span style={{ fontWeight:800, fontSize:20, color:"#1a1a1a" }}>{fmt(order.total)}</span>
+        </div>
+      </div>
 
-        <Container maxWidth="md" sx={{ mt: 4 }}>
-          {/* ── Summary Cards ── */}
-          <Grid container spacing={2} sx={{ mb: 4 }}>
-            <Grid item xs={6} sm={3}>
-              <Paper elevation={0} sx={{ p: 2, textAlign: "center", border: "1px solid #e2e8f0", borderRadius: 3 }}>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
-                  <AssignmentReturnIcon fontSize="small" /> Đơn chờ nhận
-                </Typography>
-                <Typography variant="h4" color="primary.main" fontWeight={800}>
-                  {available.length}
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={6} sm={3}>
-              <Paper elevation={0} sx={{ p: 2, textAlign: "center", border: "1px solid #e2e8f0", borderRadius: 3 }}>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
-                  <LocalShippingIcon fontSize="small" color="secondary" /> Đơn đang giao
-                </Typography>
-                <Typography variant="h4" color="secondary.main" fontWeight={800}>
-                  {inProgress.length}
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={6} sm={3}>
-              <Paper elevation={0} sx={{ p: 2, textAlign: "center", border: "1px solid #e2e8f0", borderRadius: 3 }}>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
-                  <CheckCircleIcon fontSize="small" color="success" /> Đã hoàn thành
-                </Typography>
-                <Typography variant="h4" color="success.main" fontWeight={800}>
-                  {history.filter((o) => o.status === "delivered").length}
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={6} sm={3}>
-              <Paper elevation={0} sx={{ p: 2, textAlign: "center", border: "1px solid #10b981", borderRadius: 3, bgcolor: alpha("#10b981", 0.04) }}>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
-                  💰 Thu nhập
-                </Typography>
-                <Typography variant="h5" color="success.main" fontWeight={800}>
-                  {fmt(totalEarnings)}đ
-                </Typography>
-              </Paper>
-            </Grid>
-          </Grid>
+      {/* Income */}
+      <div style={{ background:"#fff7ed", borderRadius:14, padding:"16px 20px", border:"1px solid #fed7aa", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div>
+          <div style={{ fontSize:11, fontWeight:700, color:"#92400e", textTransform:"uppercase", letterSpacing:"0.6px", marginBottom:4 }}>Thu nhập của bạn</div>
+          <div style={{ fontSize:24, fontWeight:800, color:"#ee4d2d" }}>{fmt(income)}</div>
+        </div>
+        <span style={{ fontSize:24 }}>💰</span>
+      </div>
 
-          {/* ── Tabs ── */}
-          <Paper elevation={0} sx={{ borderBottom: 1, borderColor: "divider", mb: 3, border: "1px solid #e2e8f0", borderRadius: 2, overflow: "hidden" }}>
-            <Tabs value={tabIndex} onChange={(e, val) => setTabIndex(val)} variant="fullWidth" indicatorColor="primary" textColor="primary">
-              <Tab
-                label={
-                  <Badge color="error" badgeContent={available.length} sx={{ "& .MuiBadge-badge": { right: -15, top: -2 } }}>
-                    Chờ Nhận
-                  </Badge>
-                }
-              />
-              <Tab
-                label={
-                  <Badge color="secondary" badgeContent={inProgress.length} sx={{ "& .MuiBadge-badge": { right: -15, top: -2 } }}>
-                    Đang Giao
-                  </Badge>
-                }
-              />
-              <Tab label="Lịch Sử" />
-              <Tab label="Thống Kê" />
-            </Tabs>
-          </Paper>
+      {/* Action buttons */}
+      {mode==="available" && (
+        <>
+          <button onClick={()=>doAction(onAccept)} disabled={busy} style={{ padding:"15px", borderRadius:12, border:"none", background:busy?"#e5e7eb":"#ee4d2d", color:busy?"#9ca3af":"#fff", fontWeight:800, fontSize:15, cursor:busy?"not-allowed":"pointer", boxShadow:busy?"none":"0 4px 14px rgba(238,77,45,.35)", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+            {busy ? "⏳ Đang xử lý..." : <><span>✓</span> Xác nhận đã nhận đơn</>}
+          </button>
+          <button onClick={onRefresh} style={{ padding:"13px", borderRadius:12, border:"1.5px solid #e5e7eb", background:"#fff", color:"#6b7280", fontWeight:600, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+            ↺ Làm mới
+          </button>
+        </>
+      )}
+      {mode==="active" && order.status==="shipper_accepted" && (
+        <button onClick={()=>doAction(onPickup)} disabled={busy} style={{ padding:"15px", borderRadius:12, border:"none", background:busy?"#e5e7eb":"#3b82f6", color:busy?"#9ca3af":"#fff", fontWeight:800, fontSize:15, cursor:busy?"not-allowed":"pointer", boxShadow:busy?"none":"0 4px 14px rgba(59,130,246,.35)" }}>
+          {busy ? "⏳..." : "📦 Đã lấy hàng từ nhà hàng"}
+        </button>
+      )}
+      {mode==="active" && order.status==="delivering" && (
+        <button onClick={()=>doAction(onComplete)} disabled={busy} style={{ padding:"15px", borderRadius:12, border:"none", background:busy?"#e5e7eb":"#10b981", color:busy?"#9ca3af":"#fff", fontWeight:800, fontSize:15, cursor:busy?"not-allowed":"pointer", boxShadow:busy?"none":"0 4px 14px rgba(16,185,129,.35)" }}>
+          {busy ? "⏳..." : "✅ Đã giao hàng thành công"}
+        </button>
+      )}
 
-          {/* ── Content ── */}
-          {tabIndex === 3 ? (
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "1fr 1fr" }, gap: 3, pt: 1, pb: 4 }}>
-              {/* Donut: Order Status */}
-              <Card elevation={0} sx={{ border: "1px solid rgba(0,0,0,0.06)", overflow: "hidden" }}>
-                <CardContent>
-                  <Typography variant="h6" sx={{ mb: 1 }}>📊 Phân bổ trạng thái đơn</Typography>
-                  <Box sx={{ mb: 1.5, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <Typography variant="caption" color="text.secondary">Tổng: {myOrders.length} đơn hàng</Typography>
-                    <Box sx={{ textAlign: "right", p: 1.5, bgcolor: alpha("#10b981", 0.08), borderRadius: 2, border: "1px dashed #10b981" }}>
-                        <Typography variant="caption" color="success.main" fontWeight={700} sx={{ display: "block", textTransform: "uppercase" }}>💰 TỔNG THU NHẬP</Typography>
-                        <Typography variant="h5" color="success.main" fontWeight={800}>{fmt(totalEarnings)}đ</Typography>
-                    </Box>
-                  </Box>
-                  <Box sx={{ height: 280, mt: 2 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: "Hoàn thành", value: completedOrders, color: "#10b981" },
-                            { name: "Đang giao", value: pendingOrders, color: "#f59e0b" },
-                            { name: "Đã hủy", value: cancelledOrders, color: "#ef4444" },
-                          ].filter((d) => d.value > 0)}
-                          cx="50%" cy="50%" innerRadius={65} outerRadius={100} paddingAngle={4} dataKey="value" stroke="none"
-                        >
-                          {[
-                            { name: "Hoàn thành", value: completedOrders, color: "#10b981" },
-                            { name: "Đang giao", value: pendingOrders, color: "#f59e0b" },
-                            { name: "Đã hủy", value: cancelledOrders, color: "#ef4444" },
-                          ].filter((d) => d.value > 0).map((entry, index) => (
-                            <Cell key={index} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <RTooltip formatter={(value, name) => [`${value} đơn`, name]} />
-                        <Legend verticalAlign="bottom" iconType="circle" iconSize={10} formatter={(value) => (<span style={{ color: "#666", fontSize: 13, fontWeight: 500 }}>{value}</span>)} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </Box>
-                </CardContent>
-              </Card>
+      {/* Support box */}
+      <div style={{ background:"#eff6ff", borderRadius:12, padding:"14px 16px", border:"1px solid #bfdbfe" }}>
+        <div style={{ fontSize:13, fontWeight:700, color:"#1e40af", marginBottom:4, display:"flex", alignItems:"center", gap:6 }}>ℹ️ Cần hỗ trợ?</div>
+        <div style={{ fontSize:12, color:"#3b82f6", lineHeight:1.5 }}>Nếu gặp vấn đề trong quá trình lấy hàng, vui lòng liên hệ tổng đài 1900-FOODIE.</div>
+      </div>
+    </div>
+  );
+}
 
-              {/* Area: Orders Timeline */}
-              <Card elevation={0} sx={{ border: "1px solid rgba(0,0,0,0.06)", overflow: "hidden" }}>
-                <CardContent>
-                  <Typography variant="h6" sx={{ mb: 1 }}>📈 Thống kê đơn hàng</Typography>
-                  <Typography variant="caption" color="text.secondary">Lượng đơn hàng trong 6 tháng qua</Typography>
-                  <Box sx={{ height: 280, mt: 2 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart
-                        data={(() => {
-                          const months = {};
-                          const monthNames = ["Th1", "Th2", "Th3", "Th4", "Th5", "Th6", "Th7", "Th8", "Th9", "Th10", "Th11", "Th12"];
-                          const now = new Date();
-                          for (let i = 5; i >= 0; i--) {
-                            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-                            months[key] = { month: monthNames[d.getMonth()] + " " + d.getFullYear(), orders: 0 };
-                          }
-                          myOrders.forEach((o) => {
-                            if (!o.createdAt) return;
-                            const d = new Date(o.createdAt);
-                            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-                            if (months[key]) months[key].orders++;
-                          });
-                          return Object.values(months);
-                        })()}
-                        margin={{ top: 10, right: 30, left: -10, bottom: 0 }}
-                      >
-                        <defs>
-                          <linearGradient id="gradOrders" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#ee4d2d" stopOpacity={0.25} />
-                            <stop offset="95%" stopColor="#ee4d2d" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#999" }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 12, fill: "#999" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                        <RTooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }} />
-                        <Legend verticalAlign="top" align="right" iconType="circle" iconSize={10} formatter={(value) => (<span style={{ color: "#666", fontSize: 13, fontWeight: 500 }}>{value}</span>)} />
-                        <Area type="monotone" dataKey="orders" name="Đơn hàng" stroke="#ee4d2d" strokeWidth={2.5} fillOpacity={1} fill="url(#gradOrders)" dot={{ r: 4, fill: "#ee4d2d", strokeWidth: 2, stroke: "#fff" }} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Box>
-          ) : loading ? (
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 10 }}>
-              <CircularProgress color="primary" sx={{ mb: 2 }} />
-              <Typography color="text.secondary">Đang tải dữ liệu...</Typography>
-            </Box>
-          ) : currentList.length === 0 ? (
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 10, textAlign: "center", color: "text.secondary" }}>
-              <ReceiptLongIcon sx={{ fontSize: 64, mb: 2, opacity: 0.3 }} />
-              <Typography variant="h6">Chưa có đơn hàng nào</Typography>
-              <Typography variant="body2">Không có đơn hàng nào trong phân mục này.</Typography>
-            </Box>
-          ) : (
-            <Stack spacing={2.5}>
-              {currentList.map((order) => {
-                const cfg = STATUS_CONFIG[order.status] || { label: order.status, color: "default" };
-                const items = order.items || [];
+function SRow({ label, value, green }) {
+  return (
+    <div style={{ display:"flex", justifyContent:"space-between", fontSize:13 }}>
+      <span style={{ color:green?"#10b981":"#9ca3af" }}>{label}</span>
+      <span style={{ fontWeight:600, color:green?"#10b981":"#6b7280" }}>{value}</span>
+    </div>
+  );
+}
 
-                return (
-                  <Card key={order._id}>
-                    <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
-                      {/* Card Header */}
-                      <Box sx={{ px: 3, py: 2, bgcolor: "#f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e2e8f0" }}>
-                        <Box>
-                          <Typography variant="subtitle1" color="text.primary" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            <StorefrontIcon fontSize="small" color="primary" /> {order.restaurantName || "Nhà hàng"}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
-                            <AccessTimeIcon fontSize="inherit" /> #{String(order._id).slice(-8).toUpperCase()} • {fmtDate(order.createdAt)}
-                          </Typography>
-                        </Box>
-                        <Chip label={cfg.label} color={cfg.color} size="small" sx={{ fontWeight: 600, borderRadius: 1.5 }} />
-                      </Box>
+// ── Map placeholder ───────────────────────────────────────────
+function MapSection({ order }) {
+  const addr = encodeURIComponent(order?.deliveryAddress || "Ho Chi Minh City");
+  return (
+    <div style={{ borderRadius:16, overflow:"hidden", border:"1px solid #e5e7eb", position:"relative", height:200 }}>
+      <iframe
+        title="map"
+        width="100%" height="100%" frameBorder="0" style={{ display:"block" }}
+        src={`https://maps.google.com/maps?q=${addr}&output=embed&z=14`}
+        allowFullScreen
+      />
+      <div style={{ position:"absolute", bottom:12, left:12, background:"rgba(0,0,0,.7)", color:"#fff", borderRadius:20, padding:"6px 14px", fontSize:12, fontWeight:600, display:"flex", alignItems:"center", gap:6 }}>
+        🧭 {order?.deliveryAddress?.slice(0,40)}...
+      </div>
+    </div>
+  );
+}
 
-                      {/* Card Body */}
-                      <Box sx={{ p: 3 }}>
-                        <Grid container spacing={3}>
-                          {/* Left col: Customer info */}
-                          <Grid item xs={12} md={7}>
-                            <Stack spacing={2}>
-                              <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-                                <Avatar sx={{ bgcolor: alpha("#f59e0b", 0.1), color: "#f59e0b", width: 36, height: 36 }}>
-                                  <PersonIcon fontSize="small" />
-                                </Avatar>
-                                <Box>
-                                  <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                                    Khách hàng
-                                  </Typography>
-                                  <Typography variant="body1" fontWeight={600} color="text.primary">
-                                    {order.user?.fullName || "Khách ẩn danh"}
-                                  </Typography>
-                                  <Typography variant="body2" color="text.secondary">
-                                    {order.user?.phone || "Không có số ĐT"}
-                                  </Typography>
-                                </Box>
-                              </Box>
+// ── Stats Tab ─────────────────────────────────────────────────
+function StatsTab({ orders }) {
+  const done   = orders.filter(o=>o.status==="delivered");
+  const income = done.reduce((s,o)=>s+Math.round((o.deliveryFee||0)*0.7),0);
+  const today  = new Date().toLocaleDateString("vi-VN");
+  const todayD = done.filter(o=>new Date(o.createdAt).toLocaleDateString("vi-VN")===today);
+  const todayI = todayD.reduce((s,o)=>s+Math.round((o.deliveryFee||0)*0.7),0);
 
-                              <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-                                <Avatar sx={{ bgcolor: alpha("#10b981", 0.1), color: "#10b981", width: 36, height: 36 }}>
-                                  <LocationOnIcon fontSize="small" />
-                                </Avatar>
-                                <Box>
-                                  <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                                    Địa chỉ giao hàng
-                                  </Typography>
-                                  <Typography variant="body1" color="text.primary" sx={{ lineHeight: 1.4 }}>
-                                    {order.deliveryAddress || "Nhận tại cửa hàng"}
-                                  </Typography>
-                                </Box>
-                              </Box>
-                              
-                              {order.note && (
-                                <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-                                  <Avatar sx={{ bgcolor: alpha("#94a3b8", 0.1), color: "#64748b", width: 36, height: 36 }}>
-                                    <ReceiptLongIcon fontSize="small" />
-                                  </Avatar>
-                                  <Box>
-                                    <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                                      Ghi chú
-                                    </Typography>
-                                    <Typography variant="body2" color="text.primary">
-                                      {order.note}
-                                    </Typography>
-                                  </Box>
-                                </Box>
-                              )}
-                            </Stack>
-                          </Grid>
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
+        <StatCard label="Tổng hoàn thành" value={done.length} icon="🎉" color="#10b981"/>
+        <StatCard label="Tổng thu nhập"   value={fmt(income)} icon="💰" color="#ee4d2d"/>
+        <StatCard label="Đơn hôm nay"     value={todayD.length} icon="📦" color="#3b82f6"/>
+        <StatCard label="Thu hôm nay"     value={fmt(todayI)} icon="💵" color="#f59e0b"/>
+      </div>
+      <div style={{ background:"#fff", borderRadius:16, border:"1px solid #e5e7eb", overflow:"hidden" }}>
+        <div style={{ padding:"16px 20px", borderBottom:"1px solid #f3f4f6", fontWeight:700, fontSize:15, color:"#1a1a1a" }}>📋 Lịch sử gần đây</div>
+        {done.length===0
+          ? <div style={{ padding:"40px", textAlign:"center", color:"#9ca3af" }}>Chưa có đơn hoàn thành</div>
+          : done.slice(0,10).map(o=>(
+            <div key={o._id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 20px", borderBottom:"1px solid #f9fafb" }}>
+              <div>
+                <div style={{ fontWeight:600, fontSize:13 }}>{o.restaurantName}</div>
+                <div style={{ fontSize:11, color:"#9ca3af", marginTop:1 }}>{fmtD(o.createdAt)} · {o.items?.length} món</div>
+              </div>
+              <div style={{ textAlign:"right" }}>
+                <div style={{ fontWeight:700, color:"#ee4d2d", fontSize:13 }}>+{fmt(Math.round((o.deliveryFee||0)*0.7))}</div>
+                <div style={{ fontSize:11, color:"#9ca3af" }}>Tổng đơn: {fmt(o.total)}</div>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  );
+}
 
-                          {/* Right col: Order items */}
-                          <Grid item xs={12} md={5}>
-                            <Box sx={{ bgcolor: "#f8fafc", p: 2, borderRadius: 2, border: "1px dashed #cbd5e1", height: "100%" }}>
-                              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
-                                Đơn hàng ({items.length} món)
-                              </Typography>
-                              <Stack spacing={1} sx={{ mb: 2 }}>
-                                {items.slice(0, 3).map((item, i) => (
-                                  <Box key={i} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <Typography variant="body2" color="text.primary" sx={{ flex: 1, pr: 1, display: "flex", alignItems: "center", gap: 1 }}>
-                                      {item.emoji || "🍽️"} {item.name} <span style={{ color: "#64748b", fontWeight: 600 }}>x{item.quantity}</span>
-                                    </Typography>
-                                    <Typography variant="body2" fontWeight={600}>
-                                      {fmt(item.price * item.quantity)}đ
-                                    </Typography>
-                                  </Box>
-                                ))}
-                                {items.length > 3 && (
-                                  <Typography variant="caption" color="text.secondary">
-                                    + {items.length - 3} món khác...
-                                  </Typography>
-                                )}
-                              </Stack>
+// ── Main ──────────────────────────────────────────────────────
+export default function ShipperDashboardPage({ user, onLogout }) {
+  const [tab,       setTab]       = useState("available");
+  const [available, setAvailable] = useState([]);
+  const [myOrders,  setMyOrders]  = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [toast,     setToast]     = useState(null);
+  const [selIdx,    setSelIdx]    = useState(0); // selected order index in current tab
 
-                              <Divider sx={{ my: 1.5, borderStyle: "dashed" }} />
+  const showToast = (msg,type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),3500); };
 
-                              {/* Delivery fee for shipper */}
-                              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1, py: 0.5, px: 1, bgcolor: alpha("#10b981", 0.06), borderRadius: 1 }}>
-                                <Typography variant="body2" color="success.main" fontWeight={700} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                                  🚚 Phí giao hàng (thu nhập)
-                                </Typography>
-                                <Typography variant="body1" color="success.main" fontWeight={800}>
-                                  {fmt(order.deliveryFee || 0)}đ
-                                </Typography>
-                              </Box>
-                              
-                              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <Typography variant="body2" color="text.secondary">
-                                  {order.paymentMethod === "cash" ? "Thanh toán:" : "Thanh toán:"} {order.paymentMethod === "cash" ? "Tiền mặt" : order.paymentMethod?.toUpperCase()}
-                                </Typography>
-                                <Typography variant="h6" color="primary.main">
-                                  {fmt(order.total)}đ
-                                </Typography>
-                              </Box>
-                            </Box>
-                          </Grid>
-                        </Grid>
-                      </Box>
+  const load = useCallback(async (quiet=false) => {
+    if(!quiet) setLoading(true);
+    try {
+      const [av,my] = await Promise.all([getAvailableOrders(), getShipperOrders()]);
+      setAvailable(av||[]);
+      setMyOrders(my||[]);
+    } catch(e) { console.error(e); }
+    finally { if(!quiet) setLoading(false); }
+  },[]);
 
-                      {/* Card Footer Actions */}
-                      {renderActionArea(order) && (
-                        <Box sx={{ px: 3, py: 2, borderTop: "1px solid #e2e8f0", bgcolor: "#fff" }}>
-                          {renderActionArea(order)}
-                        </Box>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </Stack>
-          )}
-        </Container>
-      </Box>
+  useEffect(()=>{ load(); },[load]);
+  useEffect(()=>{ const id=setInterval(()=>load(true),8000); return()=>clearInterval(id); },[load]);
 
-      {/* Snackbar */}
-      <Snackbar open={toast.open} autoHideDuration={3000} onClose={closeToast} anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
-        <Alert onClose={closeToast} severity={toast.severity} sx={{ width: "100%", borderRadius: 2, fontWeight: 600, boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
+  const active   = myOrders.filter(o=>["shipper_accepted","delivering"].includes(o.status));
+  const history  = myOrders.filter(o=>["shipper_delivered","delivered","cancelled"].includes(o.status));
+  const completed= myOrders.filter(o=>o.status==="delivered").length;
+  const income   = myOrders.filter(o=>o.status==="delivered").reduce((s,o)=>s+Math.round((o.deliveryFee||0)*0.7),0);
+
+  const handleAccept   = async id=>{ await shipperAcceptOrder(id);       await load(true); showToast("✅ Đã nhận đơn!"); setSelIdx(0); };
+  const handlePickup   = async id=>{ await shipperPickedUp(id);          await load(true); showToast("📦 Đã lấy hàng!"); };
+  const handleComplete = async id=>{ await shipperCompleteDelivery(id);  await load(true); showToast("🎉 Giao thành công!"); setSelIdx(0); };
+
+  const TABS = [
+    { key:"available", label:"Chờ Nhận",  count:available.length },
+    { key:"active",    label:"Đang Giao", count:active.length    },
+    { key:"history",   label:"Lịch Sử",   count:null             },
+    { key:"stats",     label:"Thống Kê",  count:null             },
+  ];
+
+  // Current list for selected tab
+  const curList = tab==="available" ? available : tab==="active" ? active : tab==="history" ? history : [];
+  const selOrder = curList[selIdx] || curList[0] || null;
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#f3f4f6", fontFamily:"inherit" }}>
+
+      {/* Header */}
+      <div style={{ background:"#fff", borderBottom:"1px solid #e5e7eb", position:"sticky", top:0, zIndex:100 }}>
+        <div style={{ maxWidth:1160, margin:"0 auto", padding:"0 24px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ fontSize:20 }}>🛵</span>
+            <span style={{ fontWeight:800, fontSize:16, color:"#1a1a1a" }}>Shipper Dashboard</span>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ textAlign:"right" }}>
+              <div style={{ fontWeight:700, fontSize:13, color:"#1a1a1a" }}>{user?.fullName}</div>
+              <div style={{ fontSize:11, color:"#9ca3af" }}>ID: {user?.id?.slice(-6).toUpperCase()}</div>
+            </div>
+            <div style={{ width:36,height:36,borderRadius:"50%",overflow:"hidden",background:"#f3f4f6",flexShrink:0,border:"2px solid #e5e7eb" }}>
+              {user?.avatar
+                ? <img src={user.avatar} style={{ width:"100%",height:"100%",objectFit:"cover" }}/>
+                : <div style={{ width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>👤</div>}
+            </div>
+            <button onClick={onLogout} style={{ padding:"7px 14px",borderRadius:8,border:"1.5px solid #e5e7eb",background:"#fff",color:"#6b7280",fontWeight:600,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",gap:5 }}>
+              ↩ Đăng xuất
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth:1160, margin:"0 auto", padding:"20px 24px" }}>
+
+        {/* Welcome */}
+        <div style={{ background:"#fff", borderRadius:16, padding:"20px 24px", marginBottom:16, border:"1px solid #e5e7eb", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+            <div style={{ width:48,height:48,borderRadius:14,background:"#fff0ed",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24 }}>🛵</div>
+            <div>
+              <div style={{ fontWeight:800,fontSize:18,color:"#1a1a1a" }}>Chào {hour()}, {user?.fullName?.split(" ").pop()}!</div>
+              <div style={{ fontSize:13,color:"#9ca3af",marginTop:2 }}>Hôm nay bạn có {available.length} lộ trình mới cực hấp dẫn.</div>
+            </div>
+          </div>
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontWeight:700,fontSize:13,color:"#1a1a1a" }}>{user?.fullName}</div>
+            <div style={{ fontSize:12,color:"#9ca3af" }}>ID: {user?.id?.slice(-6).toUpperCase()}</div>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:16 }}>
+          <StatCard label="Chờ nhận"   value={available.length.toString().padStart(2,"0")} icon="📋" color="#f59e0b"/>
+          <StatCard label="Đang giao"  value={active.length.toString().padStart(2,"0")}    icon="🚚" color="#3b82f6"/>
+          <StatCard label="Hoàn thành" value={completed.toString().padStart(2,"0")}         icon="✅" color="#10b981"/>
+          <StatCard label="Thu nhập"   value={fmt(income)}                                  icon="💰" color="#ee4d2d"/>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ background:"#fff", borderRadius:12, marginBottom:16, border:"1px solid #e5e7eb", display:"flex" }}>
+          {TABS.map(t=>(
+            <button key={t.key} onClick={()=>{ setTab(t.key); setSelIdx(0); }} style={{
+              flex:1, padding:"14px 0", border:"none", background:"none", cursor:"pointer",
+              fontSize:14, fontWeight:tab===t.key?700:400,
+              color:tab===t.key?"#ee4d2d":"#6b7280",
+              borderBottom:tab===t.key?"2.5px solid #ee4d2d":"2.5px solid transparent",
+              transition:"all .2s", display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+            }}>
+              {t.label}
+              {t.count!=null&&t.count>0&&<span style={{ background:"#ee4d2d",color:"#fff",borderRadius:10,padding:"1px 7px",fontSize:11,fontWeight:700 }}>{t.count}</span>}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div style={{ textAlign:"center",padding:"80px 0",color:"#9ca3af" }}>
+            <div style={{ fontSize:36,display:"inline-block",animation:"spin 1s linear infinite" }}>⏳</div>
+            <div style={{ marginTop:12 }}>Đang tải...</div>
+          </div>
+        ) : tab==="stats" ? (
+          <StatsTab orders={myOrders}/>
+        ) : (
+          <>
+            {curList.length===0 ? (
+              <div style={{ textAlign:"center",padding:"60px",background:"#fff",borderRadius:16,border:"1px solid #e5e7eb" }}>
+                <div style={{ fontSize:48,marginBottom:12 }}>{ tab==="available"?"📋":tab==="active"?"🚚":"📜" }</div>
+                <div style={{ color:"#9ca3af",fontSize:15 }}>{ tab==="available"?"Chưa có đơn chờ nhận":tab==="active"?"Không có đơn đang giao":"Chưa có lịch sử" }</div>
+              </div>
+            ) : tab==="history" ? (
+              /* History: simple list, no 2-col */
+              <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+                {curList.map(o=>{
+                  const cfg=STATUS_CFG[o.status]||STATUS_CFG.delivered;
+                  return(
+                    <div key={o._id} style={{ background:"#fff",borderRadius:14,padding:"14px 20px",border:"1px solid #e5e7eb",display:"flex",justifyContent:"space-between",alignItems:"center",gap:16 }}>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontWeight:700,fontSize:14,color:"#1a1a1a" }}>{o.restaurantName}</div>
+                        <div style={{ fontSize:12,color:"#9ca3af",marginTop:2 }}>{fmtD(o.createdAt)} · {o.deliveryAddress?.slice(0,50)}</div>
+                        <div style={{ fontSize:12,color:"#6b7280",marginTop:3 }}>{o.items?.map(i=>`${i.name} x${i.quantity}`).join(", ")}</div>
+                      </div>
+                      <div style={{ textAlign:"right",flexShrink:0 }}>
+                        <span style={{ fontSize:11,fontWeight:700,color:cfg.color,background:cfg.bg,padding:"3px 10px",borderRadius:20,border:`1px solid ${cfg.color}33` }}>{cfg.label}</span>
+                        <div style={{ fontWeight:700,color:"#ee4d2d",fontSize:14,marginTop:6 }}>+{fmt(Math.round((o.deliveryFee||0)*0.7))}</div>
+                        <div style={{ fontSize:11,color:"#9ca3af" }}>Tổng đơn: {fmt(o.total)}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Available / Active: 2-col layout */
+              <div>
+                <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+                  {curList.map(order => (
+                    <div key={order._id} style={{ display:"flex", gap:20, alignItems:"flex-start" }}>
+                      {/* Left: order info */}
+                      <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:16 }}>
+                        <OrderInfoCard order={order}/>
+                        <MapSection order={order}/>
+                      </div>
+                      {/* Right: summary + actions */}
+                      <div style={{ width:280, flexShrink:0 }}>
+                        <OrderSummaryPanel
+                          order={order}
+                          mode={tab}
+                          onAccept={handleAccept}
+                          onPickup={handlePickup}
+                          onComplete={handleComplete}
+                          onRefresh={()=>load(true)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Toast */}
+      {toast&&(
+        <div style={{ position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:toast.type==="error"?"#ef4444":"#10b981",color:"#fff",padding:"13px 22px",borderRadius:14,fontWeight:600,fontSize:14,zIndex:9999,boxShadow:"0 8px 32px rgba(0,0,0,.2)",display:"flex",alignItems:"center",gap:8,whiteSpace:"nowrap",animation:"toastIn .3s ease" }}>
           {toast.msg}
-        </Alert>
-      </Snackbar>
-    </ThemeProvider>
+          <button onClick={()=>setToast(null)} style={{ marginLeft:8,background:"rgba(255,255,255,.25)",border:"none",color:"#fff",borderRadius:8,width:20,height:20,cursor:"pointer",fontWeight:700 }}>✕</button>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin { to{transform:rotate(360deg)} }
+        @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(12px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+      `}</style>
+    </div>
   );
 }
