@@ -13,6 +13,7 @@ import { orderAPI, restaurantAPI, productAPI, API_BASE_URL } from '@/constants/a
 import { useFavorites } from '@/constants/favorites-context';
 import CreateModalPage from './create.modal';
 import ConfirmOrderScreen from '@/components/ConfirmOrderScreen';
+import RestaurantMap from '@/components/map/RestaurantMap';
 
 const { width, height } = Dimensions.get('window');
 const HERO_HEIGHT = 240;
@@ -300,7 +301,7 @@ export default function RestaurantDetailScreen() {
     const calculateLinePrice = (line: typeof cartLines[0]): number => {
         const item = sections.flatMap(s => s.data).find(i => i.id === line.itemId);
         let basePrice = item?.price || 0;
-        
+
         // Apply promotion discount
         if (item?.promotion) {
             basePrice = basePrice * (1 - item.promotion.discountPercent / 100);
@@ -518,10 +519,10 @@ export default function RestaurantDetailScreen() {
                 <Text style={s.navTitle} numberOfLines={1}>{restaurant.name}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <TouchableOpacity onPress={() => toggleFavorite(restaurant._id || restaurant.id)}>
-                        <Ionicons 
-                            name={isFavorite(restaurant._id || restaurant.id) ? "heart" : "heart-outline"} 
-                            size={22} 
-                            color={isFavorite(restaurant._id || restaurant.id) ? "#EF4444" : AppColors.charcoal} 
+                        <Ionicons
+                            name={isFavorite(restaurant._id || restaurant.id) ? "heart" : "heart-outline"}
+                            size={22}
+                            color={isFavorite(restaurant._id || restaurant.id) ? "#EF4444" : AppColors.charcoal}
                         />
                     </TouchableOpacity>
                     <TouchableOpacity>
@@ -536,7 +537,7 @@ export default function RestaurantDetailScreen() {
                     <Ionicons name="arrow-back" size={22} color="#fff" />
                 </TouchableOpacity>
             </Animated.View>
-            
+
             <SectionList
                 ref={sectionListRef}
                 sections={activeTab === 'Tất cả' ? sections : sections.filter(s => s.title === activeTab)}
@@ -559,15 +560,15 @@ export default function RestaurantDetailScreen() {
                             <View style={s.infoTop}>
                                 <Text style={s.restName}>{restaurant.name}</Text>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                                    <TouchableOpacity 
-                                        style={s.favBtnInfo} 
+                                    <TouchableOpacity
+                                        style={s.favBtnInfo}
                                         onPress={() => toggleFavorite(restaurant._id || restaurant.id)}
                                         activeOpacity={0.7}
                                     >
-                                        <Ionicons 
-                                            name={isFavorite(restaurant._id || restaurant.id) ? "heart" : "heart-outline"} 
-                                            size={24} 
-                                            color={isFavorite(restaurant._id || restaurant.id) ? "#EF4444" : AppColors.gray} 
+                                        <Ionicons
+                                            name={isFavorite(restaurant._id || restaurant.id) ? "heart" : "heart-outline"}
+                                            size={24}
+                                            color={isFavorite(restaurant._id || restaurant.id) ? "#EF4444" : AppColors.gray}
                                         />
                                     </TouchableOpacity>
                                     <View style={[s.statusChip, { backgroundColor: restaurant.isOpen !== false ? '#D1FAE5' : '#FEE2E2' }]}>
@@ -622,6 +623,13 @@ export default function RestaurantDetailScreen() {
                                 </LinearGradient>
                             )}
                         </View>
+
+                        <RestaurantMap
+                            latitude={restaurant.lat}
+                            longitude={restaurant.lng}
+                            name={restaurant.name}
+                            address={restaurant.address}
+                        />
 
                         <View style={s.tabsWrapper}>
                             <ScrollView ref={tabScrollRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabsList}>

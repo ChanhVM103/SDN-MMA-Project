@@ -10,8 +10,8 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  * @returns {Promise<string>} AI's advice.
  */
 async function chatAI(question, products, restaurantInfo = null) {
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // Prepare context from products
     const productContext = products
