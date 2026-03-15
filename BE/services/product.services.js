@@ -63,7 +63,7 @@ const getAllProducts = async (
 
     const productDocs = products.map(p => {
       const pObj = p.toObject();
-      const promo = activePromos.find(pr => 
+      const promo = activePromos.find(pr =>
         pr.productIds.some(pid => pid.toString() === p._id.toString())
       );
       if (promo) {
@@ -187,7 +187,7 @@ const getBestSellerProducts = async (restaurantId = null, limit = 10) => {
 
     return await Product.find(query)
       .select(PRODUCT_SELECT_FIELDS)
-      .populate("restaurantId", "name image")
+      .populate("restaurantId", "name image deliveryTime deliveryFee rating")
       .sort({ createdAt: -1 })
       .limit(limit);
   } catch (error) {
@@ -235,7 +235,7 @@ const getProductsByRestaurant = async (
 
     const productDocs = products.map(p => {
       const pObj = p.toObject();
-      const promo = activePromos.find(pr => 
+      const promo = activePromos.find(pr =>
         pr.productIds.some(pid => pid.toString() === p._id.toString())
       );
       if (promo) {
@@ -379,18 +379,18 @@ const deleteProductForRestaurant = async (productId, restaurantId) => {
     }
 
     const deletedProduct = await Product.findByIdAndDelete(productId);
-    
+
     if (deletedProduct) {
       // Cleanup: Remove this product from all promotions
       await Promotion.updateMany(
         { productIds: productId },
         { $pull: { productIds: productId } }
       );
-      
+
       // If a promotion becomes empty, we might want to deactivate it or keep it
       // For now, just removing the reference is enough to prevent ghost products
     }
-    
+
     return deletedProduct;
   } catch (error) {
     throw new Error(`Error deleting product: ${error.message}`);
@@ -416,7 +416,7 @@ const getFlashSaleProducts = async (limit = 20) => {
 
     // Get unique product IDs across all brands
     const productIds = Array.from(new Set(activePromos.flatMap(p => p.productIds.map(id => id.toString()))));
-    
+
     // Fetch products, limit to requested amount
     // We sort by createdAt of the product as a proxy, but could be randomized
     const products = await Product.find({ _id: { $in: productIds }, isAvailable: true })
@@ -427,7 +427,7 @@ const getFlashSaleProducts = async (limit = 20) => {
 
     return products.map(p => {
       const pObj = p.toObject();
-      const promo = activePromos.find(promo => 
+      const promo = activePromos.find(promo =>
         promo.productIds.some(pid => pid.toString() === p._id.toString())
       );
       if (promo) {

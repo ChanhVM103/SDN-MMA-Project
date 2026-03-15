@@ -18,6 +18,7 @@ import {
   toggleVoucherApi,
 } from "../services/admin-api";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import LocationPicker from "../components/LocationPicker";
 
 // MUI Components
 import {
@@ -258,6 +259,15 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
     latitude: Number(form.latitude),
     longitude: Number(form.longitude),
   });
+
+  const handleLocationChange = (lat, lng, address) => {
+    setRestaurantForm((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+      address: address || prev.address,
+    }));
+  };
 
   // Snackbar
   const [snackbar, setSnackbar] = useState({
@@ -1296,45 +1306,45 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
                             .filter((r) => r.address)
                             .sort((a, b) => (b.revenue?.totalRevenue || 0) - (a.revenue?.totalRevenue || 0))
                             .map((r) => (
-                            <TableRow key={r._id} hover>
-                              <TableCell>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                                  <Avatar variant="rounded" src={r.image} sx={{ width: 36, height: 36 }}>
-                                    {r.name?.charAt(0)}
-                                  </Avatar>
-                                  <Box>
-                                    <Typography variant="body2" fontWeight={600}>{r.name}</Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                      {r.owner?.fullName || "Vô chủ"}
-                                    </Typography>
+                              <TableRow key={r._id} hover>
+                                <TableCell>
+                                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                                    <Avatar variant="rounded" src={r.image} sx={{ width: 36, height: 36 }}>
+                                      {r.name?.charAt(0)}
+                                    </Avatar>
+                                    <Box>
+                                      <Typography variant="body2" fontWeight={600}>{r.name}</Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        {r.owner?.fullName || "Vô chủ"}
+                                      </Typography>
+                                    </Box>
                                   </Box>
-                                </Box>
-                              </TableCell>
-                              <TableCell align="right">
-                                <Chip label={r.revenue?.totalOrders || 0} size="small" variant="outlined" />
-                              </TableCell>
-                              <TableCell align="right">
-                                <Typography variant="body2" color="success.main" fontWeight={600}>
-                                  {r.revenue?.countByStatus?.delivered || 0}
-                                </Typography>
-                              </TableCell>
-                              <TableCell align="right">
-                                <Typography variant="body2" color="info.main" fontWeight={600}>
-                                  {(r.revenue?.countByStatus?.delivering || 0) + (r.revenue?.countByStatus?.shipper_accepted || 0)}
-                                </Typography>
-                              </TableCell>
-                              <TableCell align="right">
-                                <Typography variant="body2" color="error.main" fontWeight={600}>
-                                  {r.revenue?.countByStatus?.cancelled || 0}
-                                </Typography>
-                              </TableCell>
-                              <TableCell align="right">
-                                <Typography variant="body2" fontWeight={700} color="primary.main" sx={{ fontSize: "0.95rem" }}>
-                                  {r.revenue?.totalRevenue?.toLocaleString() || "0"}₫
-                                </Typography>
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Chip label={r.revenue?.totalOrders || 0} size="small" variant="outlined" />
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Typography variant="body2" color="success.main" fontWeight={600}>
+                                    {r.revenue?.countByStatus?.delivered || 0}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Typography variant="body2" color="info.main" fontWeight={600}>
+                                    {(r.revenue?.countByStatus?.delivering || 0) + (r.revenue?.countByStatus?.shipper_accepted || 0)}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Typography variant="body2" color="error.main" fontWeight={600}>
+                                    {r.revenue?.countByStatus?.cancelled || 0}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Typography variant="body2" fontWeight={700} color="primary.main" sx={{ fontSize: "0.95rem" }}>
+                                    {r.revenue?.totalRevenue?.toLocaleString() || "0"}₫
+                                  </Typography>
+                                </TableCell>
+                              </TableRow>
+                            ))}
                           {resRevenue.filter((r) => r.address).length > 0 && (
                             <TableRow sx={{ bgcolor: "#f8f9fa" }}>
                               <TableCell colSpan={5}>
@@ -1415,7 +1425,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
                     <Tab value="all" label="Tất cả" />
                     <Tab value="user" label="Khách hàng" />
                     <Tab value="brand" label="Thương hiệu" />
-    
+
                   </Tabs>
                 </Box>
 
@@ -2173,7 +2183,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
             />
             <TextField
               fullWidth
-              label="Địa chỉ"
+              label="Địa chỉ (Sẽ tự động cập nhật khi chọn trên bản đồ)"
               required
               value={restaurantForm.address}
               onChange={(e) =>
@@ -2184,6 +2194,18 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
               }
               sx={{ mb: 2 }}
             />
+
+            <Typography variant="subtitle2" gutterBottom sx={{ mt: 1, fontWeight: 700 }}>
+              Vị trí trên bản đồ
+            </Typography>
+            <Box sx={{ mb: 3, borderRadius: 2, overflow: "hidden", border: "1px solid #ddd" }}>
+              <LocationPicker
+                lat={restaurantForm.latitude}
+                lng={restaurantForm.longitude}
+                onLocationChange={handleLocationChange}
+              />
+            </Box>
+
             <TextField
               fullWidth
               label="Số điện thoại"
@@ -2239,7 +2261,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
                 }
               />
             </Stack>
-            <Stack direction="row" spacing={2}>
+            <Stack direction="row" spacing={2} sx={{ display: "none" }}>
               <TextField
                 fullWidth
                 label="Vĩ độ (Latitude)"
@@ -2461,7 +2483,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
             />
             <TextField
               fullWidth
-              label="Địa chỉ"
+              label="Địa chỉ (Tự động cập nhật từ bản đồ)"
               required
               value={restaurantForm.address}
               onChange={(e) =>
@@ -2472,6 +2494,18 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
               }
               sx={{ mb: 2 }}
             />
+
+            <Typography variant="subtitle2" gutterBottom sx={{ mt: 1, fontWeight: 700 }}>
+              Vị trí trên bản đồ
+            </Typography>
+            <Box sx={{ mb: 3, borderRadius: 2, overflow: "hidden", border: "1px solid #ddd" }}>
+              <LocationPicker
+                lat={restaurantForm.latitude}
+                lng={restaurantForm.longitude}
+                onLocationChange={handleLocationChange}
+              />
+            </Box>
+
             <TextField
               fullWidth
               label="Số điện thoại"
@@ -2497,7 +2531,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
               }
               sx={{ mb: 2 }}
             />
-            <Stack direction="row" spacing={2}>
+            <Stack direction="row" spacing={2} sx={{ display: "none" }}>
               <TextField
                 fullWidth
                 label="Vĩ độ (Latitude)"
