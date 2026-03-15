@@ -27,6 +27,7 @@ import SalePopup from '@/components/SalePopup';
 import BrandSection from '@/components/home/BrandSection';
 import NewArrivalsSection from '@/components/home/NewArrivalsSection';
 import { getRestaurantsByTags, getTopRatedRestaurants, getFlashSaleRestaurants } from '@/constants/restaurant-api';
+import ChatFloatingButton from '@/components/ChatFloatingButton';
 
 const { width } = Dimensions.get('window');
 
@@ -647,6 +648,9 @@ export default function HomeScreen() {
 
       {/* Sale Popup */}
       <SalePopup />
+
+      {/* AI Chat Floating Button */}
+      <ChatFloatingButton />
     </View>
   );
 }
