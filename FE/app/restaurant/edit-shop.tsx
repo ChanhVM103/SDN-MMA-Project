@@ -11,6 +11,7 @@ import { useAuth } from '@/constants/auth-context';
 import { restaurantAPI } from '@/constants/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import LocationPicker from '@/components/map/LocationPicker';
 
 const TAG_SUGGESTIONS = [
     'Cơm', 'Phở', 'Bún', 'Bánh mì', 'Đồ ăn vặt', 'Trà sữa',
@@ -40,6 +41,8 @@ export default function EditShopScreen() {
     const [isOpen, setIsOpen] = useState(true);
     const [newTag, setNewTag] = useState('');
     const [imageBase64, setImageBase64] = useState<string | null>(null);
+    const [lat, setLat] = useState<number | undefined>(undefined);
+    const [lng, setLng] = useState<number | undefined>(undefined);
 
     useEffect(() => {
         fetchShopData();
@@ -63,6 +66,8 @@ export default function EditShopScreen() {
                 setDeliveryFee(String(d.deliveryFee || ''));
                 setOpeningHours(d.openingHours || '');
                 setIsOpen(d.isOpen !== false);
+                setLat(d.lat);
+                setLng(d.lng);
             }
         } catch (e) {
             console.error('Failed to load shop data:', e);
@@ -128,6 +133,8 @@ export default function EditShopScreen() {
                 deliveryFee: parseInt(deliveryFee) || 0,
                 openingHours: openingHours.trim(),
                 isOpen,
+                lat,
+                lng,
             };
 
             // If image changed (we have a base64 string), pass it; otherwise keep the URL
@@ -180,8 +187,8 @@ export default function EditShopScreen() {
             </LinearGradient>
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-                <ScrollView 
-                    style={st.content} 
+                <ScrollView
+                    style={st.content}
                     contentContainerStyle={{ paddingBottom: 100 }}
                     showsVerticalScrollIndicator={false}
                 >
@@ -206,41 +213,41 @@ export default function EditShopScreen() {
                     <View style={st.card}>
                         <View style={st.fieldGroup}>
                             <Text style={st.fieldLabel}>Tên cửa hàng *</Text>
-                            <TextInput 
-                                style={st.input} 
-                                value={name} 
-                                onChangeText={setName} 
-                                placeholder="VD: Bún Chả Obama" 
-                                placeholderTextColor="#94A3B8" 
+                            <TextInput
+                                style={st.input}
+                                value={name}
+                                onChangeText={setName}
+                                placeholder="VD: Bún Chả Obama"
+                                placeholderTextColor="#94A3B8"
                             />
                         </View>
-                        
+
                         <View style={st.fieldGroup}>
                             <Text style={st.fieldLabel}>Mô tả ngắn</Text>
-                            <TextInput 
-                                style={[st.input, st.textArea]} 
-                                value={description} 
+                            <TextInput
+                                style={[st.input, st.textArea]}
+                                value={description}
                                 onChangeText={setDescription}
-                                placeholder="Giới thiệu về hương vị đặc trưng của shop..." 
+                                placeholder="Giới thiệu về hương vị đặc trưng của shop..."
                                 placeholderTextColor="#94A3B8"
-                                multiline 
-                                numberOfLines={3} 
-                                textAlignVertical="top" 
+                                multiline
+                                numberOfLines={3}
+                                textAlignVertical="top"
                             />
                         </View>
 
                         <View style={st.fieldGroup}>
                             <Text style={st.fieldLabel}>Loại hình kinh doanh</Text>
                             <View style={st.typeRow}>
-                                <TouchableOpacity 
-                                    style={[st.typeBtn, type === 'food' && st.typeBtnActive]} 
+                                <TouchableOpacity
+                                    style={[st.typeBtn, type === 'food' && st.typeBtnActive]}
                                     onPress={() => setType('food')}
                                 >
                                     <Ionicons name="fast-food" size={18} color={type === 'food' ? '#FF6B35' : '#64748B'} />
                                     <Text style={[st.typeBtnText, type === 'food' && st.typeBtnTextActive]}>Đồ ăn</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity 
-                                    style={[st.typeBtn, type === 'drink' && st.typeBtnActive]} 
+                                <TouchableOpacity
+                                    style={[st.typeBtn, type === 'drink' && st.typeBtnActive]}
                                     onPress={() => setType('drink')}
                                 >
                                     <Ionicons name="cafe" size={18} color={type === 'drink' ? '#FF6B35' : '#64748B'} />
@@ -257,37 +264,50 @@ export default function EditShopScreen() {
                             <Text style={st.fieldLabel}>Địa chỉ cửa hàng</Text>
                             <View style={st.inputIconWrapper}>
                                 <Ionicons name="location-outline" size={18} color="#94A3B8" style={st.inputIcon} />
-                                <TextInput 
-                                    style={[st.input, { paddingLeft: 45 }]} 
-                                    value={address} 
+                                <TextInput
+                                    style={[st.input, { paddingLeft: 45 }]}
+                                    value={address}
                                     onChangeText={setAddress}
-                                    placeholder="Số nhà, tên đường, quận/huyện..." 
-                                    placeholderTextColor="#94A3B8" 
+                                    placeholder="Số nhà, tên đường, quận/huyện..."
+                                    placeholderTextColor="#94A3B8"
                                 />
                             </View>
+                        </View>
+
+                        <View style={st.fieldGroup}>
+                            <Text style={st.fieldLabel}>Vị trí trên bản đồ</Text>
+                            <LocationPicker
+                                initialLat={lat}
+                                initialLng={lng}
+                                onLocationChange={(newLat, newLng, newAddr) => {
+                                    setLat(newLat);
+                                    setLng(newLng);
+                                    if (newAddr) setAddress(newAddr);
+                                }}
+                            />
                         </View>
 
                         <View style={st.fieldRow}>
                             <View style={[st.fieldGroup, { flex: 1 }]}>
                                 <Text style={st.fieldLabel}>Số điện thoại</Text>
-                                <TextInput 
-                                    style={st.input} 
-                                    value={phone} 
+                                <TextInput
+                                    style={st.input}
+                                    value={phone}
                                     onChangeText={setPhone}
-                                    placeholder="09xx..." 
+                                    placeholder="09xx..."
                                     placeholderTextColor="#94A3B8"
-                                    keyboardType="phone-pad" 
+                                    keyboardType="phone-pad"
                                 />
                             </View>
                             <View style={{ width: 12 }} />
                             <View style={[st.fieldGroup, { flex: 1 }]}>
                                 <Text style={st.fieldLabel}>Giờ mở cửa</Text>
-                                <TextInput 
-                                    style={st.input} 
-                                    value={openingHours} 
+                                <TextInput
+                                    style={st.input}
+                                    value={openingHours}
                                     onChangeText={setOpeningHours}
-                                    placeholder="07:00 - 22:00" 
-                                    placeholderTextColor="#94A3B8" 
+                                    placeholder="07:00 - 22:00"
+                                    placeholderTextColor="#94A3B8"
                                 />
                             </View>
                         </View>
@@ -299,20 +319,20 @@ export default function EditShopScreen() {
                             <View style={st.fieldRow}>
                                 <View style={st.settingItem}>
                                     <Text style={st.settingLabel}>Phí ship (đ)</Text>
-                                    <TextInput 
-                                        style={st.settingInput} 
-                                        value={deliveryFee} 
+                                    <TextInput
+                                        style={st.settingInput}
+                                        value={deliveryFee}
                                         onChangeText={setDeliveryFee}
-                                        keyboardType="numeric" 
+                                        keyboardType="numeric"
                                     />
                                 </View>
                                 <View style={st.settingItem}>
                                     <Text style={st.settingLabel}>TG chuẩn bị (phút)</Text>
-                                    <TextInput 
-                                        style={st.settingInput} 
-                                        value={deliveryTime} 
+                                    <TextInput
+                                        style={st.settingInput}
+                                        value={deliveryTime}
                                         onChangeText={setDeliveryTime}
-                                        keyboardType="numeric" 
+                                        keyboardType="numeric"
                                     />
                                 </View>
                             </View>
@@ -325,7 +345,7 @@ export default function EditShopScreen() {
                             <Text style={st.statusCardTitle}>Trạng thái cửa hàng</Text>
                             <Text style={st.statusCardSub}>{isOpen ? 'Khách hàng có thể đặt đơn ngay' : 'Tạm thời ngừng nhận đơn mới'}</Text>
                         </View>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={[st.statusToggle, isOpen ? st.statusToggleOn : st.statusToggleOff]}
                             onPress={() => setIsOpen(!isOpen)}
                             activeOpacity={0.8}
@@ -347,13 +367,13 @@ export default function EditShopScreen() {
                         </View>
 
                         <View style={st.addTagContainer}>
-                            <TextInput 
-                                style={st.tagInput} 
-                                value={newTag} 
+                            <TextInput
+                                style={st.tagInput}
+                                value={newTag}
                                 onChangeText={setNewTag}
-                                placeholder="Thêm tag tự định nghĩa..." 
+                                placeholder="Thêm tag tự định nghĩa..."
                                 placeholderTextColor="#94A3B8"
-                                onSubmitEditing={addCustomTag} 
+                                onSubmitEditing={addCustomTag}
                             />
                             <TouchableOpacity style={st.addTagBtn} onPress={addCustomTag}>
                                 <Ionicons name="add" size={24} color="#fff" />
@@ -363,8 +383,8 @@ export default function EditShopScreen() {
                         <Text style={st.suggestedTitle}>Gợi ý phổ biến:</Text>
                         <View style={st.suggestionsGrid}>
                             {TAG_SUGGESTIONS.filter(t => !tags.includes(t)).slice(0, 10).map(tag => (
-                                <TouchableOpacity 
-                                    key={tag} 
+                                <TouchableOpacity
+                                    key={tag}
                                     style={st.suggestedTag}
                                     onPress={() => toggleTag(tag)}
                                 >
@@ -375,8 +395,8 @@ export default function EditShopScreen() {
                     </View>
 
                     {/* Save Button */}
-                    <TouchableOpacity 
-                        style={[st.saveActionBtn, saving && { opacity: 0.8 }]} 
+                    <TouchableOpacity
+                        style={[st.saveActionBtn, saving && { opacity: 0.8 }]}
                         onPress={handleSave}
                         disabled={saving}
                     >
@@ -419,7 +439,7 @@ const st = StyleSheet.create({
     // Image Picker
     imagePickerBox: {
         borderRadius: 24, overflow: 'hidden', position: 'relative',
-        backgroundColor: '#fff', 
+        backgroundColor: '#fff',
         ...Platform.select({
             ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10 },
             android: { elevation: 3 },
@@ -474,9 +494,9 @@ const st = StyleSheet.create({
     },
 
     // Status Card
-    statusCard: { 
+    statusCard: {
         backgroundColor: '#1E293B', borderRadius: 24, padding: 20, marginTop: 20,
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' 
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
     },
     statusCardTitle: { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 4 },
     statusCardSub: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '500' },
@@ -489,9 +509,9 @@ const st = StyleSheet.create({
 
     // Tags
     tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 15 },
-    tagItem: { 
+    tagItem: {
         flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF7F5',
-        paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FF6B35' 
+        paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FF6B35'
     },
     tagText: { color: '#FF6B35', fontSize: 13, fontWeight: '800' },
     addTagContainer: { flexDirection: 'row', gap: 10, marginBottom: 20 },
