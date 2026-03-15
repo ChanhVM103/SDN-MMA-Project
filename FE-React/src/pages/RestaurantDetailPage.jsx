@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { getRestaurantProducts } from "../services/brand-api";
+import { getRestaurantProducts, getPromotions } from "../services/brand-api";
 import { getRestaurantReviews, submitReview } from "../services/review-api";
 import { getMyOrders } from "../services/order-api";
 import { parseStoredAuth } from "../services/auth-storage";
@@ -9,6 +9,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api
 export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, onUpdateQty, navigate, onOpenCart }) {
   const [restaurant, setRestaurant] = useState(null);
   const [products, setProducts] = useState([]);
+  const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -27,11 +28,13 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
     (async () => {
       setLoading(true);
       try {
-        const [resRes, prodData] = await Promise.all([
+        const [resRes, prodData, promoData] = await Promise.all([
           fetch(`${API_BASE}/restaurants/${restaurantId}`).then(r => r.json()),
           getRestaurantProducts(restaurantId),
+          getPromotions(restaurantId, true)
         ]);
         if (resRes.success) setRestaurant(resRes.data);
+        setPromotions(Array.isArray(promoData) ? promoData : []);
         const list = Array.isArray(prodData) ? prodData : prodData?.products || [];
         setProducts(list);
         if (list.length > 0) setActiveCategory(list[0].category);
@@ -63,6 +66,10 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
     }
   }, [restaurantId]);
 
+  const getProductPromotion = (productId) => {
+    return promotions.find(p => p.isActive && p.productIds.includes(productId));
+  };
+
   const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
   const filtered = activeCategory ? products.filter(p => p.category === activeCategory) : products;
   const bestSellers = products.filter(p => p.isBestSeller).slice(0, 6);
@@ -73,12 +80,25 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
 
   const handleAdd = (e, product) => {
     e.stopPropagation();
+    
+    // Apply discount if exists
+    const promo = getProductPromotion(product._id);
+    const finalPrice = promo 
+      ? product.price * (1 - promo.discountPercent / 100) 
+      : product.price;
+
+    const discountedProduct = {
+      ...product,
+      price: finalPrice,
+      originalPrice: product.price, // keep for UI if needed
+    };
+
     if (product.allowToppings && product.toppings?.length > 0) {
       setSelectedToppings([]);
-      setToppingModal({ product });
+      setToppingModal({ product: discountedProduct });
       return;
     }
-    onAddToCart(restaurant, product);
+    onAddToCart(restaurant, discountedProduct);
     setAddedId(product._id);
     setTimeout(() => setAddedId(null), 600);
   };
@@ -180,22 +200,28 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
 
               {/* Info pills */}
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {[
-                  { icon: "⭐", text: `${restaurant.rating?.toFixed(1)} (${restaurant.reviews}+)` },
-                  { icon: "🕐", text: `${restaurant.deliveryTime} phút` },
-                  { icon: "📍", text: restaurant.distance },
-                  { icon: "🚚", text: `${restaurant.deliveryFee?.toLocaleString("vi-VN")}đ` },
-                ].map((item, i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", gap: 4,
-                    background: "rgba(0,0,0,0.4)", backdropFilter: "blur(6px)",
-                    borderRadius: 20, padding: "4px 10px",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                  }}>
-                    <span style={{ fontSize: 11 }}>{item.icon}</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.92)" }}>{item.text}</span>
-                  </div>
-                ))}
+                {(() => {
+                  const items = [
+                    { icon: "⭐", text: `${restaurant.rating?.toFixed(1)} (${restaurant.reviews}+)` },
+                    { icon: "🕐", text: `${restaurant.deliveryTime} phút` },
+                    { icon: "📍", text: restaurant.distance },
+                    { icon: "🚚", text: `${restaurant.deliveryFee?.toLocaleString("vi-VN")}đ` },
+                  ];
+                  if (restaurant.isFlashSale) {
+                    items.unshift({ icon: "⚡", text: "Flash Sale", color: "#ee4d2d" });
+                  }
+                  return items.map((item, i) => (
+                    <div key={i} style={{
+                      display: "flex", alignItems: "center", gap: 4,
+                      background: item.color || "rgba(0,0,0,0.4)", backdropFilter: "blur(6px)",
+                      borderRadius: 20, padding: "4px 10px",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                    }}>
+                      <span style={{ fontSize: 11 }}>{item.icon}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.92)" }}>{item.text}</span>
+                    </div>
+                  ));
+                })()}
               </div>
             </div>
           </div>
@@ -281,6 +307,7 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
                     onView={() => setSelectedProduct(product)}
                     onAdd={(e) => handleAdd(e, product)}
                     onUpdateQty={onUpdateQty}
+                    promotion={getProductPromotion(product._id)}
                   />
                 ))}
               </div>
@@ -312,59 +339,73 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
               </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-                {bestSellers.slice(0, 3).map(product => (
-                  <div
-                    key={product._id}
-                    onClick={() => setSelectedProduct(product)}
-                    style={{ cursor: "pointer", borderRadius: 12, overflow: "hidden", background: "#fafafa", border: "1px solid #f0f0f0" }}
-                  >
-                    <div style={{ position: "relative" }}>
-                      <img
-                        src={product.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=200&fit=crop"}
-                        alt={product.name}
-                        style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block" }}
-                      />
-                      <div style={{
-                        position: "absolute", top: 8, left: 8,
-                        background: "linear-gradient(135deg,#ee4d2d,#ff7337)",
-                        color: "#fff", fontSize: 10, fontWeight: 800,
-                        padding: "2px 8px", borderRadius: 6,
-                      }}>Bán chạy</div>
-                    </div>
-                    <div style={{ padding: "10px 10px 12px" }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 6, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                        {product.name}
+                {bestSellers.slice(0, 3).map(product => {
+                  const promo = getProductPromotion(product._id);
+                  const discountedPrice = promo 
+                    ? product.price * (1 - promo.discountPercent / 100) 
+                    : product.price;
+
+                  return (
+                    <div
+                      key={product._id}
+                      onClick={() => setSelectedProduct(product)}
+                      style={{ cursor: "pointer", borderRadius: 12, overflow: "hidden", background: "#fafafa", border: "1px solid #f0f0f0" }}
+                    >
+                      <div style={{ position: "relative" }}>
+                        <img
+                          src={product.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=200&fit=crop"}
+                          alt={product.name}
+                          style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block" }}
+                        />
+                        <div style={{
+                          position: "absolute", top: 8, left: 8,
+                          background: promo ? "linear-gradient(135deg,#ff424e,#ff7337)" : "linear-gradient(135deg,#ee4d2d,#ff7337)",
+                          color: "#fff", fontSize: 10, fontWeight: 800,
+                          padding: "2px 8px", borderRadius: 6,
+                        }}>{promo ? `-${promo.discountPercent}%` : "Bán chạy"}</div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <div style={{ fontSize: 13, fontWeight: 800, color: "#ee4d2d" }}>
-                          {product.price?.toLocaleString("vi-VN")}đ
+                      <div style={{ padding: "10px 10px 12px" }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 6, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                          {product.name}
                         </div>
-                        {(() => {
-                          const qty = getQty(product._id);
-                          return qty === 0 ? (
-                            <button
-                              onClick={e => { e.stopPropagation(); handleAdd(e, product); }}
-                              style={{
-                                width: 28, height: 28, borderRadius: "50%",
-                                background: "#ee4d2d", color: "#fff",
-                                border: "none", fontSize: 18, fontWeight: 700,
-                                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                                boxShadow: "0 3px 8px rgba(238,77,45,0.35)",
-                                flexShrink: 0,
-                              }}
-                            >+</button>
-                          ) : (
-                            <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 3, background: "#fff5f4", border: "1.5px solid #ee4d2d", borderRadius: 20, padding: "2px 4px", flexShrink: 0 }}>
-                              <button onClick={() => onUpdateQty(product._id, qty - 1)} style={{ width: 20, height: 20, borderRadius: "50%", border: "none", background: "#fff3f2", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#ee4d2d", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                              <span style={{ fontSize: 12, fontWeight: 700, minWidth: 14, textAlign: "center", color: "#1a1a1a" }}>{qty}</span>
-                              <button onClick={() => onUpdateQty(product._id, qty + 1)} style={{ width: 20, height: 20, borderRadius: "50%", border: "none", background: "#ee4d2d", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <div style={{ display: "flex", flexDirection: "column" }}>
+                            {promo && (
+                              <span style={{ fontSize: 10, color: "#9ca3af", textDecoration: "line-through" }}>
+                                {product.price?.toLocaleString("vi-VN")}đ
+                              </span>
+                            )}
+                            <div style={{ fontSize: 13, fontWeight: 800, color: "#ee4d2d" }}>
+                              {discountedPrice?.toLocaleString("vi-VN")}đ
                             </div>
-                          );
-                        })()}
+                          </div>
+                          {(() => {
+                            const qty = getQty(product._id);
+                            return qty === 0 ? (
+                              <button
+                                onClick={e => { e.stopPropagation(); handleAdd(e, product); }}
+                                style={{
+                                  width: 28, height: 28, borderRadius: "50%",
+                                  background: "#ee4d2d", color: "#fff",
+                                  border: "none", fontSize: 18, fontWeight: 700,
+                                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                                  boxShadow: "0 3px 8px rgba(238,77,45,0.35)",
+                                  flexShrink: 0,
+                                }}
+                              >+</button>
+                            ) : (
+                              <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 3, background: "#fff5f4", border: "1.5px solid #ee4d2d", borderRadius: 20, padding: "2px 4px", flexShrink: 0 }}>
+                                <button onClick={() => onUpdateQty(product._id, qty - 1)} style={{ width: 20, height: 20, borderRadius: "50%", border: "none", background: "#fff3f2", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#ee4d2d", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                                <span style={{ fontSize: 12, fontWeight: 700, minWidth: 14, textAlign: "center", color: "#1a1a1a" }}>{qty}</span>
+                                <button onClick={() => onUpdateQty(product._id, qty + 1)} style={{ width: 20, height: 20, borderRadius: "50%", border: "none", background: "#ee4d2d", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                              </div>
+                            );
+                          })()}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -522,6 +563,7 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
           onClose={() => setSelectedProduct(null)}
           onAdd={(e) => handleAdd(e, selectedProduct)}
           onUpdateQty={onUpdateQty}
+          promotion={getProductPromotion(selectedProduct._id)}
         />
       )}
 
@@ -636,7 +678,11 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
 }
 
 // ── Product Card ──
-function ProductCard({ product, qty, isAdded, onView, onAdd, onUpdateQty }) {
+function ProductCard({ product, qty, isAdded, onView, onAdd, onUpdateQty, promotion }) {
+  const discountedPrice = promotion 
+    ? product.price * (1 - promotion.discountPercent / 100) 
+    : product.price;
+
   return (
     <div
       onClick={onView}
@@ -656,7 +702,11 @@ function ProductCard({ product, qty, isAdded, onView, onAdd, onUpdateQty }) {
           onMouseEnter={e => e.currentTarget.style.transform = "scale(1.06)"}
           onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
         />
-        {product.isBestSeller && (
+        {promotion ? (
+           <div style={{ position: "absolute", top: 8, left: 8, background: "linear-gradient(135deg,#ff424e,#ff7337)", color: "#fff", fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 8, boxShadow: "0 2px 8px rgba(255,66,78,0.4)" }}>
+             -{promotion.discountPercent}% OFF
+           </div>
+        ) : product.isBestSeller && (
           <div style={{ position: "absolute", top: 8, left: 8, background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 8 }}>
             Hot
           </div>
@@ -670,9 +720,16 @@ function ProductCard({ product, qty, isAdded, onView, onAdd, onUpdateQty }) {
           </h3>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: "#ee4d2d" }}>
-            {product.price?.toLocaleString("vi-VN")}đ
-          </span>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {promotion && (
+              <span style={{ fontSize: 11, color: "#9ca3af", textDecoration: "line-through" }}>
+                {product.price?.toLocaleString("vi-VN")}đ
+              </span>
+            )}
+            <span style={{ fontSize: 14, fontWeight: 800, color: "#ee4d2d" }}>
+              {discountedPrice?.toLocaleString("vi-VN")}đ
+            </span>
+          </div>
 
           {qty === 0 ? (
             <button onClick={onAdd} style={{
@@ -704,7 +761,11 @@ function ProductCard({ product, qty, isAdded, onView, onAdd, onUpdateQty }) {
 }
 
 // ── Product Modal ──
-function ProductModal({ product, qty, onClose, onAdd, onUpdateQty }) {
+function ProductModal({ product, qty, onClose, onAdd, onUpdateQty, promotion }) {
+  const discountedPrice = promotion 
+    ? product.price * (1 - promotion.discountPercent / 100) 
+    : product.price;
+
   return (
     <div onClick={onClose} style={{
       position: "fixed", inset: 0, zIndex: 400,
@@ -721,7 +782,11 @@ function ProductModal({ product, qty, onClose, onAdd, onUpdateQty }) {
         <div style={{ width: 340, flexShrink: 0, position: "relative", overflow: "hidden" }}>
           <img src={product.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=600&fit=crop"} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 80, background: "linear-gradient(to top, rgba(0,0,0,0.5), transparent)" }} />
-          {product.isBestSeller && <div style={{ position: "absolute", top: 16, left: 16, background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", fontSize: 12, fontWeight: 800, padding: "5px 12px", borderRadius: 20 }}>⭐ Best Seller</div>}
+          {promotion ? (
+             <div style={{ position: "absolute", top: 16, left: 16, background: "linear-gradient(135deg,#ff424e,#ff7337)", color: "#fff", fontSize: 13, fontWeight: 800, padding: "5px 14px", borderRadius: 20, boxShadow: "0 4px 12px rgba(255,66,78,0.4)" }}>⚡ FLASH SALE -{promotion.discountPercent}%</div>
+          ) : product.isBestSeller && (
+            <div style={{ position: "absolute", top: 16, left: 16, background: "linear-gradient(135deg,#f59e0b,#fbbf24)", color: "#fff", fontSize: 12, fontWeight: 800, padding: "5px 12px", borderRadius: 20 }}>⭐ Best Seller</div>
+          )}
         </div>
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -733,8 +798,15 @@ function ProductModal({ product, qty, onClose, onAdd, onUpdateQty }) {
               </div>
               <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, background: "#f5f5f5", border: "none", cursor: "pointer", fontSize: 16, color: "#999", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
-              <span style={{ fontSize: 28, fontWeight: 900, color: "#ee4d2d" }}>{product.price?.toLocaleString("vi-VN")}đ</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {promotion && (
+                  <span style={{ fontSize: 14, color: "#9ca3af", textDecoration: "line-through" }}>
+                    {product.price?.toLocaleString("vi-VN")}đ
+                  </span>
+                )}
+                <span style={{ fontSize: 28, fontWeight: 900, color: "#ee4d2d" }}>{discountedPrice?.toLocaleString("vi-VN")}đ</span>
+              </div>
               {!product.isAvailable && <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#fee2e2", color: "#ef4444" }}>Hết hàng</span>}
             </div>
           </div>
