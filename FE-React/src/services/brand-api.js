@@ -86,3 +86,33 @@ export const updateOrderStatusByBrand = (orderId, status, note = "") =>
 // Thống kê doanh thu nhà hàng
 export const getRestaurantStats = (restaurantId) =>
   brandApiRequest(`/orders/restaurant/${restaurantId}/stats`);
+
+// Promotion (Flash Sale) management
+export const getPromotions = (restaurantId, isActive) => {
+  let endpoint = `/promotions/restaurant/${restaurantId}`;
+  if (isActive !== undefined) endpoint += `?isActive=${isActive}`;
+  return brandApiRequest(endpoint);
+};
+
+export const createPromotion = (data) =>
+  brandApiRequest("/promotions", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const updatePromotion = (id, data) =>
+  brandApiRequest(`/promotions/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+export const deletePromotion = (id) =>
+  brandApiRequest(`/promotions/${id}`, {
+    method: "DELETE",
+  });
+
+export const togglePromotionStatus = (id, isActive) =>
+  brandApiRequest(`/promotions/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ isActive }),
+  });
