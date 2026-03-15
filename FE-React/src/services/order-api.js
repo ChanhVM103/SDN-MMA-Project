@@ -30,6 +30,7 @@ const apiRequest = async (endpoint, options = {}) => {
 
 // ── USER ─────────────────────────────────────────
 export const getMyOrders = async () => apiRequest('/orders/my');
+export const getOrderById = async (id) => apiRequest(`/orders/${id}`);
 
 export const createOrder = async (orderData) => apiRequest('/orders', {
     method: 'POST',

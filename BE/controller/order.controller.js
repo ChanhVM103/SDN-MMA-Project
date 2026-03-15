@@ -140,12 +140,22 @@ const createOrder = async (req, res) => {
 
     const total = subtotal + finalDeliveryFee - discount;
 
+    // Enrich items với image từ Product
+    const enrichedItems = await Promise.all(items.map(async (item) => {
+      try {
+        const mongoose = require("mongoose");
+        const pid = new mongoose.Types.ObjectId(item.productId);
+        const prod = await Product.findById(pid).select("image emoji");
+        return { ...item, image: prod?.image || item.image || "", emoji: item.emoji || prod?.emoji || "🍽️" };
+      } catch(_) { return item; }
+    }));
+
     const order = await Order.create({
       user: req.userId,
       restaurant: restaurantId,
       restaurantName: restaurant.name,
       restaurantAddress: restaurant.address,
-      items,
+      items: enrichedItems,
       subtotal,
       deliveryFee: finalDeliveryFee,
       discount,
@@ -217,6 +227,23 @@ const getOrderById = async (req, res) => {
       .populate("restaurant", "name image address phone deliveryTime")
       .populate("user", "fullName email phone")
       .populate("shipper", "fullName phone avatar");
+
+    // Enrich items với product image
+    if (order) {
+      const Product = require("../models/product.model");
+      const productIds = order.items.map(i => i.productId).filter(Boolean);
+      // productId là String nên dùng regex hoặc cast sang ObjectId
+      const mongoose = require("mongoose");
+      const objectIds = productIds.map(id => { try { return new mongoose.Types.ObjectId(id); } catch(_) { return null; } }).filter(Boolean);
+      const products = await Product.find({ _id: { $in: objectIds } }).select("_id image emoji");
+      const productMap = {};
+      products.forEach(p => { productMap[p._id.toString()] = p; });
+      order.items = order.items.map(item => {
+        const p = productMap[item.productId?.toString()];
+        const plain = item.toObject ? item.toObject() : item;
+        return { ...plain, image: p?.image || plain.image || "", emoji: plain.emoji || p?.emoji || "🍽️" };
+      });
+    }
 
     if (!order) {
       return res
