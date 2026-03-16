@@ -2,28 +2,27 @@ import { useState, useEffect, useCallback } from "react";
 import { getMyOrders, getOrderById, cancelOrder, confirmOrderReceived } from "../services/order-api";
 import { submitBulkReviews, checkOrderReviewed, updateReview, deleteReview } from "../services/review-api";
 
-// ─── Config ────────────────────────────────────────────────────
+// ─── Config ─────────────────────────────────────────────────────
 const SC = {
-  pending:           { label:"Chờ xác nhận",       emoji:"⏳", color:"#f59e0b", bg:"#fef3c7" },
-  confirmed:         { label:"Đã xác nhận",         emoji:"✅", color:"#3b82f6", bg:"#dbeafe" },
-  preparing:         { label:"Đang chuẩn bị",       emoji:"👨‍🍳", color:"#8b5cf6", bg:"#ede9fe" },
-  ready_for_pickup:  { label:"Chờ shipper",          emoji:"📦", color:"#f97316", bg:"#ffedd5" },
-  shipper_accepted:  { label:"Shipper đã nhận",      emoji:"🛵", color:"#06b6d4", bg:"#cffafe" },
-  delivering:        { label:"Đang giao hàng",       emoji:"🚀", color:"#ee4d2d", bg:"#fff0ed" },
-  shipper_delivered: { label:"Shipper đã giao",      emoji:"📬", color:"#84cc16", bg:"#ecfccb" },
-  delivered:         { label:"Đã giao thành công",  emoji:"🎉", color:"#10b981", bg:"#d1fae5" },
-  cancelled:         { label:"Đã hủy",               emoji:"✕",  color:"#ef4444", bg:"#fee2e2" },
-  bombed:            { label:"Giao không thành công", emoji:"⚠️", color:"#ef4444", bg:"#fee2e2" },
+  pending:           { label:"Chờ xác nhận",        color:"#f59e0b", bg:"#fef3c7" },
+  confirmed:         { label:"Đã xác nhận",          color:"#3b82f6", bg:"#dbeafe" },
+  preparing:         { label:"Đang chuẩn bị",        color:"#8b5cf6", bg:"#ede9fe" },
+  ready_for_pickup:  { label:"Chờ shipper",           color:"#f97316", bg:"#ffedd5" },
+  shipper_accepted:  { label:"Shipper đã nhận",       color:"#06b6d4", bg:"#cffafe" },
+  delivering:        { label:"Đang giao hàng",        color:"#ee4d2d", bg:"#fff0ed" },
+  shipper_delivered: { label:"Shipper đã giao",       color:"#84cc16", bg:"#ecfccb" },
+  delivered:         { label:"Đã giao thành công",   color:"#10b981", bg:"#d1fae5" },
+  cancelled:         { label:"Đã hủy",                color:"#ef4444", bg:"#fee2e2" },
+  bombed:            { label:"Giao không thành công", color:"#ef4444", bg:"#fee2e2" },
 };
 
-const STEPS = [
-  { key:"pending",          label:"Đã xác nhận đơn hàng",      desc:"Nhà hàng đã nhận được đơn của bạn và đang kiểm tra." },
-  { key:"preparing",        label:"Đang chuẩn bị món",         desc:"Đầu bếp đang chế biến món ăn theo yêu cầu của bạn." },
-  { key:"delivering",       label:"Đang giao hàng",            desc:"Tài xế đang trên đường giao đơn hàng đến bạn." },
-  { key:"delivered",        label:"Đã giao hàng",              desc:"Đơn hàng đã được giao thành công." },
-  { key:"bombed",           label:"Giao hàng thất bại",         desc:"Shipper báo cáo không thể giao hàng cho bạn." },
+// 4 bước hiển thị trên timeline ngang (theo ảnh)
+const TIMELINE_STEPS = [
+  { key:"confirmed",  label:"Đã xác nhận",   icon:"✅" },
+  { key:"preparing",  label:"Đang chuẩn bị", icon:"🍳" },
+  { key:"delivering", label:"Đang giao hàng",icon:"🛵" },
+  { key:"delivered",  label:"Đã nhận hàng",  icon:"🏠" },
 ];
-
 const STEP_ORDER = ["pending","confirmed","preparing","ready_for_pickup","shipper_accepted","delivering","shipper_delivered","delivered"];
 
 const TAB_FILTERS = [
@@ -33,14 +32,13 @@ const TAB_FILTERS = [
   { label:"Đã hủy",     status:["cancelled","bombed"] },
 ];
 
-// ─── Helpers ────────────────────────────────────────────────────
 function fmtMoney(n){ return (n||0).toLocaleString("vi-VN")+"đ"; }
 function fmtDate(d){
   const dt = new Date(d);
   return dt.toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"}) + ", " + dt.toLocaleDateString("vi-VN");
 }
 
-// ─── Star Rating ────────────────────────────────────────────────
+// ─── Stars ───────────────────────────────────────────────────────
 function Stars({ value, onChange }){
   const [hov,setHov]=useState(0);
   const labels=["","Tệ 😞","Không hài lòng 😕","Bình thường 😐","Hài lòng 😊","Tuyệt vời! 🤩"];
@@ -49,8 +47,7 @@ function Stars({ value, onChange }){
       <div style={{display:"flex",gap:6,justifyContent:"center"}}>
         {[1,2,3,4,5].map(s=>(
           <span key={s} onClick={()=>onChange?.(s)} onMouseEnter={()=>onChange&&setHov(s)} onMouseLeave={()=>onChange&&setHov(0)}
-            style={{fontSize:38,cursor:onChange?"pointer":"default",color:s<=(hov||value)?"#f59e0b":"#e5e7eb",
-              transition:"color .1s,transform .15s",transform:s===(hov||value)?"scale(1.25)":"scale(1)",display:"inline-block"}}>★</span>
+            style={{fontSize:38,cursor:onChange?"pointer":"default",color:s<=(hov||value)?"#f59e0b":"#e5e7eb",transition:"color .1s,transform .15s",transform:s===(hov||value)?"scale(1.25)":"scale(1)",display:"inline-block"}}>★</span>
         ))}
       </div>
       {onChange&&<div style={{textAlign:"center",fontSize:13,fontWeight:700,color:"#ee4d2d",marginTop:4,minHeight:20}}>{labels[hov||value]}</div>}
@@ -58,7 +55,21 @@ function Stars({ value, onChange }){
   );
 }
 
-// ─── Review Modal ───────────────────────────────────────────────
+// ─── Shared modal wrapper ────────────────────────────────────────
+function Overlay({onClose,children}){
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:99998,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 16px"}}>
+      <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,.5)",backdropFilter:"blur(6px)"}}/>
+      <div style={{position:"relative",background:"#fff",borderRadius:24,width:"100%",maxWidth:460,boxShadow:"0 32px 80px rgba(0,0,0,.22)",animation:"modalPop .3s cubic-bezier(.175,.885,.32,1.275)",overflow:"hidden"}}>
+        {children}
+      </div>
+    </div>
+  );
+}
+function CloseBtn({onClose}){return <button onClick={onClose} style={{position:"absolute",top:14,right:14,width:32,height:32,borderRadius:"50%",background:"rgba(255,255,255,.2)",border:"none",color:"#fff",fontSize:16,cursor:"pointer"}}>✕</button>;}
+function ErrBox({msg}){return <div style={{marginBottom:12,padding:"10px 14px",borderRadius:10,background:"#fef2f2",color:"#dc2626",fontSize:13}}>⚠️ {msg}</div>;}
+
+// ─── Review Modal ────────────────────────────────────────────────
 function ReviewModal({order,onClose,onSuccess}){
   const [rating,setRating]=useState(5);
   const [comment,setComment]=useState("");
@@ -84,13 +95,15 @@ function ReviewModal({order,onClose,onSuccess}){
           onFocus={e=>e.target.style.borderColor="#ee4d2d"} onBlur={e=>e.target.style.borderColor="#e5e7eb"}/>
         <div style={{fontSize:11,color:"#9ca3af",textAlign:"right",marginBottom:16}}>{comment.length}/500</div>
         {err&&<ErrBox msg={err}/>}
-        <Btn label={busy?"⏳ Đang gửi...":"🌟 Gửi đánh giá"} disabled={busy} onClick={submit} color="#ee4d2d"/>
+        <button disabled={busy} onClick={submit} style={{width:"100%",padding:15,borderRadius:14,border:"none",background:busy?"#e5e7eb":"#ee4d2d",color:busy?"#9ca3af":"#fff",fontWeight:800,fontSize:15,cursor:busy?"not-allowed":"pointer"}}>
+          {busy?"⏳ Đang gửi...":"🌟 Gửi đánh giá"}
+        </button>
       </div>
     </Overlay>
   );
 }
 
-// ─── Edit Review Modal ──────────────────────────────────────────
+// ─── Edit Review Modal ───────────────────────────────────────────
 function EditReviewModal({reviews,order,onClose,onSuccess}){
   const r0=reviews.find(r=>!r.product);
   const [rating,setRating]=useState(r0?.rating||5);
@@ -117,28 +130,137 @@ function EditReviewModal({reviews,order,onClose,onSuccess}){
           onFocus={e=>e.target.style.borderColor="#3b82f6"} onBlur={e=>e.target.style.borderColor="#e5e7eb"}/>
         <div style={{fontSize:11,color:"#9ca3af",textAlign:"right",marginBottom:16}}>{comment.length}/500</div>
         {err&&<ErrBox msg={err}/>}
-        <Btn label={busy?"⏳ Đang lưu...":"💾 Lưu thay đổi"} disabled={busy} onClick={submit} color="#3b82f6"/>
+        <button disabled={busy} onClick={submit} style={{width:"100%",padding:15,borderRadius:14,border:"none",background:busy?"#e5e7eb":"#3b82f6",color:busy?"#9ca3af":"#fff",fontWeight:800,fontSize:15,cursor:busy?"not-allowed":"pointer"}}>
+          {busy?"⏳ Đang lưu...":"💾 Lưu thay đổi"}
+        </button>
       </div>
     </Overlay>
   );
 }
 
-// ─── Small shared components ────────────────────────────────────
-function Overlay({onClose,children}){
-  return(
-    <div style={{position:"fixed",inset:0,zIndex:99998,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 16px"}}>
-      <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,.5)",backdropFilter:"blur(6px)"}}/>
-      <div style={{position:"relative",background:"#fff",borderRadius:24,width:"100%",maxWidth:460,boxShadow:"0 32px 80px rgba(0,0,0,.22)",animation:"modalPop .3s cubic-bezier(.175,.885,.32,1.275)",overflow:"hidden"}}>
-        {children}
+// ─── Horizontal Timeline ─────────────────────────────────────────
+function HorizontalTimeline({ order }) {
+  const currentIdx = STEP_ORDER.indexOf(order.status);
+  const isCancelled = ["cancelled","bombed"].includes(order.status);
+
+  // Map each timeline step to done/current state
+  const getStepState = (stepKey) => {
+    const stepIdx = STEP_ORDER.indexOf(stepKey);
+    if (stepKey === "delivering") {
+      // "delivering" step covers shipper_accepted, delivering, shipper_delivered
+      const done = ["shipper_accepted","delivering","shipper_delivered","delivered"].some(s => STEP_ORDER.indexOf(s) <= currentIdx);
+      const current = ["shipper_accepted","delivering","shipper_delivered"].includes(order.status);
+      return { done, current };
+    }
+    const done = currentIdx >= stepIdx;
+    const current = STEP_ORDER[currentIdx] === stepKey ||
+      (stepKey === "confirmed" && order.status === "pending");
+    return { done, current };
+  };
+
+  // Get timestamp for step from statusHistory
+  const getStepTime = (stepKey) => {
+    const history = order.statusHistory || [];
+    if (stepKey === "delivering") {
+      const entry = history.find(h => ["shipper_accepted","delivering"].includes(h.status));
+      return entry ? fmtDate(entry.changedAt) : null;
+    }
+    const entry = history.find(h => h.status === stepKey);
+    return entry ? fmtDate(entry.changedAt) : null;
+  };
+
+  if (isCancelled) return (
+    <div style={{background:"#fff",borderRadius:16,padding:"24px",border:"1px solid #f3f4f6",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
+      <div style={{textAlign:"center",padding:"8px 0"}}>
+        <div style={{width:56,height:56,borderRadius:"50%",background:"#fee2e2",margin:"0 auto 12px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>
+          {order.status==="bombed"?"⚠️":"✕"}
+        </div>
+        <div style={{fontWeight:700,color:"#ef4444",fontSize:16,marginBottom:4}}>
+          {order.status==="bombed"?"Giao hàng không thành công":"Đơn hàng đã bị hủy"}
+        </div>
+        {order.status==="bombed"&&(order.statusHistory||[]).find(h=>h.status==="bombed")&&(
+          <div style={{margin:"8px auto",padding:"10px 14px",background:"#fff5f5",borderRadius:10,border:"1px dashed #feb2b2",maxWidth:320,fontSize:13,color:"#c53030"}}>
+            <b>Lý do:</b> {(order.statusHistory||[]).find(h=>h.status==="bombed").note}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{background:"#fff",borderRadius:16,padding:"28px 32px",border:"1px solid #f3f4f6",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
+      <div style={{display:"flex",alignItems:"flex-start",position:"relative"}}>
+        {/* Connecting lines */}
+        {TIMELINE_STEPS.map((step, idx) => {
+          if (idx === TIMELINE_STEPS.length - 1) return null;
+          const { done } = getStepState(step.key);
+          return (
+            <div key={`line-${idx}`} style={{
+              position:"absolute",
+              top: 20,
+              left: `calc(${(idx * (100/(TIMELINE_STEPS.length-1)))}% + 20px)`,
+              width: `calc(${100/(TIMELINE_STEPS.length-1)}% - 40px)`,
+              height: 3,
+              background: done ? "#ee4d2d" : "#e5e7eb",
+              transition: "background .4s",
+              zIndex: 0,
+            }}/>
+          );
+        })}
+
+        {/* Steps */}
+        {TIMELINE_STEPS.map((step, idx) => {
+          const { done, current } = getStepState(step.key);
+          const time = getStepTime(step.key);
+          return (
+            <div key={step.key} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",position:"relative",zIndex:1}}>
+              {/* Circle */}
+              <div style={{
+                width: 44, height: 44, borderRadius: "50%",
+                background: done ? (current ? "#ee4d2d" : "#ee4d2d") : "#f3f4f6",
+                border: current ? "3px solid #fca5a5" : done ? "none" : "2px solid #e5e7eb",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize: 18,
+                boxShadow: current ? "0 0 0 6px rgba(238,77,45,.12)" : "none",
+                transition: "all .4s",
+                marginBottom: 10,
+              }}>
+                {done
+                  ? <span style={{fontSize:16}}>{step.icon}</span>
+                  : <span style={{fontSize:16,opacity:.3}}>{step.icon}</span>}
+              </div>
+              {/* Label */}
+              <div style={{fontSize:12,fontWeight:current?700:500,color:current?"#ee4d2d":done?"#374151":"#9ca3af",textAlign:"center",lineHeight:1.4}}>
+                {step.label}
+              </div>
+              {/* Time */}
+              <div style={{fontSize:11,color:current?"#ee4d2d":"#9ca3af",marginTop:2,textAlign:"center"}}>
+                {time || (current?"Sắp hoàn thành":"---")}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
-function CloseBtn({onClose}){return <button onClick={onClose} style={{position:"absolute",top:14,right:14,width:32,height:32,borderRadius:"50%",background:"rgba(255,255,255,.2)",border:"none",color:"#fff",fontSize:16,cursor:"pointer"}}>✕</button>;}
-function Btn({label,onClick,disabled,color="#ee4d2d"}){return <button onClick={onClick} disabled={disabled} style={{width:"100%",padding:15,borderRadius:14,border:"none",background:disabled?"#e5e7eb":color,color:disabled?"#9ca3af":"#fff",fontWeight:800,fontSize:15,cursor:disabled?"not-allowed":"pointer"}}>{label}</button>;}
-function ErrBox({msg}){return <div style={{marginBottom:12,padding:"10px 14px",borderRadius:10,background:"#fef2f2",color:"#dc2626",fontSize:13}}>⚠️ {msg}</div>;}
 
-// ─── ORDER DETAIL PAGE (2-column) ───────────────────────────────
+// ─── Map placeholder ──────────────────────────────────────────────
+function MapBox({ address }) {
+  return (
+    <div style={{borderRadius:12,overflow:"hidden",marginTop:12,height:110,background:"linear-gradient(135deg,#e0f2fe,#bfdbfe)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
+      <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 30% 50%, rgba(59,130,246,.15) 0%, transparent 70%), radial-gradient(circle at 70% 50%, rgba(99,102,241,.1) 0%, transparent 70%)"}}/>
+      <div style={{textAlign:"center",position:"relative"}}>
+        <div style={{width:36,height:36,borderRadius:"50%",background:"#ee4d2d",margin:"0 auto 6px",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 12px rgba(238,77,45,.4)"}}>
+          <span style={{color:"#fff",fontSize:16}}>📍</span>
+        </div>
+        <div style={{fontSize:11,color:"#1e40af",fontWeight:600,maxWidth:160,lineHeight:1.4}}>{address?.slice(0,60)}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ORDER DETAIL PAGE ────────────────────────────────────────────
 function OrderDetailPage({ orderId, onBack, showToast, onRefreshList }){
   const [order,setOrder]=useState(null);
   const [loading,setLoading]=useState(true);
@@ -161,129 +283,102 @@ function OrderDetailPage({ orderId, onBack, showToast, onRefreshList }){
 
   useEffect(()=>{load();},[load]);
   useEffect(()=>{
-    const id=setInterval(()=>{ if(order&&!["delivered","cancelled"].includes(order.status)) load(); },8000);
+    const id=setInterval(()=>{ if(order&&!["delivered","cancelled","bombed"].includes(order.status)) load(); },8000);
     return()=>clearInterval(id);
   },[load,order]);
 
-  if(loading) return <div style={{textAlign:"center",padding:"80px 0",color:"#9ca3af"}}><div style={{fontSize:36,animation:"spin 1s linear infinite",display:"inline-block"}}>⏳</div><div style={{marginTop:12}}>Đang tải...</div></div>;
+  if(loading) return(
+    <div style={{textAlign:"center",padding:"80px 0",color:"#9ca3af"}}>
+      <div style={{width:40,height:40,border:"3px solid #f0f0f0",borderTop:"3px solid #ee4d2d",borderRadius:"50%",animation:"spin .8s linear infinite",display:"inline-block"}}/>
+      <div style={{marginTop:12}}>Đang tải...</div>
+    </div>
+  );
   if(!order) return null;
 
-  const cfg=SC[order.status]||SC.pending;
-  const currentStepIdx=STEP_ORDER.indexOf(order.status);
-
-  // Build timeline from statusHistory or fallback to steps
-  const history=order.statusHistory||[];
+  const cfg = SC[order.status] || SC.pending;
 
   return(
     <div style={{padding:"8px 0"}}>
-      {/* Back + title */}
-      <div style={{marginBottom:16}}>
-        <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",color:"#ee4d2d",fontWeight:700,fontSize:14,padding:0,display:"flex",alignItems:"center",gap:4,marginBottom:10}}>← Quay lại đơn hàng</button>
-        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+
+      {/* ── Back + title ── */}
+      <div style={{marginBottom:20}}>
+        <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",color:"#6b7280",fontWeight:600,fontSize:13,padding:0,display:"flex",alignItems:"center",gap:4,marginBottom:12}}>
+          ← Quay lại đơn hàng
+        </button>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
           <div>
-            <h1 style={{margin:"0 0 4px",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>Đơn hàng của tôi</h1>
-            <div style={{fontSize:13,color:"#6b7280",display:"flex",alignItems:"center",gap:6}}>
-              Mã đơn hàng:
-              <span style={{color:"#ee4d2d",fontWeight:700,fontFamily:"monospace"}}>#{order._id.slice(-8).toUpperCase()}</span>
-              <span style={{cursor:"pointer",fontSize:14}} onClick={()=>navigator.clipboard?.writeText(order._id)} title="Copy">📋</span>
-            </div>
+            <h1 style={{margin:"0 0 4px",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>Chi tiết đơn hàng <span style={{color:"#ee4d2d",fontFamily:"monospace"}}>#{order._id.slice(-8).toUpperCase()}</span></h1>
           </div>
-          <span style={{background:cfg.bg,color:cfg.color,padding:"6px 14px",borderRadius:20,fontSize:13,fontWeight:700,border:`1px solid ${cfg.color}40`}}>{cfg.emoji} {cfg.label}</span>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{background:cfg.bg,color:cfg.color,padding:"6px 16px",borderRadius:20,fontSize:13,fontWeight:700,border:`1px solid ${cfg.color}40`}}>
+              {cfg.label}
+            </span>
+            <button onClick={()=>navigator.clipboard?.writeText(order._id)} title="Copy ID" style={{width:34,height:34,borderRadius:8,border:"1px solid #e5e7eb",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>📋</button>
+          </div>
         </div>
       </div>
 
-      <div style={{display:"flex",gap:24,alignItems:"flex-start"}}>
-        {/* ── LEFT column ── */}
+      {/* ── Timeline ngang ── */}
+      <div style={{marginBottom:20}}>
+        <HorizontalTimeline order={order}/>
+      </div>
+
+      {/* ── 2 column layout ── */}
+      <div style={{display:"flex",gap:20,alignItems:"flex-start"}}>
+
+        {/* LEFT: Chi tiết món + nhà hàng + shipper */}
         <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:16}}>
 
-          {/* Status timeline */}
-          <div style={{background:"#fff",borderRadius:16,padding:"20px 24px",boxShadow:"0 2px 12px rgba(0,0,0,.07)",border:"1px solid #f3f4f6"}}>
-            <h3 style={{margin:"0 0 20px",fontSize:15,fontWeight:700,color:"#1a1a1a",display:"flex",alignItems:"center",gap:8}}>
-              <span style={{width:28,height:28,background:"#fff0ed",borderRadius:6,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:14}}>📊</span>
-              Trạng thái đơn hàng
+          {/* Chi tiết món ăn */}
+          <div style={{background:"#fff",borderRadius:16,padding:"20px 24px",border:"1px solid #f3f4f6",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
+            <h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700,color:"#1a1a1a",display:"flex",alignItems:"center",gap:8}}>
+              <span style={{width:28,height:28,background:"#fff0ed",borderRadius:6,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:14}}>🍱</span>
+              Chi tiết món ăn
             </h3>
-
-            {order.status==="cancelled" || order.status==="bombed" ? (
-              <div style={{padding:"20px 0",textAlign:"center"}}>
-                <div style={{width:56,height:56,borderRadius:"50%",background:"#fee2e2",margin:"0 auto 12px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>
-                  {order.status==="bombed" ? "⚠️" : "✕"}
-                </div>
-                <div style={{fontWeight:700,color:"#ef4444",fontSize:15,marginBottom:4}}>
-                  {order.status==="bombed" ? "Giao hàng không thành công" : "Đơn hàng đã bị hủy"}
-                </div>
-                {order.status==="bombed" && history.find(h=>h.status==="bombed") && (
-                  <div style={{margin:"8px auto",padding:"10px 14px",background:"#fff5f5",borderRadius:10,border:"1px dashed #feb2b2",maxWidth:300,fontSize:13,color:"#c53030"}}>
-                    <b>Lý do:</b> {history.find(h=>h.status==="bombed").note}
-                  </div>
-                )}
-                {history.find(h=>h.status===(order.status)) && <div style={{fontSize:12,color:"#9ca3af"}}>{fmtDate(history.find(h=>h.status===(order.status)).changedAt)}</div>}
-              </div>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:0}}>
-                {STEPS.map((step,idx)=>{
-                  const stepIdx=STEP_ORDER.indexOf(step.key);
-                  const done=currentStepIdx>=stepIdx;
-                  const current=STEP_ORDER[currentStepIdx]===step.key ||
-                    (step.key==="delivering" && ["shipper_accepted","delivering","shipper_delivered"].includes(order.status));
-                  const histEntry=history.slice().reverse().find(h=>STEP_ORDER.indexOf(h.status)>=stepIdx && STEP_ORDER.indexOf(h.status)<(STEP_ORDER.indexOf(STEPS[idx+1]?.key)||999));
-                  const isLast=idx===STEPS.length-1;
-
-                  return(
-                    <div key={step.key} style={{display:"flex",gap:16,position:"relative"}}>
-                      {/* Line */}
-                      {!isLast&&<div style={{position:"absolute",left:19,top:40,bottom:-2,width:2,background:done?"#ee4d2d":"#e5e7eb",zIndex:0}}/>}
-                      {/* Circle */}
-                      <div style={{width:40,height:40,borderRadius:"50%",background:done?"#ee4d2d":"#e5e7eb",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",zIndex:1,border:current?"3px solid #fca5a5":"none",transition:"all .4s",marginTop:0}}>
-                        {done
-                          ? <span style={{color:"#fff",fontWeight:900,fontSize:current?16:14}}>{current?SC[order.status]?.emoji||"🚀":"✓"}</span>
-                          : <span style={{color:"#d1d5db",fontSize:10}}>●</span>}
-                      </div>
-                      {/* Text */}
-                      <div style={{paddingBottom:isLast?0:24,paddingTop:4,flex:1}}>
-                        <div style={{fontWeight:current?700:500,fontSize:14,color:current?"#1a1a1a":done?"#374151":"#9ca3af"}}>{step.label}</div>
-                        {histEntry&&<div style={{fontSize:12,color:current?"#ee4d2d":"#9ca3af",marginTop:1}}>{fmtDate(histEntry.changedAt)}</div>}
-                        {current&&<div style={{fontSize:12,color:"#6b7280",marginTop:4,lineHeight:1.5}}>{step.desc}</div>}
-                        {!done&&!current&&<div style={{fontSize:12,color:"#d1d5db",marginTop:1}}>Chưa hoàn thành</div>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Items */}
-          <div style={{background:"#fff",borderRadius:16,padding:"20px 24px",boxShadow:"0 2px 12px rgba(0,0,0,.07)",border:"1px solid #f3f4f6"}}>
-            <h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700,color:"#1a1a1a"}}>Chi tiết món ăn</h3>
-            <div style={{display:"flex",flexDirection:"column",gap:0}}>
+            <div style={{display:"flex",flexDirection:"column"}}>
               {order.items?.map((item,idx)=>(
-                <div key={idx} style={{display:"flex",alignItems:"center",gap:16,padding:"16px 0",borderBottom:idx<order.items.length-1?"1px solid #f3f4f6":"none"}}>
-                  {/* Thumbnail */}
-                  <div style={{width:80,height:80,borderRadius:14,background:"#fff8f5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:40,flexShrink:0,border:"1px solid #fee2e2",overflow:"hidden"}}>
+                <div key={idx} style={{display:"flex",alignItems:"center",gap:16,padding:"14px 0",borderBottom:idx<order.items.length-1?"1px solid #f9fafb":"none"}}>
+                  <div style={{width:72,height:72,borderRadius:12,background:"#fff8f5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36,flexShrink:0,border:"1px solid #fee2e2",overflow:"hidden"}}>
                     {item.image
-                      ? <img src={item.image} alt={item.name} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.style.display="none";e.target.parentNode.innerHTML=item.emoji||"🍽️";}}/>
+                      ? <img src={item.image} alt={item.name} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>
                       : <span>{item.emoji||"🍽️"}</span>}
                   </div>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:700,fontSize:15,color:"#1a1a1a",marginBottom:4}}>{item.name}</div>
-                    {item.note&&<div style={{fontSize:12,color:"#6b7280",marginBottom:2}}>Ghi chú: {item.note}</div>}
-                    <div style={{fontSize:12,color:"#9ca3af"}}>Số lượng: {item.quantity}</div>
+                    <div style={{fontWeight:700,fontSize:15,color:"#1a1a1a",marginBottom:3}}>{item.name}</div>
+                    <div style={{fontSize:12,color:"#9ca3af",marginBottom:4}}>Số lượng: {item.quantity}</div>
+                    {item.category&&<span style={{fontSize:11,fontWeight:600,color:"#6b7280",background:"#f3f4f6",padding:"2px 8px",borderRadius:6}}>{item.category}</span>}
                   </div>
                   <div style={{textAlign:"right",flexShrink:0}}>
-                    <div style={{fontWeight:700,fontSize:14,color:"#1a1a1a"}}>{fmtMoney(item.price*item.quantity)}</div>
-                    {item.quantity>1&&<div style={{fontSize:11,color:"#9ca3af"}}>{fmtMoney(item.price)}/món</div>}
+                    <div style={{fontWeight:800,fontSize:15,color:"#ee4d2d"}}>{fmtMoney(item.price*item.quantity)}</div>
+                    {item.quantity>1&&<div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{fmtMoney(item.price)}/món</div>}
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Shipper info (if available) */}
+          {/* Nhà hàng */}
+          {order.restaurantName&&(
+            <div style={{background:"#fff",borderRadius:16,padding:"18px 24px",border:"1px solid #f3f4f6",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{display:"flex",alignItems:"center",gap:14}}>
+                  <div style={{width:46,height:46,borderRadius:12,background:"#fff0ed",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>🏪</div>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:15,color:"#1a1a1a"}}>Nhà hàng {order.restaurantName}</div>
+                    {order.restaurantAddress&&<div style={{fontSize:12,color:"#9ca3af",marginTop:2}}>{order.restaurantAddress}</div>}
+                  </div>
+                </div>
+                <button style={{padding:"8px 16px",borderRadius:20,border:"1.5px solid #ee4d2d",background:"#fff",color:"#ee4d2d",fontWeight:700,fontSize:13,cursor:"pointer"}}>Xem quán</button>
+              </div>
+            </div>
+          )}
+
+          {/* Shipper info */}
           {order.shipper&&["shipper_accepted","delivering","shipper_delivered","delivered"].includes(order.status)&&(
-            <div style={{background:"#fff",borderRadius:16,padding:"20px 24px",boxShadow:"0 2px 12px rgba(0,0,0,.07)",border:"1px solid #f3f4f6"}}>
-              <h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700,color:"#1a1a1a"}}>Thông tin tài xế</h3>
-              <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
-                <div style={{width:52,height:52,borderRadius:"50%",background:"#e0f2fe",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0,overflow:"hidden"}}>
+            <div style={{background:"#fff",borderRadius:16,padding:"18px 24px",border:"1px solid #f3f4f6",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
+              <h3 style={{margin:"0 0 14px",fontSize:15,fontWeight:700,color:"#1a1a1a"}}>🛵 Thông tin tài xế</h3>
+              <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:12}}>
+                <div style={{width:48,height:48,borderRadius:"50%",background:"#e0f2fe",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,overflow:"hidden"}}>
                   {order.shipper.avatar?<img src={order.shipper.avatar} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:"🛵"}
                 </div>
                 <div>
@@ -292,51 +387,73 @@ function OrderDetailPage({ orderId, onBack, showToast, onRefreshList }){
                 </div>
               </div>
               {order.shipper.phone&&(
-                <div style={{display:"flex",gap:10}}>
-                  <a href={`tel:${order.shipper.phone}`} style={{flex:1,padding:"10px",borderRadius:10,border:"1.5px solid #e5e7eb",background:"#fff",color:"#1a1a1a",fontWeight:600,fontSize:13,textAlign:"center",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>📞 Gọi điện</a>
-                </div>
+                <a href={`tel:${order.shipper.phone}`} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:10,border:"1.5px solid #e5e7eb",background:"#f9fafb",color:"#1a1a1a",fontWeight:600,fontSize:13,textDecoration:"none"}}>
+                  📞 Gọi cho tài xế
+                </a>
               )}
             </div>
           )}
         </div>
 
-        {/* ── RIGHT column ── */}
-        <div style={{width:380,flexShrink:0,position:"sticky",top:20,display:"flex",flexDirection:"column",gap:16}}>
+        {/* RIGHT: Thanh toán (tối) + action */}
+        <div style={{width:340,flexShrink:0,position:"sticky",top:20,display:"flex",flexDirection:"column",gap:12}}>
 
-          {/* Payment summary */}
-          <div style={{background:"#2d1f1a",borderRadius:16,padding:"22px",color:"#fff"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-              <span style={{fontWeight:700,fontSize:16}}>Thanh toán</span>
-              <span style={{background:"#ee4d2d",color:"#fff",padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:700,textTransform:"uppercase"}}>
-                {order.paymentMethod==="vnpay"?"VNPay":order.paymentMethod==="cash"?"Tiền mặt":order.paymentMethod}
+          {/* Payment card — dark bg như ảnh */}
+          <div style={{background:"#1c1410",borderRadius:18,padding:"22px",color:"#fff",overflow:"hidden",position:"relative"}}>
+            {/* Subtle glow */}
+            <div style={{position:"absolute",top:-40,right:-40,width:120,height:120,borderRadius:"50%",background:"rgba(238,77,45,.15)",pointerEvents:"none"}}/>
+
+            {/* Header */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,position:"relative"}}>
+              <span style={{fontWeight:700,fontSize:17}}>Thanh toán</span>
+              <span style={{background:"#ee4d2d",color:"#fff",padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px"}}>
+                {order.paymentMethod==="vnpay"?"VNPAY":"TIỀN MẶT"}
               </span>
             </div>
-            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
-              <Row label="Tạm tính" value={fmtMoney(order.subtotal)} light/>
-              {order.deliveryFee>0&&<Row label={`Phí giao hàng`} value={fmtMoney(order.deliveryFee)} light/>}
-              {order.discount>0&&<Row label="Khuyến mãi" value={`-${fmtMoney(order.discount)}`} light valueColor="#4ade80"/>}
+
+            {/* Rows */}
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16,position:"relative"}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
+                <span style={{color:"rgba(255,255,255,.6)"}}>Tạm tính</span>
+                <span style={{color:"rgba(255,255,255,.9)",fontWeight:500}}>{fmtMoney(order.subtotal)}</span>
+              </div>
+              {order.deliveryFee>0&&(
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
+                  <span style={{color:"rgba(255,255,255,.6)"}}>Phí giao hàng</span>
+                  <span style={{color:"rgba(255,255,255,.9)",fontWeight:500}}>{fmtMoney(order.deliveryFee)}</span>
+                </div>
+              )}
+              {order.discount>0&&(
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
+                  <span style={{color:"rgba(255,255,255,.6)"}}>Khuyến mãi</span>
+                  <span style={{color:"#4ade80",fontWeight:600}}>-{fmtMoney(order.discount)}</span>
+                </div>
+              )}
             </div>
-            <div style={{borderTop:"1px solid rgba(255,255,255,.15)",paddingTop:14,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-              <span style={{fontWeight:700,fontSize:15,color:"rgba(255,255,255,.9)"}}>Tổng cộng</span>
-              <span style={{fontWeight:800,fontSize:26,color:"#ee4d2d"}}>{fmtMoney(order.total)}</span>
+
+            <div style={{borderTop:"1px solid rgba(255,255,255,.12)",paddingTop:14,display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:16,position:"relative"}}>
+              <span style={{fontWeight:700,fontSize:14,color:"rgba(255,255,255,.85)"}}>Tổng cộng</span>
+              <span style={{fontWeight:800,fontSize:28,color:"#ee4d2d"}}>{fmtMoney(order.total)}</span>
             </div>
 
             {/* Delivery address */}
             {order.deliveryAddress&&(
-              <div style={{marginTop:16,padding:"12px",background:"rgba(255,255,255,.08)",borderRadius:10}}>
-                <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:6}}>Địa chỉ giao hàng</div>
-                <div style={{fontSize:13,color:"rgba(255,255,255,.85)",lineHeight:1.5,display:"flex",gap:6}}>
+              <div style={{background:"rgba(255,255,255,.07)",borderRadius:10,padding:"12px 14px",position:"relative"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:6}}>Địa chỉ giao hàng</div>
+                <div style={{fontSize:12,color:"rgba(255,255,255,.8)",lineHeight:1.5,display:"flex",gap:6}}>
                   <span style={{color:"#ee4d2d",flexShrink:0}}>📍</span>
                   {order.deliveryAddress}
                 </div>
+                {/* Map */}
+                <MapBox address={order.deliveryAddress}/>
               </div>
             )}
 
             {/* Note */}
             {order.note&&(
-              <div style={{marginTop:10,padding:"12px",background:"rgba(255,255,255,.08)",borderRadius:10}}>
-                <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:6}}>Ghi chú</div>
-                <div style={{fontSize:13,color:"rgba(255,255,255,.75)",lineHeight:1.5}}>📝 {order.note}</div>
+              <div style={{background:"rgba(255,255,255,.07)",borderRadius:10,padding:"10px 14px",marginTop:10,position:"relative"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}}>Ghi chú</div>
+                <div style={{fontSize:12,color:"rgba(255,255,255,.7)",lineHeight:1.5}}>📝 {order.note}</div>
               </div>
             )}
           </div>
@@ -348,7 +465,7 @@ function OrderDetailPage({ orderId, onBack, showToast, onRefreshList }){
                 if(!window.confirm("Bạn có chắc muốn hủy đơn này không?"))return;
                 try{ await cancelOrder(order._id,"Khách hàng hủy"); showToast("Đã hủy đơn hàng","success"); load(); onRefreshList(); }
                 catch(e){showToast("Lỗi: "+e.message,"error");}
-              }} style={{padding:"12px",borderRadius:12,border:"1.5px solid #ef4444",background:"#fff",color:"#ef4444",fontWeight:700,fontSize:14,cursor:"pointer"}}>
+              }} style={{padding:"13px",borderRadius:12,border:"1.5px solid #ef4444",background:"#fff",color:"#ef4444",fontWeight:700,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
                 ✕ Hủy đơn hàng
               </button>
             )}
@@ -380,8 +497,8 @@ function OrderDetailPage({ orderId, onBack, showToast, onRefreshList }){
               )
             )}
 
-            <div style={{padding:"14px",background:"#fff",borderRadius:12,border:"1px solid #f3f4f6",textAlign:"center",fontSize:12,color:"#6b7280",lineHeight:1.5}}>
-              Cần thay đổi thông tin đơn hàng? Vui lòng liên hệ trung tâm CSKH của FoodieHub.
+            <div style={{padding:"12px 14px",background:"#fff",borderRadius:12,border:"1px solid #f3f4f6",textAlign:"center",fontSize:11,color:"#9ca3af",lineHeight:1.6}}>
+              Cần thay đổi thông tin đơn hàng? Vui lòng liên hệ trung tâm CSKH của <span style={{color:"#ee4d2d",fontWeight:700}}>FoodieHub</span> để được hỗ trợ 24/7.
             </div>
           </div>
         </div>
@@ -393,18 +510,7 @@ function OrderDetailPage({ orderId, onBack, showToast, onRefreshList }){
   );
 }
 
-function Row({label,value,light,valueColor}){
-  const c=light?"rgba(255,255,255,.65)":"#6b7280";
-  const vc=valueColor||(light?"rgba(255,255,255,.9)":"#1a1a1a");
-  return(
-    <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
-      <span style={{color:c}}>{label}</span>
-      <span style={{fontWeight:600,color:vc}}>{value}</span>
-    </div>
-  );
-}
-
-// ─── ORDERS LIST PAGE ────────────────────────────────────────────
+// ─── ORDERS LIST PAGE ─────────────────────────────────────────────
 function OrdersPage({user,navigate,showToast}){
   const [orders,setOrders]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -428,17 +534,18 @@ function OrdersPage({user,navigate,showToast}){
 
   if(!user)return(
     <div className="view-port">
-      <div className="empty-card">
-        <h2>Vui lòng đăng nhập</h2>
-        <button className="primary-btn" onClick={()=>navigate("/sign-in")}>Đăng nhập</button>
+      <div style={{textAlign:"center",padding:"80px 0"}}>
+        <h2 style={{color:"#1a1a1a"}}>Vui lòng đăng nhập</h2>
+        <button style={{padding:"10px 28px",background:"#ee4d2d",color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer"}} onClick={()=>navigate("/sign-in")}>Đăng nhập</button>
       </div>
     </div>
   );
 
-  // Show detail page
   if(detailId)return(
     <>
-      <OrderDetailPage orderId={detailId} onBack={()=>setDetailId(null)} showToast={showToast} onRefreshList={()=>fetchOrders(false)}/>
+      <div className="view-port">
+        <OrderDetailPage orderId={detailId} onBack={()=>setDetailId(null)} showToast={showToast} onRefreshList={()=>fetchOrders(false)}/>
+      </div>
       <AnimStyles/>
     </>
   );
@@ -449,13 +556,15 @@ function OrdersPage({user,navigate,showToast}){
   return(
     <div className="view-port">
       {/* Header */}
-      <div style={{background:"#fff",borderRadius:12,padding:"16px 24px",marginBottom:12,boxShadow:"0 1px 8px rgba(0,0,0,.07)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <h2 style={{margin:0,fontSize:18,fontWeight:700,color:"#1a1a1a"}}>📦 Đơn hàng của tôi</h2>
-        <button onClick={()=>fetchOrders()} style={{background:"none",border:"1px solid #e5e7eb",borderRadius:8,padding:"6px 14px",fontSize:13,cursor:"pointer",color:"#6b7280"}}>🔄 Làm mới</button>
+      <div style={{background:"#fff",borderRadius:14,padding:"16px 24px",marginBottom:14,boxShadow:"0 1px 8px rgba(0,0,0,.06)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <h2 style={{margin:0,fontSize:18,fontWeight:800,color:"#1a1a1a"}}>📦 Đơn hàng của tôi</h2>
+        <button onClick={()=>fetchOrders()} style={{background:"none",border:"1px solid #e5e7eb",borderRadius:8,padding:"7px 16px",fontSize:13,cursor:"pointer",color:"#6b7280",display:"flex",alignItems:"center",gap:5}}>
+          🔄 Làm mới
+        </button>
       </div>
 
       {/* Tabs */}
-      <div style={{background:"#fff",borderRadius:12,marginBottom:16,boxShadow:"0 1px 8px rgba(0,0,0,.07)",display:"flex",overflowX:"auto"}}>
+      <div style={{background:"#fff",borderRadius:14,marginBottom:16,boxShadow:"0 1px 8px rgba(0,0,0,.06)",display:"flex",overflowX:"auto"}}>
         {TAB_FILTERS.map((tab,idx)=>(
           <div key={idx} onClick={()=>setActiveTab(idx)} style={{flex:1,minWidth:90,textAlign:"center",padding:"15px 0",cursor:"pointer",fontSize:14,fontWeight:activeTab===idx?700:400,color:activeTab===idx?"#ee4d2d":"#6b7280",borderBottom:activeTab===idx?"2.5px solid #ee4d2d":"2.5px solid transparent",transition:"all .2s",whiteSpace:"nowrap"}}>
             {tab.label}
@@ -467,11 +576,11 @@ function OrdersPage({user,navigate,showToast}){
       {/* List */}
       {loading?(
         <div style={{textAlign:"center",padding:"80px 0",color:"#9ca3af"}}>
-          <div style={{fontSize:36,animation:"spin 1s linear infinite",display:"inline-block"}}>⏳</div>
+          <div style={{width:40,height:40,border:"3px solid #f0f0f0",borderTop:"3px solid #ee4d2d",borderRadius:"50%",animation:"spin .8s linear infinite",display:"inline-block"}}/>
           <div style={{marginTop:12}}>Đang tải đơn hàng...</div>
         </div>
       ):filtered.length===0?(
-        <div style={{textAlign:"center",padding:"80px 0",background:"#fff",borderRadius:12}}>
+        <div style={{textAlign:"center",padding:"80px 0",background:"#fff",borderRadius:14}}>
           <div style={{fontSize:56,marginBottom:12}}>🛒</div>
           <div style={{color:"#9ca3af",fontSize:16,fontWeight:500}}>Chưa có đơn hàng nào</div>
           <button onClick={()=>navigate("/home")} style={{marginTop:16,padding:"10px 28px",background:"#ee4d2d",color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer"}}>Đặt món ngay →</button>
@@ -481,27 +590,28 @@ function OrdersPage({user,navigate,showToast}){
           {filtered.map(order=>{
             const cfg=SC[order.status]||SC.pending;
             return(
-              <div key={order._id} onClick={()=>setDetailId(order._id)} style={{background:"#fff",borderRadius:14,boxShadow:"0 2px 12px rgba(0,0,0,.07)",border:"1px solid #f3f4f6",cursor:"pointer",transition:"all .2s",overflow:"hidden"}}
-                onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 4px 20px rgba(238,77,45,.12)";e.currentTarget.style.borderColor="#fca5a5";}}
-                onMouseLeave={e=>{e.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,.07)";e.currentTarget.style.borderColor="#f3f4f6";}}>
+              <div key={order._id} onClick={()=>setDetailId(order._id)}
+                style={{background:"#fff",borderRadius:16,boxShadow:"0 2px 10px rgba(0,0,0,.06)",border:"1px solid #f3f4f6",cursor:"pointer",transition:"all .2s",overflow:"hidden"}}
+                onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 6px 24px rgba(238,77,45,.1)";e.currentTarget.style.borderColor="#fca5a5";e.currentTarget.style.transform="translateY(-1px)";}}
+                onMouseLeave={e=>{e.currentTarget.style.boxShadow="0 2px 10px rgba(0,0,0,.06)";e.currentTarget.style.borderColor="#f3f4f6";e.currentTarget.style.transform="translateY(0)";}}>
                 {/* Header */}
-                <div style={{padding:"14px 20px",borderBottom:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{padding:"14px 20px",borderBottom:"1px solid #f9fafb",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
                     <span style={{fontWeight:700,fontSize:15,color:"#1a1a1a"}}>{order.restaurantName}</span>
-                    <span style={{fontSize:11,color:"#9ca3af",fontFamily:"monospace"}}>#{order._id.slice(-8).toUpperCase()}</span>
+                    <span style={{fontSize:11,color:"#d1d5db",marginLeft:8,fontFamily:"monospace"}}>#{order._id.slice(-8).toUpperCase()}</span>
                   </div>
-                  <span style={{background:cfg.bg,color:cfg.color,padding:"4px 12px",borderRadius:20,fontSize:12,fontWeight:700,border:`1px solid ${cfg.color}40`}}>{cfg.emoji} {cfg.label}</span>
+                  <span style={{background:cfg.bg,color:cfg.color,padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:700,border:`1px solid ${cfg.color}30`}}>{cfg.label}</span>
                 </div>
-                {/* Items preview */}
-                <div style={{padding:"12px 20px",borderBottom:"1px solid #f3f4f6"}}>
+                {/* Items */}
+                <div style={{padding:"12px 20px",borderBottom:"1px solid #f9fafb"}}>
                   {order.items?.slice(0,2).map((item,i)=>(
                     <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"4px 0"}}>
-                      <div style={{width:36,height:36,borderRadius:8,background:"#fff8f5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0,border:"1px solid #fee2e2"}}>{item.emoji||"🍽️"}</div>
-                      <span style={{fontSize:14,color:"#374151",flex:1}}>{item.name} <span style={{color:"#9ca3af"}}>x{item.quantity}</span></span>
-                      <span style={{fontWeight:600,fontSize:14,color:"#1a1a1a"}}>{fmtMoney(item.price*item.quantity)}</span>
+                      <div style={{width:34,height:34,borderRadius:8,background:"#fff8f5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0,border:"1px solid #fee2e2"}}>{item.emoji||"🍽️"}</div>
+                      <span style={{fontSize:14,color:"#374151",flex:1}}>{item.name} <span style={{color:"#9ca3af"}}>×{item.quantity}</span></span>
+                      <span style={{fontWeight:600,fontSize:13,color:"#374151"}}>{fmtMoney(item.price*item.quantity)}</span>
                     </div>
                   ))}
-                  {order.items?.length>2&&<div style={{fontSize:12,color:"#9ca3af",marginTop:4}}>+{order.items.length-2} món khác</div>}
+                  {order.items?.length>2&&<div style={{fontSize:12,color:"#9ca3af",marginTop:4,paddingLeft:44}}>+{order.items.length-2} món khác</div>}
                 </div>
                 {/* Footer */}
                 <div style={{padding:"10px 20px",background:"#fafafa",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -509,7 +619,7 @@ function OrdersPage({user,navigate,showToast}){
                   <div style={{display:"flex",alignItems:"baseline",gap:6}}>
                     <span style={{fontSize:12,color:"#6b7280"}}>Tổng:</span>
                     <span style={{fontSize:18,fontWeight:800,color:"#ee4d2d"}}>{fmtMoney(order.total)}</span>
-                    <span style={{fontSize:12,color:"#9ca3af"}}>→</span>
+                    <span style={{fontSize:12,color:"#d1d5db"}}>→</span>
                   </div>
                 </div>
               </div>
@@ -517,7 +627,6 @@ function OrdersPage({user,navigate,showToast}){
           })}
         </div>
       )}
-
       <AnimStyles/>
     </div>
   );
@@ -526,7 +635,6 @@ function OrdersPage({user,navigate,showToast}){
 function AnimStyles(){
   return(
     <style>{`
-      @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px) scale(.9)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
       @keyframes modalPop{from{opacity:0;transform:scale(.88) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
       @keyframes spin{to{transform:rotate(360deg)}}
     `}</style>

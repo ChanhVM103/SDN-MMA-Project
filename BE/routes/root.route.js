@@ -10,6 +10,7 @@ var reviewRouter = require("./review.route");
 var promotionRouter = require("./promotion.route");
 var voucherRouter = require("./voucher.route");
 var chatAIRouter = require("./chatAI.route");
+var walletRouter = require("./wallet.route");
 var paymentController = require("../controller/payment.controller");
 
 router.use("/auth", authRouter);
@@ -22,6 +23,7 @@ router.use("/reviews", reviewRouter);
 router.use("/promotions", promotionRouter);
 router.use("/vouchers", voucherRouter);
 router.use("/chatAI", chatAIRouter);
+router.use("/wallet", walletRouter);
 
 // Alias routes to match the simple VNPay sample format.
 router.post("/create-vnpay-url", paymentController.createVnpayUrl);
