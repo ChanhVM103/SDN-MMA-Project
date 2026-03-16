@@ -23,7 +23,7 @@ import TopRatedSection from '@/components/home/TopRatedSection';
 import NearbySection from '@/components/home/NearbySection';
 import MostOrderedSection from '@/components/home/MostOrderedSection';
 import FlashSaleSection from '@/components/home/FlashSaleSection';
-import SalePopup from '@/components/SalePopup';
+import AdPopup from '@/components/AdPopup';
 import BrandSection from '@/components/home/BrandSection';
 import NewArrivalsSection from '@/components/home/NewArrivalsSection';
 import { getRestaurantsByTags, getTopRatedRestaurants, getFlashSaleRestaurants } from '@/constants/restaurant-api';
@@ -194,6 +194,13 @@ export default function HomeScreen() {
   const [loadingFilter, setLoadingFilter] = useState(false);
   const [popularDishes, setPopularDishes] = useState<any[]>(POPULAR_DISHES);
 
+  const [showAd, setShowAd] = useState(false);
+
+  // Trigger Ad on mount
+  useEffect(() => {
+    setShowAd(true);
+  }, []);
+
   // Load Popular Dishes Dynamically
   useEffect(() => {
     const fetchPopular = async () => {
@@ -296,7 +303,14 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1200);
+    // Reset ad state to trigger re-mount of AdPopup if needed, 
+    // or just toggle it. Since AdPopup handles its own timer on mount, 
+    // toggling showAd will re-mount it.
+    setShowAd(false);
+    setTimeout(() => {
+      setRefreshing(false);
+      setShowAd(true);
+    }, 1200);
   }, []);
 
   // Redirect shipper to their dashboard
@@ -656,8 +670,8 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Sale Popup */}
-      <SalePopup />
+      {/* Ad Popup */}
+      {showAd && <AdPopup onClose={() => setShowAd(false)} />}
 
       {/* AI Chat Floating Button */}
       <ChatFloatingButton />
