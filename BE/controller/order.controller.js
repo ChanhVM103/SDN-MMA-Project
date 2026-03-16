@@ -20,14 +20,22 @@ const addRestaurantRevenue = async (restaurantId, amount) => {
 
 const addShipperRevenue = async (shipperId, amount) => {
   // Shipper nhận 100% phí giao hàng
-  const netAmount = amount; 
   await User.findByIdAndUpdate(shipperId, {
     $inc: { 
-      walletBalance: netAmount,
-      totalRevenue: netAmount 
+      walletBalance: amount,
+      totalRevenue: amount 
     },
   });
 };
+
+const deductShipperWallet = async (shipperId, amount) => {
+  await User.findByIdAndUpdate(shipperId, {
+    $inc: { 
+      walletBalance: -amount
+    },
+  });
+};
+
 
 const incrementProductSoldCounts = async (items) => {
   if (!items || !Array.isArray(items)) return;
@@ -838,7 +846,22 @@ const shipperAcceptOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Đơn hàng này đã có shipper khác nhận rồi" });
     }
 
-    // Bỏ logic ký quỹ (escrow) theo yêu cầu mới
+    // Logic ký quỹ (escrow) cho đơn tiền mặt
+    if (order.paymentMethod === "cash") {
+      const shipper = await User.findById(req.userId);
+      const escrowAmount = order.total - (order.deliveryFee || 0);
+
+      if (shipper.walletBalance < escrowAmount) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Số dư ví không đủ để nhận đơn này. Cần tối thiểu ${escrowAmount.toLocaleString("vi-VN")}₫ (tiền món ăn) để ký quỹ.` 
+        });
+      }
+
+      await deductShipperWallet(req.userId, escrowAmount);
+      order.escrowAmount = escrowAmount;
+    }
+
     order.shipper = req.userId;
     const nextStatus = req.body.status || "shipper_accepted";
     order.status = nextStatus;
@@ -849,7 +872,12 @@ const shipperAcceptOrder = async (req, res) => {
     });
     await order.save();
 
-    return res.json({ success: true, message: `Đã nhận đơn thành công!${order.paymentMethod === "cash" ? " Hệ thống đã trừ tiền ký quỹ từ ví của bạn." : ""}`, data: order });
+    return res.json({ 
+      success: true, 
+      message: `Đã nhận đơn thành công!${order.paymentMethod === "cash" ? ` Hệ thống đã trừ ${order.escrowAmount.toLocaleString("vi-VN")}₫ tiền ký quỹ từ ví của bạn.` : ""}`, 
+      data: order 
+    });
+
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
@@ -911,23 +939,18 @@ const shipperCompleteDelivery = async (req, res) => {
     order.callCount = callCount;
     order.status = "delivered"; // User doesn't need to confirm, moves to delivered directly
     
-    // Tiền món đã được hệ thống trả cho Restaurant lúc handover.
     const shipperFee = order.deliveryFee || 0;
 
     if (order.paymentMethod === "cash") {
       order.isPaid = true;
       order.paidAmount = order.total;
       order.paidAt = new Date();
-      
-      // COD: Shipper đã thu tiền mặt (món + ship) từ User.
-      // Tiền món đã được hệ thống trả cho Restaurant lúc handover.
-      // Shipper thu 50k mặt, nhưng chỉ ký quỹ 35k -> đã có 15k ship fee trong túi.
-      // Vì vậy KHÔNG cộng tiền ship vào ví (shipperWallet), nhưng VẪN cộng vào totalRevenue để thống kê.
-      await User.findByIdAndUpdate(order.shipper, {
-        $inc: { totalRevenue: shipperFee }
-      });
+
+      // COD: Shipper đã thu tiền mặt từ khách (= total = subtotal + deliveryFee)
+      // Ví đã bị trừ subtotal (escrow) lúc nhận đơn → Shipper thực nhận = total - escrow = deliveryFee
+      // → KHÔNG cộng gì thêm vào ví, shipper đã lời phí ship từ tiền mặt thu được
     } else {
-      // VNPay: Hệ thống cộng phí ship vào ví cho Shipper
+      // VNPay: Khách đã thanh toán online, shipper chỉ giao hàng → cộng phí ship vào ví
       await addShipperRevenue(order.shipper, shipperFee);
     }
 
@@ -990,7 +1013,9 @@ const shipperReportBomb = async (req, res) => {
 
     await order.save();
 
-    // Đơn bị bom: Nếu thanh toán VNPay, hệ thống vẫn trả phí ship cho shipper vì đã nỗ lực giao hàng
+    // Đơn bị bom:
+    // - VNPay: trả phí ship cho shipper vì đã nỗ lực giao hàng
+    // - COD: KHÔNG hoàn ký quỹ, tiền đã chuyển cho nhà hàng lúc shipper lấy hàng
     if (order.paymentMethod === "vnpay") {
       const shipperFee = order.deliveryFee || 0;
       await addShipperRevenue(order.shipper, shipperFee);
