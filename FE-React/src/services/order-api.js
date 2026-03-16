@@ -76,7 +76,13 @@ export const shipperPickedUp = async (orderId) => apiRequest(`/orders/${orderId}
     method: 'PATCH',
 });
 
-export const shipperCompleteDelivery = async (orderId) => apiRequest(`/orders/${orderId}/shipper-delivered`, {
+export const shipperCompleteDelivery = async (orderId, data) => apiRequest(`/orders/${orderId}/shipper-delivered`, {
     method: 'PATCH',
+    body: JSON.stringify(data)
+});
+
+export const shipperReportBomb = async (orderId, data) => apiRequest(`/orders/${orderId}/shipper-bomb`, {
+    method: 'PATCH',
+    body: JSON.stringify(data)
 });
 

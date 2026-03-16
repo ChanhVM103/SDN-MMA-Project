@@ -216,13 +216,13 @@ function App() {
   const cartCount = cart.items.reduce((s, i) => s + i.quantity, 0);
 
   const screen = useMemo(() => {
-    if (path === "/sign-in") return <SignInPage onSubmit={handleSignIn} onGoogleSignIn={handleGoogleAuth} onFacebookSignIn={handleFacebookAuth} navigate={navigate} />;
-    if (path === "/sign-up") return <SignUpPage onSubmit={handleSignUp} onGoogleSignIn={handleGoogleAuth} onFacebookSignIn={handleFacebookAuth} navigate={navigate} />;
-    if (path === "/payment-result") return <PaymentResultPage navigate={navigate} />;
-    if (path === "/orders") return <OrdersPage user={auth.user} navigate={navigate} />;
-    if (path === "/favorites") return <FavoritesPage user={auth.user} navigate={navigate} />;
-    if (path === "/notifications") return <NotificationsPage user={auth.user} navigate={navigate} />;
-    if (path === "/profile") return <ProfilePage user={auth.user} onLogout={handleLogout} navigate={navigate} onUpdateUser={(newUser) => {
+    if (path === "/sign-in") return <SignInPage onSubmit={handleSignIn} onGoogleSignIn={handleGoogleAuth} onFacebookSignIn={handleFacebookAuth} navigate={navigate} showToast={showToast} showConfirm={showConfirm} />;
+    if (path === "/sign-up") return <SignUpPage onSubmit={handleSignUp} onGoogleSignIn={handleGoogleAuth} onFacebookSignIn={handleFacebookAuth} navigate={navigate} showToast={showToast} showConfirm={showConfirm} />;
+    if (path === "/payment-result") return <PaymentResultPage navigate={navigate} showToast={showToast} showConfirm={showConfirm} />;
+    if (path === "/orders") return <OrdersPage user={auth.user} navigate={navigate} showToast={showToast} showConfirm={showConfirm} />;
+    if (path === "/favorites") return <FavoritesPage user={auth.user} navigate={navigate} showToast={showToast} showConfirm={showConfirm} />;
+    if (path === "/notifications") return <NotificationsPage user={auth.user} navigate={navigate} showToast={showToast} showConfirm={showConfirm} />;
+    if (path === "/profile") return <ProfilePage user={auth.user} onLogout={handleLogout} navigate={navigate} showToast={showToast} showConfirm={showConfirm} onUpdateUser={(newUser) => {
       console.log('[App] onUpdateUser called with:', newUser);
       setAuth(prev => {
         const updatedAuth = { ...prev, user: newUser };
@@ -231,9 +231,9 @@ function App() {
         return updatedAuth;
       });
     }} />;
-    if (path === "/admin" && auth?.user?.role === "admin") return <AdminDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
-    if (path === "/brand-dashboard" && auth?.user?.role === "brand") return <BrandDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
-    if (path === "/shipper-dashboard" && auth?.user?.role === "shipper") return <ShipperDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} />;
+    if (path === "/admin" && auth?.user?.role === "admin") return <AdminDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} showToast={showToast} showConfirm={showConfirm} />;
+    if (path === "/brand-dashboard" && auth?.user?.role === "brand") return <BrandDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} showToast={showToast} showConfirm={showConfirm} />;
+    if (path === "/shipper-dashboard" && auth?.user?.role === "shipper") return <ShipperDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} showToast={showToast} showConfirm={showConfirm} />;
     if (isRestaurantDetail) return (
       <RestaurantDetailPage
         restaurantId={restaurantId}
@@ -242,9 +242,11 @@ function App() {
         onUpdateQty={handleUpdateQty}
         navigate={navigate}
         onOpenCart={() => setCartOpen(true)}
+        showToast={showToast}
+        showConfirm={showConfirm}
       />
     );
-    return <HomePage user={auth.user} navigate={navigate} globalSearchTerm={globalSearchTerm} setGlobalSearchTerm={setGlobalSearchTerm} />;
+    return <HomePage user={auth.user} navigate={navigate} globalSearchTerm={globalSearchTerm} setGlobalSearchTerm={setGlobalSearchTerm} showToast={showToast} showConfirm={showConfirm} />;
   }, [auth.user, path, globalSearchTerm, cart]);
 
   return (
@@ -322,6 +324,15 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
   const [note, setNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [placing, setPlacing] = useState(false);
+
+  // Kiểm tra quyền thanh toán COD
+  const isCodBanned = user?.isVnpayMandatory || (user?.codBannedUntil && new Date(user.codBannedUntil) > new Date());
+  
+  useEffect(() => {
+    if (isCodBanned && paymentMethod === "cash") {
+      setPaymentMethod("vnpay");
+    }
+  }, [isCodBanned]);
 
   // Voucher state
   const [vouchers, setVouchers] = useState([]);
@@ -603,26 +614,40 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
               <div style={{ padding: "16px 20px" }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 12 }}>💳 Thanh toán</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {PAYMENT_METHODS.map(pm => (
-                    <div key={pm.id} onClick={() => setPaymentMethod(pm.id)} style={{
-                      display: "flex", alignItems: "center", gap: 14,
-                      padding: "13px 16px", borderRadius: 10, cursor: "pointer",
-                      border: paymentMethod === pm.id ? "2px solid #ee4d2d" : "1.5px solid #e5e7eb",
-                      background: paymentMethod === pm.id ? "#fff8f5" : "#fff",
-                      transition: "all 0.15s",
-                    }}>
-                      <span style={{ fontSize: 24 }}>{pm.icon}</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>{pm.label}</div>
-                        <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 1 }}>{pm.desc}</div>
+                  {isCodBanned && (
+                    <div style={{ padding: "10px 14px", background: "#fef2f2", borderRadius: 8, border: "1px solid #fee2e2", marginBottom: 4 }}>
+                      <div style={{ fontSize: 13, color: "#991b1b", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+                        ⚠️ {user.isVnpayMandatory ? "Bạn bắt buộc phải thanh toán online." : "Bạn đang bị cấm thanh toán tiền mặt."}
                       </div>
-                      <div style={{
-                        width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
-                        border: paymentMethod === pm.id ? "6px solid #ee4d2d" : "2px solid #d1d5db",
-                        transition: "all 0.15s",
-                      }} />
+                      <div style={{ fontSize: 11, color: "#dc2626", marginTop: 2 }}>
+                        Do lịch sử đơn hàng có đơn bị bom. {user.codBannedUntil && `Cấm đến: ${new Date(user.codBannedUntil).toLocaleDateString("vi-VN")}`}
+                      </div>
                     </div>
-                  ))}
+                  )}
+                  {PAYMENT_METHODS.map(pm => {
+                    const disabled = pm.id === "cash" && isCodBanned;
+                    return (
+                      <div key={pm.id} onClick={() => !disabled && setPaymentMethod(pm.id)} style={{
+                        display: "flex", alignItems: "center", gap: 14,
+                        padding: "13px 16px", borderRadius: 10, cursor: disabled ? "not-allowed" : "pointer",
+                        border: paymentMethod === pm.id ? "2px solid #ee4d2d" : "1.5px solid #e5e7eb",
+                        background: paymentMethod === pm.id ? "#fff8f5" : (disabled ? "#f9fafb" : "#fff"),
+                        opacity: disabled ? 0.6 : 1,
+                        transition: "all 0.15s",
+                      }}>
+                        <span style={{ fontSize: 24 }}>{pm.icon}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, color: disabled ? "#9ca3af" : "#1a1a1a" }}>{pm.label}</div>
+                          <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 1 }}>{pm.desc}</div>
+                        </div>
+                        <div style={{
+                          width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                          border: paymentMethod === pm.id ? "6px solid #ee4d2d" : "2px solid #d1d5db",
+                          transition: "all 0.15s",
+                        }} />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -816,25 +841,65 @@ function PaymentResultPage({ navigate }) {
 // ─── AppToast Component ──────────────────────────────
 function AppToast({ msg, type = "success", onClose }) {
   const config = {
-    success: { bg: "#10b981", icon: "✅", border: "#059669" },
-    error: { bg: "#ef4444", icon: "❌", border: "#dc2626" },
-    warning: { bg: "#f59e0b", icon: "⚠️", border: "#d97706" },
+    success: { 
+      bg: "rgba(16, 185, 129, 0.9)", 
+      icon: "✨", 
+      color: "#fff", 
+      shadow: "rgba(16, 185, 129, 0.4)",
+      border: "rgba(5, 150, 105, 0.5)"
+    },
+    error: { 
+      bg: "rgba(239, 68, 68, 0.9)",  
+      icon: "🛑", 
+      color: "#fff", 
+      shadow: "rgba(239, 68, 68, 0.4)",
+      border: "rgba(220, 38, 38, 0.5)"
+    },
+    warning: { 
+      bg: "rgba(245, 158, 11, 0.9)", 
+      icon: "⚠️", 
+      color: "#fff", 
+      shadow: "rgba(245, 158, 11, 0.4)",
+      border: "rgba(217, 119, 6, 0.5)"
+    },
   };
   const c = config[type] || config.success;
+
   return (
     <div style={{
-      position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)",
-      background: c.bg, color: "#fff", padding: "14px 22px",
-      borderRadius: 14, fontWeight: 600, fontSize: 14, zIndex: 99999,
-      boxShadow: `0 8px 32px rgba(0,0,0,0.22), 0 0 0 1px ${c.border}`,
-      display: "flex", alignItems: "center", gap: 10, maxWidth: "90vw",
-      animation: "toastIn 0.35s cubic-bezier(.175,.885,.32,1.275)",
-      whiteSpace: "nowrap",
+      position: "fixed", bottom: 100, left: "50%", transform: "translateX(-50%)",
+      background: c.bg, color: c.color, padding: "14px 24px",
+      borderRadius: "20px", fontWeight: 700, fontSize: "14px", zIndex: 100000,
+      boxShadow: `0 20px 40px ${c.shadow}`,
+      backdropFilter: "blur(12px)",
+      WebkitBackdropFilter: "blur(12px)",
+      display: "flex", alignItems: "center", gap: "14px", maxWidth: "min(450px, 92vw)",
+      animation: "toastSlideIn 0.5s cubic-bezier(0.19, 1, 0.22, 1)",
+      border: `1px solid ${c.border}`,
     }}>
-      <span style={{ fontSize: 18 }}>{c.icon}</span>
-      <span>{msg}</span>
-      <button onClick={onClose} style={{ marginLeft: 8, background: "rgba(255,255,255,0.25)", border: "none", color: "#fff", borderRadius: 8, width: 22, height: 22, cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
-      <style>{`@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px) scale(0.9)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}`}</style>
+      <div style={{
+        width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.25)",
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
+        flexShrink: 0, boxShadow: "inset 0 0 10px rgba(255,255,255,0.1)"
+      }}>
+        {c.icon}
+      </div>
+      <div style={{ flex: 1, lineHeight: "1.5" }}>{msg}</div>
+      <button onClick={onClose} style={{
+        background: "rgba(255,255,255,0.2)", border: "none", color: "#fff",
+        width: 28, height: 28, borderRadius: "50%", cursor: "pointer",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 14, fontWeight: "bold", transition: "all 0.2s"
+      }} onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,0.3)"; e.currentTarget.style.transform="scale(1.1)"}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.2)"; e.currentTarget.style.transform="scale(1)"}}>
+        ✕
+      </button>
+
+      <style>{`
+        @keyframes toastSlideIn {
+          from { opacity: 0; transform: translateX(-50%) translateY(40px) scale(0.9); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+        }
+      `}</style>
     </div>
   );
 }

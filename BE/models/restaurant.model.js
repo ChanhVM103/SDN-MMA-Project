@@ -47,6 +47,11 @@ const restaurantSchema = new mongoose.Schema(
       default: 0,
       min: [0, "Total revenue cannot be negative"],
     },
+    walletBalance: {
+      type: Number,
+      default: 0,
+      min: [0, "Wallet balance cannot be negative"],
+    },
     distance: {
       type: String,
       default: "",

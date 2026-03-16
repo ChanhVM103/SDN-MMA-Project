@@ -3,7 +3,7 @@ import { updateAvatarApi, updateProfileApi, changePasswordApi } from "../service
 import { parseStoredAuth } from "../services/auth-storage";
 import VietnamAddressPicker from "../components/VietnamAddressPicker";
 
-function ProfilePage({ user, onLogout, navigate, onUpdateUser }) {
+function ProfilePage({ user, onLogout, navigate, onUpdateUser, showToast }) {
   const [activeTab, setActiveTab] = useState("profile"); // "profile" | "password"
   const [fullName, setFullName] = useState(user?.fullName || "");
   const [phone, setPhone] = useState(user?.phone || "");
@@ -48,7 +48,7 @@ function ProfilePage({ user, onLogout, navigate, onUpdateUser }) {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert("Dung lượng file tối đa là 5MB");
+        showToast("Dung lượng file tối đa là 5MB", "warning");
         return;
       }
       setAvatarFile(file);
@@ -83,9 +83,9 @@ function ProfilePage({ user, onLogout, navigate, onUpdateUser }) {
         onUpdateUser(updatedUser);
       }
       setSavedAddress(address);
-      alert("Cập nhật hồ sơ thành công!");
+      showToast("Cập nhật hồ sơ thành công!");
     } catch (err) {
-      alert("Cập nhật thất bại: " + err.message);
+      showToast("Cập nhật thất bại: " + err.message, "error");
     } finally {
       setLoading(false);
     }
@@ -93,11 +93,11 @@ function ProfilePage({ user, onLogout, navigate, onUpdateUser }) {
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
-      alert("Mật khẩu xác nhận không khớp!");
+      showToast("Mật khẩu xác nhận không khớp!", "warning");
       return;
     }
     if (newPassword.length < 6) {
-      alert("Mật khẩu mới phải có ít nhất 6 ký tự!");
+      showToast("Mật khẩu mới phải có ít nhất 6 ký tự!", "warning");
       return;
     }
 
@@ -105,12 +105,12 @@ function ProfilePage({ user, onLogout, navigate, onUpdateUser }) {
       setLoading(true);
       const { token } = parseStoredAuth();
       await changePasswordApi(token, { currentPassword, newPassword });
-      alert("Đổi mật khẩu thành công!");
+      showToast("Đổi mật khẩu thành công!");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      alert("Lỗi đổi mật khẩu: " + err.message);
+      showToast("Lỗi đổi mật khẩu: " + err.message, "error");
     } finally {
       setLoading(false);
     }

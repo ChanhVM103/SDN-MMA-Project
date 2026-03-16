@@ -17,6 +17,12 @@ const apiRequest = async (endpoint, options = {}) => {
   return payload.data;
 };
 
+export const getProfileApi = (token) =>
+  apiRequest("/auth/profile", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
 export const signInApi = ({ email, password }) =>
   apiRequest("/auth/login", {
     method: "POST",

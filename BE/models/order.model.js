@@ -65,9 +65,17 @@ const orderSchema = new mongoose.Schema(
         "shipper_delivered", // Shipper báo giao xong, chờ nhà hàng xác nhận
         "delivered",         // Hoàn thành
         "cancelled",
+        "bombed",            // User không nhận hàng
       ],
       default: "pending",
     },
+
+    // Bằng chứng giao hàng
+    proofImage: { type: String, default: "" },
+    callCount: { type: Number, default: 0 },
+
+    // Tiền ký quỹ của Shipper cho đơn COD
+    escrowAmount: { type: Number, default: 0 },
 
     // Thanh toán
     paymentMethod: {

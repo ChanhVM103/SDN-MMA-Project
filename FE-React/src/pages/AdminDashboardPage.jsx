@@ -16,6 +16,7 @@ import {
   updateVoucherApi,
   deleteVoucherApi,
   toggleVoucherApi,
+  getAllOrdersApi,
 } from "../services/admin-api";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import LocationPicker from "../components/LocationPicker";
@@ -167,7 +168,7 @@ const adminTheme = createTheme({
   },
 });
 
-const AdminDashboardPage = ({ user, onLogout, navigate }) => {
+const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }) => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [usersList, setUsersList] = useState([]);
   const [restaurantsList, setRestaurantsList] = useState([]);
@@ -202,6 +203,11 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
   const [isDeleteResModalOpen, setIsDeleteResModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  
+  const [adminOrders, setAdminOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [isProofDialogOpen, setIsProofDialogOpen] = useState(false);
+  const [proofUrl, setProofUrl] = useState("");
 
   // Forms
   const [editForm, setEditForm] = useState({ role: "user", isActive: true });
@@ -275,8 +281,13 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
     message: "",
     severity: "success",
   });
-  const showSnack = (message, severity = "success") =>
-    setSnackbar({ open: true, message, severity });
+  const showSnack = (message, severity = "success") => {
+    if (showToast) {
+      showToast(message, severity === "success" ? "success" : (severity === "error" ? "error" : "warning"));
+    } else {
+      setSnackbar({ open: true, message, severity });
+    }
+  };
 
   const fetchDashboardStats = async () => {
     try {
@@ -310,13 +321,25 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
   useEffect(() => {
     if (activeTab === "users") fetchUsers();
     else if (activeTab === "restaurants") fetchRestaurants();
+    else if (activeTab === "orders") fetchAdminOrders();
     else if (activeTab === "dashboard") {
       fetchUsers();
       fetchRestaurants();
       fetchDashboardStats();
     }
-    // eslint-disable-next-line
   }, [activeTab]);
+
+  const fetchAdminOrders = async () => {
+    setLoadingOrders(true);
+    try {
+      const data = await getAllOrdersApi();
+      setAdminOrders(data || []);
+    } catch (e) {
+      showSnack("Lỗi tải đơn hàng: " + e.message, "error");
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
 
   // When restaurantsList loads on dashboard, fetch per-restaurant revenues
   useEffect(() => {
@@ -579,6 +602,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
     { key: "dashboard", label: "Tổng quan", icon: <DashboardIcon /> },
     { key: "users", label: "Quản lý User", icon: <PeopleIcon /> },
     { key: "restaurants", label: "Cửa hàng", icon: <StorefrontIcon /> },
+    { key: "orders", label: "Đơn hàng", icon: <ReceiptIcon /> },
     { key: "vouchers", label: "Voucher", icon: <LocalOfferIcon /> },
   ];
 
@@ -2662,6 +2686,90 @@ const AdminDashboardPage = ({ user, onLogout, navigate }) => {
           <Button variant="contained" color="error" onClick={submitDeleteVoucher}>Có, Xoá ngay</Button>
         </DialogActions>
       </Dialog>
+          {/* Proof Image Dialog */}
+          <Dialog open={isProofDialogOpen} onClose={() => setIsProofDialogOpen(false)} maxWidth="md">
+            <DialogTitle>Bằng chứng đơn hàng</DialogTitle>
+            <DialogContent>
+              {proofUrl ? (
+                <img src={proofUrl} alt="Proof" style={{ width: "100%", borderRadius: 8, marginTop: 16 }} />
+              ) : (
+                <Typography>Không có ảnh bằng chứng</Typography>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setIsProofDialogOpen(false)}>Đóng</Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* ═══ ORDERS TAB ═══ */}
+          {activeTab === "orders" && (
+            <Paper elevation={0} sx={{ border: "1px solid #f0f0f0" }}>
+              <Box sx={{ p: 2.5, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <Typography variant="h6">Tất cả đơn hàng ({adminOrders.length})</Typography>
+                <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchAdminOrders} disabled={loadingOrders}>
+                  Làm mới
+                </Button>
+              </Box>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: "#fafafa" }}>
+                      <TableCell>Mã đơn</TableCell>
+                      <TableCell>Khách hàng</TableCell>
+                      <TableCell>Nhà hàng</TableCell>
+                      <TableCell>Tổng tiền</TableCell>
+                      <TableCell>Trạng thái</TableCell>
+                      <TableCell align="right">Bằng chứng</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {loadingOrders ? (
+                      <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4 }}><CircularProgress /></TableCell></TableRow>
+                    ) : adminOrders.length === 0 ? (
+                      <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4 }}>Chưa có đơn hàng</TableCell></TableRow>
+                    ) : adminOrders.map(order => (
+                      <TableRow key={order._id} hover>
+                        <TableCell sx={{ fontFamily: "monospace", fontSize: "0.85rem" }}>
+                          #{order._id.slice(-8).toUpperCase()}
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={600}>{order.user?.fullName}</Typography>
+                          <Typography variant="caption" color="text.secondary">{order.user?.phone}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{order.restaurant?.name}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={700}>{(order.total || 0).toLocaleString()}đ</Typography>
+                          <Typography variant="caption" color="text.secondary">{order.paymentMethod}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={order.status === "bombed" ? "Bị bom" : order.status} 
+                            color={order.status === "bombed" ? "error" : order.status === "delivered" ? "success" : "default"}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell align="right">
+                          {order.proofImage ? (
+                            <Button 
+                              size="small" 
+                              variant="outlined"
+                              onClick={() => { setProofUrl(order.proofImage); setIsProofDialogOpen(true); }}
+                            >
+                              Xem ảnh
+                            </Button>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">N/A</Typography>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          )}
 
       {/* ═══ SNACKBAR ═══ */}
       <Snackbar

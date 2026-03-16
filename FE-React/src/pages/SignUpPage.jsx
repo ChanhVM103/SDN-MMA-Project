@@ -2,7 +2,7 @@ import { useState } from "react";
 import Footer from "../components/layout/Footer";
 import { ShutterText } from "../components/ui/ShutterText";
 
-function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
+function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate, showToast }) {
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -25,22 +25,22 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
     setMessage("");
 
     if (!form.fullName.trim() || !form.email.trim() || !form.password.trim()) {
-      setMessage("Vui lòng nhập đầy đủ thông tin bắt buộc.");
+      showToast("Vui lòng nhập đầy đủ thông tin bắt buộc.", "warning");
       return;
     }
 
     if (form.password.length < 6) {
-      setMessage("Mật khẩu phải từ 6 ký tự trở lên.");
+      showToast("Mật khẩu phải từ 6 ký tự trở lên.", "warning");
       return;
     }
 
     if (form.password !== form.confirmPassword) {
-      setMessage("Xác nhận mật khẩu không khớp.");
+      showToast("Xác nhận mật khẩu không khớp.", "warning");
       return;
     }
 
     if (!form.agree) {
-      setMessage("Bạn cần đồng ý điều khoản sử dụng.");
+      showToast("Bạn cần đồng ý điều khoản sử dụng.", "warning");
       return;
     }
 
@@ -54,31 +54,29 @@ function SignUpPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
         confirmPassword: form.confirmPassword,
       });
     } catch (error) {
-      setMessage(error.message || "Đăng ký thất bại.");
+      showToast(error.message || "Đăng ký thất bại.", "error");
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleClick = async () => {
-    setMessage("");
     setGoogleLoading(true);
     try {
       await onGoogleSignIn();
     } catch (error) {
-      setMessage(error.message || "Đăng ký Google thất bại.");
+      showToast(error.message || "Đăng ký Google thất bại.", "error");
     } finally {
       setGoogleLoading(false);
     }
   };
 
   const handleFacebookClick = async () => {
-    setMessage("");
     setFacebookLoading(true);
     try {
       await onFacebookSignIn();
     } catch (error) {
-      setMessage(error.message || "Đăng ký Facebook thất bại.");
+      showToast(error.message || "Đăng ký Facebook thất bại.", "error");
     } finally {
       setFacebookLoading(false);
     }

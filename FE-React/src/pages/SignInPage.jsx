@@ -3,7 +3,7 @@ import TopBar from "../components/layout/TopBar";
 import Footer from "../components/layout/Footer";
 import { ShutterText } from "../components/ui/ShutterText";
 
-function SignInPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
+function SignInPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate, showToast }) {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -19,7 +19,7 @@ function SignInPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
     setMessage("");
 
     if (!form.email.trim() || !form.password.trim()) {
-      setMessage("Vui lòng nhập đầy đủ email và mật khẩu.");
+      showToast("Vui lòng nhập đầy đủ email và mật khẩu.", "warning");
       return;
     }
 
@@ -30,31 +30,29 @@ function SignInPage({ onSubmit, onGoogleSignIn, onFacebookSignIn, navigate }) {
         password: form.password,
       });
     } catch (error) {
-      setMessage(error.message || "Đăng nhập thất bại.");
+      showToast(error.message || "Đăng nhập thất bại.", "error");
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleClick = async () => {
-    setMessage("");
     setGoogleLoading(true);
     try {
       await onGoogleSignIn();
     } catch (error) {
-      setMessage(error.message || "Đăng nhập Google thất bại.");
+      showToast(error.message || "Đăng nhập Google thất bại.", "error");
     } finally {
       setGoogleLoading(false);
     }
   };
 
   const handleFacebookClick = async () => {
-    setMessage("");
     setFacebookLoading(true);
     try {
       await onFacebookSignIn();
     } catch (error) {
-      setMessage(error.message || "Đăng nhập Facebook thất bại.");
+      showToast(error.message || "Đăng nhập Facebook thất bại.", "error");
     } finally {
       setFacebookLoading(false);
     }

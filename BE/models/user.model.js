@@ -55,9 +55,25 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    walletBalance: {
+      type: Number,
+      default: 0,
+    },
     totalRevenue: {
       type: Number,
       default: 0,
+    },
+    bomCount: {
+      type: Number,
+      default: 0,
+    },
+    codBannedUntil: {
+      type: Date,
+      default: null,
+    },
+    isVnpayMandatory: {
+      type: Boolean,
+      default: false,
     },
     isActive: {
       type: Boolean,

@@ -11,13 +11,21 @@ const incrementRestaurantOrders = async (restaurantId) => {
 
 const addRestaurantRevenue = async (restaurantId, amount) => {
   await Restaurant.findByIdAndUpdate(restaurantId, {
-    $inc: { totalRevenue: amount },
+    $inc: { 
+      totalRevenue: amount,
+      walletBalance: amount
+    },
   });
 };
 
 const addShipperRevenue = async (shipperId, amount) => {
+  // Shipper nhận 100% phí giao hàng
+  const netAmount = amount; 
   await User.findByIdAndUpdate(shipperId, {
-    $inc: { totalRevenue: amount },
+    $inc: { 
+      walletBalance: netAmount,
+      totalRevenue: netAmount 
+    },
   });
 };
 
@@ -100,6 +108,18 @@ const createOrder = async (req, res) => {
       return res
         .status(400)
         .json({ success: false, message: "Nhà hàng hiện đang đóng cửa" });
+    }
+
+    // Kiểm tra quyền thanh toán tiền mặt (COD)
+    const user = await User.findById(req.userId);
+    if (paymentMethod === "cash") {
+      if (user.isVnpayMandatory) {
+        return res.status(400).json({ success: false, message: "Bạn bắt buộc phải thanh toán bằng VNPay do lịch sử đơn hàng không tốt." });
+      }
+      if (user.codBannedUntil && new Date(user.codBannedUntil) > new Date()) {
+        const banDate = new Date(user.codBannedUntil).toLocaleDateString("vi-VN");
+        return res.status(400).json({ success: false, message: `Bạn đang bị cấm thanh toán tiền mặt đến ngày ${banDate}.` });
+      }
     }
 
     // Tính tiền
@@ -510,9 +530,17 @@ const getRestaurantStats = async (req, res) => {
     }
 
     const [revenueAgg, statusAgg] = await Promise.all([
-      // Doanh thu đã thu (isPaid = true)
+      // Doanh thu nhà hàng (bao gồm cả đơn đang giao vì nhà hàng đã được cộng tiền lúc pickup)
       Order.aggregate([
-        { $match: { restaurant: restaurant._id, isPaid: true } },
+        { 
+          $match: { 
+            restaurant: restaurant._id, 
+            $or: [
+              { isPaid: true },
+              { status: { $in: ["delivering", "shipper_delivered", "delivered"] } }
+            ]
+          } 
+        },
         {
           $group: {
             _id: "$paymentMethod",
@@ -555,6 +583,7 @@ const getRestaurantStats = async (req, res) => {
         vnpayCount,
         cashRevenue,
         totalRevenue: vnpayRevenue + cashRevenue,
+        walletBalance: restaurant.walletBalance || 0,
         countByStatus,
         totalOrders: actualTotalOrders,
       },
@@ -709,6 +738,7 @@ const brandHandoverToShipper = async (req, res) => {
       changedBy: req.userId,
       note: req.body.note || "Nhà hàng đã chuẩn bị xong, đang chờ shipper đến lấy",
     });
+    // Bỏ cộng tiền ở đây theo yêu cầu mới
     await order.save();
 
     return res.json({ success: true, message: "Đã bàn giao đơn hàng cho shipper", data: order });
@@ -734,17 +764,8 @@ const brandConfirmDelivered = async (req, res) => {
     }
 
     order.status = "delivered";
-    if (order.paymentMethod === "cash") {
-      order.isPaid = true;
-      order.paidAmount = order.total;
-      order.paidAt = new Date();
-      
-      const productRevenue = order.total - (order.deliveryFee || 0);
-      await addRestaurantRevenue(order.restaurant._id, productRevenue);
-      if (order.shipper) {
-        await addShipperRevenue(order.shipper, order.deliveryFee || 0);
-      }
-    }
+    // Tiền đã được xử lý ở bước brandHandoverToShipper và shipperCompleteDelivery
+    // Tránh cộng trùng ở đây.
 
     await incrementProductSoldCounts(order.items);
     order.statusHistory.push({
@@ -817,8 +838,8 @@ const shipperAcceptOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Đơn hàng này đã có shipper khác nhận rồi" });
     }
 
+    // Bỏ logic ký quỹ (escrow) theo yêu cầu mới
     order.shipper = req.userId;
-    // When a shipper accepts from ready_for_pickup, it usually moves to shipper_accepted (waiting for pickup) or delivering
     const nextStatus = req.body.status || "shipper_accepted";
     order.status = nextStatus;
     order.statusHistory.push({
@@ -828,7 +849,7 @@ const shipperAcceptOrder = async (req, res) => {
     });
     await order.save();
 
-    return res.json({ success: true, message: `Đã cập nhật trạng thái thành "${nextStatus}"`, data: order });
+    return res.json({ success: true, message: `Đã nhận đơn thành công!${order.paymentMethod === "cash" ? " Hệ thống đã trừ tiền ký quỹ từ ví của bạn." : ""}`, data: order });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
@@ -854,6 +875,11 @@ const shipperPickedUp = async (req, res) => {
       changedBy: req.userId,
       note: "Shipper đã lấy hàng, đang trên đường giao",
     });
+
+    // CỘNG TIỀN MÓN ĂN VÀO VÍ NHÀ HÀNG NGAY KHI SHIPPER LẤY HÀNG THÀNH CÔNG
+    const foodPrice = order.subtotal - (order.discount || 0);
+    await addRestaurantRevenue(order.restaurant, foodPrice);
+
     await order.save();
 
     return res.json({ success: true, message: "Đang giao hàng!", data: order });
@@ -866,6 +892,7 @@ const shipperPickedUp = async (req, res) => {
 // Shipper: Báo giao hàng xong (delivering → shipper_delivered)
 const shipperCompleteDelivery = async (req, res) => {
   try {
+    const { proofImage, callCount = 0 } = req.body;
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
 
@@ -876,73 +903,115 @@ const shipperCompleteDelivery = async (req, res) => {
       return res.status(400).json({ success: false, message: `Đơn hàng không ở trạng thái đang giao. Hiện tại: "${order.status}"` });
     }
 
-    order.status = "shipper_delivered";
+    if (!proofImage) {
+      return res.status(400).json({ success: false, message: "Bắt buộc phải chụp ảnh xác nhận đã giao hàng." });
+    }
+
+    order.proofImage = proofImage;
+    order.callCount = callCount;
+    order.status = "delivered"; // User doesn't need to confirm, moves to delivered directly
+    
+    // Tiền món đã được hệ thống trả cho Restaurant lúc handover.
+    const shipperFee = order.deliveryFee || 0;
+
+    if (order.paymentMethod === "cash") {
+      order.isPaid = true;
+      order.paidAmount = order.total;
+      order.paidAt = new Date();
+      
+      // COD: Shipper đã thu tiền mặt (món + ship) từ User.
+      // Tiền món đã được hệ thống trả cho Restaurant lúc handover.
+      // Shipper thu 50k mặt, nhưng chỉ ký quỹ 35k -> đã có 15k ship fee trong túi.
+      // Vì vậy KHÔNG cộng tiền ship vào ví (shipperWallet), nhưng VẪN cộng vào totalRevenue để thống kê.
+      await User.findByIdAndUpdate(order.shipper, {
+        $inc: { totalRevenue: shipperFee }
+      });
+    } else {
+      // VNPay: Hệ thống cộng phí ship vào ví cho Shipper
+      await addShipperRevenue(order.shipper, shipperFee);
+    }
+
+    await incrementProductSoldCounts(order.items);
+    
     order.statusHistory.push({
-      status: "shipper_delivered",
+      status: "delivered",
       changedBy: req.userId,
-      note: "Shipper báo giao hàng thành công, chờ khách hàng xác nhận",
+      note: req.body.note || "Shipper đã giao hàng thành công và chụp ảnh xác nhận",
     });
+    
     await order.save();
 
-    return res.json({ success: true, message: "Đã báo giao hàng thành công! Đang chờ khách hàng xác nhận.", data: order });
+    return res.json({ success: true, message: "Giao hàng thành công!", data: order });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ── PATCH /api/orders/:id/confirm-received ───────
-// User: Xác nhận đã nhận được hàng (ghi nhận doanh thu cho nhà hàng)
 const confirmOrderReceived = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+    if (order.user.toString() !== req.userId) return res.status(403).json({ success: false, message: "Bạn không có quyền xác nhận đơn này" });
 
-    if (!order) {
-      return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
-    }
-
-    if (order.user.toString() !== req.userId) {
-      return res.status(403).json({ success: false, message: "Bạn không có quyền xác nhận đơn hàng này" });
-    }
-
-    if (order.status !== "shipper_delivered") {
-      return res.status(400).json({
-        success: false,
-        message: `Xác nhận thất bại. Bạn chỉ có thể xác nhận sau khi shipper báo đã giao hàng thành công (Trạng thái hiện tại: "${order.status}")`,
-      });
-    }
+    if (order.status === "delivered") return res.json({ success: true, message: "Đơn hàng đã hoàn thành rồi." });
 
     order.status = "delivered";
-    
-    // Revenue splitting: restaurant gets product revenue, shipper gets delivery fee
-    const productRevenue = order.total - (order.deliveryFee || 0);
-    const shipperFee = order.deliveryFee || 0;
-    
-    if (order.paymentMethod === "cash") {
-      order.isPaid = true;
-      order.paidAmount = order.total;
-      order.paidAt = new Date();
-    }
-    
-    // Always split revenue when order is delivered (both cash and vnpay)
-    await addRestaurantRevenue(order.restaurant._id || order.restaurant, productRevenue);
-    if (order.shipper && shipperFee > 0) {
-      await addShipperRevenue(order.shipper, shipperFee);
+    order.statusHistory.push({ status: "delivered", changedBy: req.userId, note: "User xác nhận đã nhận hàng" });
+    await order.save();
+    return res.json({ success: true, message: "Xác nhận thành công", data: order });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── PATCH /api/orders/:id/shipper-bomb ───────────
+// Shipper: Báo đơn bị bom (User không nhận)
+const shipperReportBomb = async (req, res) => {
+  try {
+    const { proofImage, reason } = req.body;
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+
+    if (order.shipper?.toString() !== req.userId) {
+      return res.status(403).json({ success: false, message: "Chỉ shipper nhận đơn mới có quyền báo bom" });
     }
 
-    await incrementProductSoldCounts(order.items);
+    if (!proofImage) {
+      return res.status(400).json({ success: false, message: "Phải chụp ảnh hiện trường làm bằng chứng ngay cả khi không gặp User" });
+    }
 
+    order.status = "bombed";
+    order.proofImage = proofImage;
     order.statusHistory.push({
-      status: "delivered",
+      status: "bombed",
       changedBy: req.userId,
-      note: "Khách hàng xác nhận đã nhận được hàng",
+      note: reason || "User không nhận hàng / Không liên lạc được sau 3 lần gọi",
     });
 
     await order.save();
 
-    return res.json({
-      success: true,
-      message: "Xác nhận nhận hàng thành công!",
-      data: order,
+    // Đơn bị bom: Nếu thanh toán VNPay, hệ thống vẫn trả phí ship cho shipper vì đã nỗ lực giao hàng
+    if (order.paymentMethod === "vnpay") {
+      const shipperFee = order.deliveryFee || 0;
+      await addShipperRevenue(order.shipper, shipperFee);
+    }
+
+    // Phạt User
+    const user = await User.findById(order.user);
+    user.bomCount += 1;
+    if (user.bomCount >= 2) {
+      user.isVnpayMandatory = true;
+    } else {
+      // Ban COD 7 ngày
+      const banUntil = new Date();
+      banUntil.setDate(banUntil.getDate() + 7);
+      user.codBannedUntil = banUntil;
+    }
+    await user.save();
+
+    return res.json({ 
+      success: true, 
+      message: `Đã ghi nhận đơn bị bom. ${order.paymentMethod === "vnpay" ? "Phí ship đã được cộng vào ví của bạn." : "User đã bị xử phạt."}` 
     });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -968,4 +1037,5 @@ module.exports = {
   shipperAcceptOrder,
   shipperPickedUp,
   shipperCompleteDelivery,
+  shipperReportBomb,
 };

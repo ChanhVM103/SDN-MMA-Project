@@ -13,6 +13,7 @@ import {
   createPromotion,
   updatePromotion,
   deletePromotion,
+  extendPromotion,
 } from "../services/brand-api";
 import LocationPicker from "../components/LocationPicker";
 import {
@@ -87,6 +88,7 @@ import DoneAllIcon from "@mui/icons-material/DoneAll";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import CancelIcon from "@mui/icons-material/Cancel";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import {
   PieChart,
   Pie,
@@ -179,7 +181,7 @@ const brandTheme = createTheme({
   },
 });
 
-const BrandDashboardPage = ({ user, onLogout, navigate }) => {
+const BrandDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [restaurant, setRestaurant] = useState(null);
   const [productsList, setProductsList] = useState([]);
@@ -203,6 +205,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
     useState(false);
   const [isEditRestaurantModalOpen, setIsEditRestaurantModalOpen] =
     useState(false);
+  const [extendPromoDialog, setExtendPromoDialog] = useState({ open: false, id: null, days: "7" });
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   // Forms
@@ -261,8 +264,13 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
     message: "",
     severity: "success",
   });
-  const showSnack = (message, severity = "success") =>
-    setSnackbar({ open: true, message, severity });
+  const showSnack = (message, severity = "success") => {
+    if (showToast) {
+      showToast(message, severity === "success" ? "success" : (severity === "error" ? "error" : "warning"));
+    } else {
+      setSnackbar({ open: true, message, severity });
+    }
+  };
 
   useEffect(() => {
     fetchRestaurant();
@@ -699,13 +707,34 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
   };
 
   const handleDeletePromotion = async (id) => {
-    if (
-      !window.confirm("Bạn có chắc chắn muốn xoá chương trình Flash Sale này?")
-    )
+    showConfirm("Bạn có chắc chắn muốn xoá chương trình Flash Sale này?", async () => {
+      try {
+        await deletePromotion(id);
+        showSnack("Đã xoá chương trình Flash Sale.");
+        fetchPromotions();
+      } catch (error) {
+        showSnack("Lỗi: " + error.message, "error");
+      }
+    });
+  };
+
+  const handleExtendPromotion = (id) => {
+    setExtendPromoDialog({ open: true, id, days: "7" });
+  };
+
+  const submitExtendPromotion = async () => {
+    const { id, days } = extendPromoDialog;
+    if (!days || isNaN(days)) {
+      showSnack("Vui lòng nhập số ngày hợp lệ", "warning");
       return;
+    }
+    
     try {
-      await deletePromotion(id);
-      showSnack("Đã xoá chương trình Flash Sale.");
+      const newEndDate = new Date();
+      newEndDate.setDate(newEndDate.getDate() + parseInt(days));
+      await extendPromotion(id, newEndDate);
+      showSnack("Đã gia hạn chương trình Flash Sale thành công!");
+      setExtendPromoDialog({ open: false, id: null, days: "7" });
       fetchPromotions();
     } catch (error) {
       showSnack("Lỗi: " + error.message, "error");
@@ -2127,6 +2156,19 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
                             <Button
                               size="small"
                               variant="outlined"
+                              color="primary"
+                              startIcon={<RefreshIcon />}
+                              onClick={() => handleExtendPromotion(promo._id)}
+                              sx={{
+                                color: "primary.main",
+                                borderColor: alpha("#ee4d2d", 0.3),
+                              }}
+                            >
+                              Gia hạn
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="outlined"
                               color="inherit"
                               startIcon={<EditIcon />}
                               onClick={() => handleOpenEditPromotion(promo)}
@@ -2206,6 +2248,12 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
                     color: "#ef4444",
                     bg: "#fee2e2",
                     icon: <CancelIcon sx={{ fontSize: 16 }} />,
+                  },
+                  bombed: {
+                    label: "Bị bom hàng",
+                    color: "#dc2626",
+                    bg: "#fef2f2",
+                    icon: <BlockIcon sx={{ fontSize: 16 }} />,
                   },
                 };
 
@@ -3727,6 +3775,42 @@ const BrandDashboardPage = ({ user, onLogout, navigate }) => {
             </Button>
           </DialogActions>
         </form>
+      </Dialog>
+      
+      {/* ═══ EXTEND PROMOTION DIALOG ═══ */}
+      <Dialog 
+        open={extendPromoDialog.open} 
+        onClose={() => setExtendPromoDialog({ ...extendPromoDialog, open: false })}
+        PaperProps={{ sx: { borderRadius: 3, width: "100%", maxWidth: 360 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>Gia hạn Flash Sale</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Nhập số ngày bạn muốn gia hạn thêm cho chương trình này.
+          </Typography>
+          <TextField
+            fullWidth
+            type="number"
+            label="Số ngày gia hạn"
+            value={extendPromoDialog.days}
+            onChange={(e) => setExtendPromoDialog({ ...extendPromoDialog, days: e.target.value })}
+            autoFocus
+            InputProps={{
+              inputProps: { min: 1 },
+              endAdornment: <Typography variant="caption" color="text.secondary">Ngày</Typography>
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setExtendPromoDialog({ ...extendPromoDialog, open: false })}>Huỷ</Button>
+          <Button 
+            onClick={submitExtendPromotion}
+            variant="contained"
+            sx={{ bgcolor: "#ee4d2d", "&:hover": { bgcolor: "#d44027" } }}
+          >
+            Xác nhận
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* ═══ SNACKBAR ═══ */}

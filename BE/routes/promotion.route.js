@@ -12,5 +12,6 @@ router.post("/", authMiddleware, promotionController.createPromotion);
 router.delete("/:id", authMiddleware, promotionController.deletePromotion);
 router.put("/:id", authMiddleware, promotionController.updatePromotion);
 router.patch("/:id/status", authMiddleware, promotionController.togglePromotionStatus);
+router.patch("/:id/extend", authMiddleware, promotionController.extendPromotion);
 
 module.exports = router;
