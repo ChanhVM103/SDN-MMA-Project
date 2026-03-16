@@ -1,6 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { updateAvatarApi, updateProfileApi, changePasswordApi } from "../services/auth-api";
 import { parseStoredAuth } from "../services/auth-storage";
+import VietnamAddressPicker from "../components/VietnamAddressPicker";
 
 function ProfilePage({ user, onLogout, navigate, onUpdateUser }) {
   const [activeTab, setActiveTab] = useState("profile"); // "profile" | "password"
@@ -10,7 +11,18 @@ function ProfilePage({ user, onLogout, navigate, onUpdateUser }) {
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar || "");
   const [avatarFile, setAvatarFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [savedAddress, setSavedAddress] = useState(user?.address || "");
   const fileInputRef = useRef(null);
+
+  // Sync state khi user prop thay đổi (sau khi lưu hoặc reload)
+  useEffect(() => {
+    if (!user) return;
+    setFullName(user.fullName || "");
+    setPhone(user.phone || "");
+    setAddress(user.address || "");
+    setSavedAddress(user.address || "");
+    setAvatarPreview(user.avatar || "");
+  }, [user]);
 
   // States for Change Password
   const [currentPassword, setCurrentPassword] = useState("");
@@ -61,14 +73,16 @@ function ProfilePage({ user, onLogout, navigate, onUpdateUser }) {
         if (result.user) updatedUser = result.user;
       }
 
-      if (fullName !== user.fullName || phone !== user.phone || address !== user.address) {
-        const result = await updateProfileApi(token, { fullName, phone, address });
-        if (result.user) updatedUser = result.user;
-      }
+      console.log('[ProfilePage] Sending:', { fullName, phone, address });
+      const result = await updateProfileApi(token, { fullName, phone, address });
+      console.log('[ProfilePage] API result:', result);
+      if (result.user) updatedUser = { ...result.user, address };
+      console.log('[ProfilePage] updatedUser:', updatedUser);
 
       if (onUpdateUser) {
         onUpdateUser(updatedUser);
       }
+      setSavedAddress(address);
       alert("Cập nhật hồ sơ thành công!");
     } catch (err) {
       alert("Cập nhật thất bại: " + err.message);
@@ -165,10 +179,25 @@ function ProfilePage({ user, onLogout, navigate, onUpdateUser }) {
                     <input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Nhập số điện thoại" style={{ width: "100%", padding: "10px", border: "1px solid rgba(0,0,0,.14)", borderRadius: "2px", outline: "none" }} />
                   </div>
                 </div>
-                <div style={{ display: "flex", marginBottom: "30px", alignItems: "center" }}>
-                  <div style={{ width: "20%", textAlign: "right", color: "rgba(85,85,85,.8)", paddingRight: "20px" }}>Địa chỉ</div>
-                  <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "10px" }}>
-                    <input type="text" value={address} onChange={e => setAddress(e.target.value)} placeholder="Nhập địa chỉ" style={{ width: "100%", padding: "10px", border: "1px solid rgba(0,0,0,.14)", borderRadius: "2px", outline: "none" }} />
+                <div style={{ display: "flex", marginBottom: "30px", alignItems: "flex-start" }}>
+                  <div style={{ width: "20%", textAlign: "right", color: "rgba(85,85,85,.8)", paddingRight: "20px", paddingTop: 8 }}>Địa chỉ</div>
+                  <div style={{ flex: 1 }}>
+                    <VietnamAddressPicker
+                      key={savedAddress}
+                      value={address}
+                      onChange={setAddress}
+                      disabled={loading}
+                    />
+                    {address && (
+                      <div style={{
+                        marginTop: 8, padding: "8px 10px",
+                        background: "#fff8f5", borderRadius: 6,
+                        border: "1px dashed #fca5a5",
+                        fontSize: 12, color: "#666", lineHeight: 1.5,
+                      }}>
+                        📍 {address}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div style={{ display: "flex", marginBottom: "30px", alignItems: "center" }}>

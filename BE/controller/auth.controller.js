@@ -193,7 +193,17 @@ const updateProfile = async (req, res) => {
         if (phone !== undefined) updateData.phone = phone;
         if (address !== undefined) updateData.address = address;
 
-        const user = await authService.updateUserProfile(req.userId, updateData);
+        const updatedUser = await authService.updateUserProfile(req.userId, updateData);
+        const user = {
+            id: updatedUser._id,
+            fullName: updatedUser.fullName,
+            email: updatedUser.email,
+            phone: updatedUser.phone || "",
+            avatar: updatedUser.avatar || "",
+            role: updatedUser.role,
+            authProvider: updatedUser.authProvider,
+            address: updatedUser.address || "",
+        };
 
         res.status(200).json({
             success: true,

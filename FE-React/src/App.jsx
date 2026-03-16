@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import VietnamAddressPicker from "./components/VietnamAddressPicker";
 import TopBar from "./components/layout/TopBar";
 import TabBar from "./components/layout/TabBar";
 import Footer from "./components/layout/Footer";
@@ -126,7 +127,7 @@ function App() {
     });
   };
 
-  const handlePlaceOrder = async (deliveryAddress, note, paymentMethod, voucherId = null) => {
+  const handlePlaceOrder = async (deliveryAddress, note, paymentMethod, voucherId = null, deliveryPhone = "") => {
     if (!auth?.user) { navigate("/sign-in"); return; }
     if (!cart.items.length) return;
     const subtotal = cart.items.reduce((s, i) => s + i.price * i.quantity, 0);
@@ -137,6 +138,7 @@ function App() {
         restaurantId: cart.restaurantId,
         items: cart.items.map(({ variantKey, ...rest }) => rest),
         deliveryAddress,
+        deliveryPhone: deliveryPhone || auth.user.phone || "",
         note,
         subtotal,
         deliveryFee,
@@ -221,8 +223,10 @@ function App() {
     if (path === "/favorites") return <FavoritesPage user={auth.user} navigate={navigate} />;
     if (path === "/notifications") return <NotificationsPage user={auth.user} navigate={navigate} />;
     if (path === "/profile") return <ProfilePage user={auth.user} onLogout={handleLogout} navigate={navigate} onUpdateUser={(newUser) => {
+      console.log('[App] onUpdateUser called with:', newUser);
       setAuth(prev => {
         const updatedAuth = { ...prev, user: newUser };
+        console.log('[App] persisting auth:', updatedAuth);
         persistAuth(updatedAuth.user, updatedAuth.token);
         return updatedAuth;
       });
@@ -312,6 +316,9 @@ function App() {
 function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, showToast = () => { } }) {
   const [step, setStep] = useState("cart"); // "cart" | "checkout"
   const [address, setAddress] = useState(user?.address || "");
+  const [pickerKey, setPickerKey] = useState(user?.address || "init");
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [editingPhone, setEditingPhone] = useState(false);
   const [note, setNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [placing, setPlacing] = useState(false);
@@ -342,9 +349,10 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
 
   const handleOrder = async () => {
     if (!user) { onClose(); navigate("/sign-in"); return; }
+    if (!phone.trim()) { showToast("Vui lòng nhập số điện thoại nhận hàng!", "warning"); return; }
     if (!address.trim()) { showToast("Vui lòng nhập địa chỉ giao hàng!", "warning"); return; }
     setPlacing(true);
-    await onPlaceOrder(address, note, paymentMethod, selectedVoucherId);
+    await onPlaceOrder(address, note, paymentMethod, selectedVoucherId, phone);
     setPlacing(false);
   };
 
@@ -444,8 +452,21 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
                       fontSize: 17, fontWeight: 700, color: "#ee4d2d", cursor: "pointer",
                     }}>+</button>
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: 14, minWidth: 72, textAlign: "right", color: "#1a1a1a" }}>
-                    {(item.price * item.quantity).toLocaleString("vi-VN")}đ
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>
+                      {(item.price * item.quantity).toLocaleString("vi-VN")}đ
+                    </div>
+                    <button
+                      onClick={() => onUpdateQty(item.variantKey || item.productId, 0)}
+                      title="Xóa khỏi giỏ"
+                      style={{
+                        background: "none", border: "none", cursor: "pointer",
+                        color: "#d1d5db", fontSize: 15, padding: 0, lineHeight: 1,
+                        transition: "color 0.15s",
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = "#ef4444"}
+                      onMouseLeave={e => e.currentTarget.style.color = "#d1d5db"}
+                    >🗑️</button>
                   </div>
                 </div>
               ))}
@@ -502,33 +523,67 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
                 ))}
               </div>
 
+              {/* Phone */}
+              <div style={{ padding: "16px 20px", borderBottom: "1px solid #f5f5f5" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  📞 Số điện thoại nhận hàng
+                </div>
+                {!editingPhone ? (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#f9fafb", borderRadius: 8, border: "1.5px solid #e5e7eb" }}>
+                    <span style={{ fontSize: 14, color: phone ? "#1a1a1a" : "#9ca3af", fontWeight: phone ? 500 : 400 }}>
+                      {phone || "Chưa có số điện thoại"}
+                    </span>
+                    <button onClick={() => setEditingPhone(true)} style={{ fontSize: 12, color: "#ee4d2d", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}>
+                      {phone ? "Đổi SĐT" : "Thêm SĐT"}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      placeholder="Nhập số điện thoại..."
+                      autoFocus
+                      style={{
+                        flex: 1, border: "1.5px solid #ee4d2d", borderRadius: 8,
+                        padding: "10px 14px", fontSize: 14, outline: "none",
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        if (!phone.trim()) { showToast("Vui lòng nhập số điện thoại!", "warning"); return; }
+                        setEditingPhone(false);
+                      }}
+                      style={{ padding: "10px 16px", background: "#ee4d2d", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                    >
+                      Xác nhận
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* Address */}
               <div style={{ padding: "16px 20px", borderBottom: "1px solid #f5f5f5" }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
                   📍 Địa chỉ giao hàng
                 </div>
-                {address ? (
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", background: "#f9fafb", borderRadius: 8, border: "1.5px solid #e5e7eb" }}>
-                    <span style={{ fontSize: 16, marginTop: 1 }}>📍</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, color: "#1a1a1a", lineHeight: 1.5 }}>{address}</div>
-                      <button onClick={() => setAddress("")} style={{ marginTop: 4, fontSize: 12, color: "#ee4d2d", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}>
-                        Đổi địa chỉ
-                      </button>
-                    </div>
+                <VietnamAddressPicker
+                  key={pickerKey}
+                  value={address}
+                  onChange={setAddress}
+                />
+                <button
+                  onClick={() => { setAddress(""); setPickerKey("reset-" + Date.now()); }}
+                  style={{ marginTop: 6, fontSize: 12, color: "#ee4d2d", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}
+                >
+                  🔄 Đổi địa chỉ khác
+                </button>
+                {address && (
+                  <div style={{ marginTop: 8, padding: "8px 12px", background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0", fontSize: 12, color: "#166534", display: "flex", alignItems: "flex-start", gap: 6 }}>
+                    <span>📍</span>
+                    <span>{address}</span>
                   </div>
-                ) : (
-                  <input
-                    placeholder="Nhập địa chỉ giao hàng..."
-                    value={address}
-                    onChange={e => setAddress(e.target.value)}
-                    autoFocus
-                    style={{
-                      width: "100%", border: "1.5px solid #ee4d2d",
-                      borderRadius: 8, padding: "11px 14px", fontSize: 14,
-                      boxSizing: "border-box", outline: "none",
-                    }}
-                  />
                 )}
                 <textarea
                   placeholder="Ghi chú cho nhà hàng (tuỳ chọn)"
