@@ -26,6 +26,11 @@ const formatUserResponse = (user) => ({
     role: user.role,
     authProvider: user.authProvider,
     address: user.address || "",
+    walletBalance: user.walletBalance || 0,
+    totalRevenue: user.totalRevenue || 0,
+    bomCount: user.bomCount || 0,
+    codBannedUntil: user.codBannedUntil || null,
+    isVnpayMandatory: user.isVnpayMandatory || false,
 });
 
 /**
@@ -256,7 +261,7 @@ const getUserProfile = async (userId) => {
         error.statusCode = 404;
         throw error;
     }
-    return user;
+    return formatUserResponse(user);
 };
 
 /**
@@ -282,5 +287,6 @@ module.exports = {
     socialLogin,
     getUserProfile,
     updateUserProfile,
+    formatUserResponse,
     generateToken,
 };

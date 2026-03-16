@@ -7,7 +7,7 @@ import RestaurantMap from "../components/RestaurantMap";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
 
-export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, onUpdateQty, navigate, onOpenCart }) {
+export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, onUpdateQty, navigate, onOpenCart, showToast }) {
   const [restaurant, setRestaurant] = useState(null);
   const [products, setProducts] = useState([]);
   const [promotions, setPromotions] = useState([]);
@@ -433,7 +433,7 @@ export default function RestaurantDetailPage({ restaurantId, cart, onAddToCart, 
                   const data = await getRestaurantReviews(restaurantId, 1, 20);
                   setReviews(data?.data || data || []);
                 } catch (err) {
-                  alert("Lỗi: " + err.message);
+                  showToast("Lỗi: " + err.message, "error");
                 } finally {
                   setSubmitLoading(false);
                 }

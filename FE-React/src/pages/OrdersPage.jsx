@@ -13,6 +13,7 @@ const SC = {
   shipper_delivered: { label:"Shipper đã giao",      emoji:"📬", color:"#84cc16", bg:"#ecfccb" },
   delivered:         { label:"Đã giao thành công",  emoji:"🎉", color:"#10b981", bg:"#d1fae5" },
   cancelled:         { label:"Đã hủy",               emoji:"✕",  color:"#ef4444", bg:"#fee2e2" },
+  bombed:            { label:"Giao không thành công", emoji:"⚠️", color:"#ef4444", bg:"#fee2e2" },
 };
 
 const STEPS = [
@@ -20,6 +21,7 @@ const STEPS = [
   { key:"preparing",        label:"Đang chuẩn bị món",         desc:"Đầu bếp đang chế biến món ăn theo yêu cầu của bạn." },
   { key:"delivering",       label:"Đang giao hàng",            desc:"Tài xế đang trên đường giao đơn hàng đến bạn." },
   { key:"delivered",        label:"Đã giao hàng",              desc:"Đơn hàng đã được giao thành công." },
+  { key:"bombed",           label:"Giao hàng thất bại",         desc:"Shipper báo cáo không thể giao hàng cho bạn." },
 ];
 
 const STEP_ORDER = ["pending","confirmed","preparing","ready_for_pickup","shipper_accepted","delivering","shipper_delivered","delivered"];
@@ -28,7 +30,7 @@ const TAB_FILTERS = [
   { label:"Tất cả",     status:null },
   { label:"Đang xử lý", status:["pending","confirmed","preparing","ready_for_pickup","shipper_accepted","delivering","shipper_delivered"] },
   { label:"Hoàn thành", status:["delivered"] },
-  { label:"Đã hủy",     status:["cancelled"] },
+  { label:"Đã hủy",     status:["cancelled","bombed"] },
 ];
 
 // ─── Helpers ────────────────────────────────────────────────────
@@ -201,11 +203,20 @@ function OrderDetailPage({ orderId, onBack, showToast, onRefreshList }){
               Trạng thái đơn hàng
             </h3>
 
-            {order.status==="cancelled" ? (
+            {order.status==="cancelled" || order.status==="bombed" ? (
               <div style={{padding:"20px 0",textAlign:"center"}}>
-                <div style={{width:56,height:56,borderRadius:"50%",background:"#fee2e2",margin:"0 auto 12px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>✕</div>
-                <div style={{fontWeight:700,color:"#ef4444",fontSize:15,marginBottom:4}}>Đơn hàng đã bị hủy</div>
-                {history.find(h=>h.status==="cancelled") && <div style={{fontSize:12,color:"#9ca3af"}}>{fmtDate(history.find(h=>h.status==="cancelled").changedAt)}</div>}
+                <div style={{width:56,height:56,borderRadius:"50%",background:"#fee2e2",margin:"0 auto 12px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>
+                  {order.status==="bombed" ? "⚠️" : "✕"}
+                </div>
+                <div style={{fontWeight:700,color:"#ef4444",fontSize:15,marginBottom:4}}>
+                  {order.status==="bombed" ? "Giao hàng không thành công" : "Đơn hàng đã bị hủy"}
+                </div>
+                {order.status==="bombed" && history.find(h=>h.status==="bombed") && (
+                  <div style={{margin:"8px auto",padding:"10px 14px",background:"#fff5f5",borderRadius:10,border:"1px dashed #feb2b2",maxWidth:300,fontSize:13,color:"#c53030"}}>
+                    <b>Lý do:</b> {history.find(h=>h.status==="bombed").note}
+                  </div>
+                )}
+                {history.find(h=>h.status===(order.status)) && <div style={{fontSize:12,color:"#9ca3af"}}>{fmtDate(history.find(h=>h.status===(order.status)).changedAt)}</div>}
               </div>
             ) : (
               <div style={{display:"flex",flexDirection:"column",gap:0}}>
@@ -394,14 +405,11 @@ function Row({label,value,light,valueColor}){
 }
 
 // ─── ORDERS LIST PAGE ────────────────────────────────────────────
-function OrdersPage({user,navigate}){
+function OrdersPage({user,navigate,showToast}){
   const [orders,setOrders]=useState([]);
   const [loading,setLoading]=useState(true);
   const [activeTab,setActiveTab]=useState(0);
-  const [toast,setToast]=useState(null);
   const [detailId,setDetailId]=useState(null);
-
-  const showToast=(msg,type="success")=>{ setToast({msg,type}); setTimeout(()=>setToast(null),3500); };
 
   const fetchOrders=useCallback(async(showLoader=true)=>{
     if(!user)return;
@@ -431,7 +439,6 @@ function OrdersPage({user,navigate}){
   if(detailId)return(
     <>
       <OrderDetailPage orderId={detailId} onBack={()=>setDetailId(null)} showToast={showToast} onRefreshList={()=>fetchOrders(false)}/>
-      <ToastComp toast={toast} onClose={()=>setToast(null)}/>
       <AnimStyles/>
     </>
   );
@@ -511,19 +518,7 @@ function OrdersPage({user,navigate}){
         </div>
       )}
 
-      <ToastComp toast={toast} onClose={()=>setToast(null)}/>
       <AnimStyles/>
-    </div>
-  );
-}
-
-function ToastComp({toast,onClose}){
-  if(!toast)return null;
-  return(
-    <div style={{position:"fixed",bottom:90,left:"50%",transform:"translateX(-50%)",background:toast.type==="error"?"#ef4444":toast.type==="warning"?"#f59e0b":"#10b981",color:"#fff",padding:"14px 22px",borderRadius:14,fontWeight:600,fontSize:14,zIndex:99999,boxShadow:"0 8px 32px rgba(0,0,0,.22)",display:"flex",alignItems:"center",gap:10,whiteSpace:"nowrap",animation:"toastIn .35s cubic-bezier(.175,.885,.32,1.275)"}}>
-      <span>{toast.type==="error"?"❌":toast.type==="warning"?"⚠️":"✅"}</span>
-      <span>{toast.msg}</span>
-      <button onClick={onClose} style={{marginLeft:8,background:"rgba(255,255,255,.25)",border:"none",color:"#fff",borderRadius:8,width:22,height:22,cursor:"pointer",fontWeight:700}}>✕</button>
     </div>
   );
 }

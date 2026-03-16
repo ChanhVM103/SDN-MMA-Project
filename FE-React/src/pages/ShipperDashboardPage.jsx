@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import {
   getAvailableOrders, getShipperOrders,
   shipperAcceptOrder, shipperPickedUp, shipperCompleteDelivery,
+  shipperReportBomb,
 } from "../services/order-api";
+import { getProfileApi } from "../services/auth-api";
+import { parseStoredAuth } from "../services/auth-storage";
 
 const fmt  = n => (n||0).toLocaleString("vi-VN") + "đ";
 const fmtD = d => { const dt=new Date(d); return dt.toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"})+", "+dt.toLocaleDateString("vi-VN"); };
@@ -95,14 +98,14 @@ function OrderInfoCard({ order }) {
 }
 
 // ── Right panel (summary + actions) ──────────────────────────
-function OrderSummaryPanel({ order, onAccept, onPickup, onComplete, onRefresh, mode }) {
+function OrderSummaryPanel({ order, onAccept, onPickup, onComplete, onReportBomb, onRefresh, mode, user, showToast }) {
   const [busy, setBusy] = useState(false);
-  const income = Math.round((order.deliveryFee||0) * 0.7);
+  const income = order.deliveryFee || 0;
 
   const doAction = async (fn) => {
     setBusy(true);
     try { await fn(order._id); }
-    catch(e) { alert(e.message); }
+    catch(e) { showToast(e.message, "error"); }
     finally { setBusy(false); }
   };
 
@@ -148,9 +151,14 @@ function OrderSummaryPanel({ order, onAccept, onPickup, onComplete, onRefresh, m
         </button>
       )}
       {mode==="active" && order.status==="delivering" && (
-        <button onClick={()=>doAction(onComplete)} disabled={busy} style={{ padding:"15px", borderRadius:12, border:"none", background:busy?"#e5e7eb":"#10b981", color:busy?"#9ca3af":"#fff", fontWeight:800, fontSize:15, cursor:busy?"not-allowed":"pointer", boxShadow:busy?"none":"0 4px 14px rgba(16,185,129,.35)" }}>
-          {busy ? "⏳..." : "✅ Đã giao hàng thành công"}
-        </button>
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          <button onClick={()=>onComplete(order)} disabled={busy} style={{ padding:"15px", borderRadius:12, border:"none", background:busy?"#e5e7eb":"#10b981", color:busy?"#9ca3af":"#fff", fontWeight:800, fontSize:15, cursor:busy?"not-allowed":"pointer", boxShadow:busy?"none":"0 4px 14px rgba(16,185,129,.35)" }}>
+            {busy ? "⏳..." : "✅ Đã giao thành công"}
+          </button>
+          <button onClick={()=>onReportBomb(order)} disabled={busy} style={{ padding:"12px", borderRadius:12, border:"1.5px solid #ef4444", background:"#fff", color:"#ef4444", fontWeight:700, fontSize:14, cursor:busy?"not-allowed":"pointer" }}>
+            {busy ? "⏳..." : "🚫 Báo User bom hàng"}
+          </button>
+        </div>
       )}
 
       {/* Support box */}
@@ -191,11 +199,12 @@ function MapSection({ order }) {
 
 // ── Stats Tab ─────────────────────────────────────────────────
 function StatsTab({ orders }) {
-  const done   = orders.filter(o=>o.status==="delivered");
-  const income = done.reduce((s,o)=>s+Math.round((o.deliveryFee||0)*0.7),0);
+  // Những đơn tính tiền cho shipper: Đã giao xong HOẶC bị bom nhưng đã trả VNPay
+  const done   = orders.filter(o => o.status === "delivered" || (o.status === "bombed" && o.paymentMethod === "vnpay"));
+  const income = done.reduce((s,o)=>s + (o.deliveryFee||0), 0);
   const today  = new Date().toLocaleDateString("vi-VN");
   const todayD = done.filter(o=>new Date(o.createdAt).toLocaleDateString("vi-VN")===today);
-  const todayI = todayD.reduce((s,o)=>s+Math.round((o.deliveryFee||0)*0.7),0);
+  const todayI = todayD.reduce((s,o)=>s + (o.deliveryFee||0), 0);
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
@@ -206,17 +215,19 @@ function StatsTab({ orders }) {
         <StatCard label="Thu hôm nay"     value={fmt(todayI)} icon="💵" color="#f59e0b"/>
       </div>
       <div style={{ background:"#fff", borderRadius:16, border:"1px solid #e5e7eb", overflow:"hidden" }}>
-        <div style={{ padding:"16px 20px", borderBottom:"1px solid #f3f4f6", fontWeight:700, fontSize:15, color:"#1a1a1a" }}>📋 Lịch sử gần đây</div>
+        <div style={{ padding:"16px 20px", borderBottom:"1px solid #f3f4f6", fontWeight:700, fontSize:15, color:"#1a1a1a" }}>📋 Lịch sử gần đây (Bao gồm đơn Bom đã trả VNPay)</div>
         {done.length===0
           ? <div style={{ padding:"40px", textAlign:"center", color:"#9ca3af" }}>Chưa có đơn hoàn thành</div>
           : done.slice(0,10).map(o=>(
             <div key={o._id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 20px", borderBottom:"1px solid #f9fafb" }}>
               <div>
-                <div style={{ fontWeight:600, fontSize:13 }}>{o.restaurantName}</div>
+                <div style={{ fontWeight:600, fontSize:13 }}>
+                  {o.restaurantName} {o.status === "bombed" && <span style={{ color: "#ef4444", fontSize: 10 }}>(Bị bom)</span>}
+                </div>
                 <div style={{ fontSize:11, color:"#9ca3af", marginTop:1 }}>{fmtD(o.createdAt)} · {o.items?.length} món</div>
               </div>
               <div style={{ textAlign:"right" }}>
-                <div style={{ fontWeight:700, color:"#ee4d2d", fontSize:13 }}>+{fmt(Math.round((o.deliveryFee||0)*0.7))}</div>
+                <div style={{ fontWeight:700, color:"#ee4d2d", fontSize:13 }}>+{fmt(o.deliveryFee || 0)}</div>
                 <div style={{ fontSize:11, color:"#9ca3af" }}>Tổng đơn: {fmt(o.total)}</div>
               </div>
             </div>
@@ -228,25 +239,44 @@ function StatsTab({ orders }) {
 }
 
 // ── Main ──────────────────────────────────────────────────────
-export default function ShipperDashboardPage({ user, onLogout }) {
+export default function ShipperDashboardPage({ user: initialUser, onLogout, showToast, showConfirm }) {
   const [tab,       setTab]       = useState("available");
   const [available, setAvailable] = useState([]);
   const [myOrders,  setMyOrders]  = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [toast,     setToast]     = useState(null);
-  const [selIdx,    setSelIdx]    = useState(0); // selected order index in current tab
+  const [loading,   setLoading]   = useState(false);
+  const [selIdx,    setSelIdx]    = useState(0); 
+  const [localUser, setLocalUser] = useState(initialUser);
 
-  const showToast = (msg,type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),3500); };
+  // Modal logic
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showBombModal,     setShowBombModal]     = useState(false);
+  const [orderToAction,    setOrderToAction]     = useState(null);
+  const [formLoading,      setFormLoading]       = useState(false);
+  const [formData, setFormData] = useState({ proofImage: "", reason: "" });
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => setFormData(prev => ({ ...prev, proofImage: reader.result }));
+    reader.readAsDataURL(file);
+  };
 
   const load = useCallback(async (quiet=false) => {
     if(!quiet) setLoading(true);
     try {
-      const [av,my] = await Promise.all([getAvailableOrders(), getShipperOrders()]);
+      const { token } = parseStoredAuth();
+      const [av,my,prof] = await Promise.all([
+        getAvailableOrders(), 
+        getShipperOrders(),
+        getProfileApi(token).catch(()=>null)
+      ]);
       setAvailable(av||[]);
       setMyOrders(my||[]);
+      if(prof?.user) setLocalUser(prof.user);
     } catch(e) { console.error(e); }
     finally { if(!quiet) setLoading(false); }
-  },[]);
+  },[setLoading, setAvailable, setMyOrders, setLocalUser]); // Added dependencies for useCallback
 
   useEffect(()=>{ load(); },[load]);
   useEffect(()=>{ const id=setInterval(()=>load(true),8000); return()=>clearInterval(id); },[load]);
@@ -254,11 +284,55 @@ export default function ShipperDashboardPage({ user, onLogout }) {
   const active   = myOrders.filter(o=>["shipper_accepted","delivering"].includes(o.status));
   const history  = myOrders.filter(o=>["shipper_delivered","delivered","cancelled"].includes(o.status));
   const completed= myOrders.filter(o=>o.status==="delivered").length;
-  const income   = myOrders.filter(o=>o.status==="delivered").reduce((s,o)=>s+Math.round((o.deliveryFee||0)*0.7),0);
+  const income   = myOrders.filter(o=>o.status==="delivered").reduce((s,o)=>s + (o.deliveryFee||0), 0);
 
-  const handleAccept   = async id=>{ await shipperAcceptOrder(id);       await load(true); showToast("✅ Đã nhận đơn!"); setSelIdx(0); };
+  const handleAccept   = async id=>{ 
+    await shipperAcceptOrder(id);       await load(true); showToast("✅ Đã nhận đơn!"); setSelIdx(0); 
+  };
   const handlePickup   = async id=>{ await shipperPickedUp(id);          await load(true); showToast("📦 Đã lấy hàng!"); };
-  const handleComplete = async id=>{ await shipperCompleteDelivery(id);  await load(true); showToast("🎉 Giao thành công!"); setSelIdx(0); };
+  
+  const handleComplete = async (order) => {
+    setOrderToAction(order);
+    setFormData({ proofImage: "", reason: "" });
+    setShowCompleteModal(true);
+  };
+
+  const handleReportBomb = async (order) => {
+    setOrderToAction(order);
+    setFormData({ proofImage: "", reason: "" });
+    setShowBombModal(true);
+  };
+
+  const submitComplete = async () => {
+    if (!formData.proofImage) return showToast("⚠️ Vui lòng cung cấp ảnh bằng chứng!", "error");
+    if (!orderToAction?._id) return showToast("⚠️ Lỗi: Không tìm thấy ID đơn hàng", "error");
+    
+    setFormLoading(true);
+    try {
+      await shipperCompleteDelivery(orderToAction._id, { proofImage: formData.proofImage });
+      await load(true);
+      showToast("🎉 Giao hàng thành công!");
+      setShowCompleteModal(false);
+    } catch (e) { showToast(e.message, "error"); }
+    finally { setFormLoading(false); }
+  };
+
+  const submitBomb = async () => {
+    if (!formData.proofImage) return showToast("⚠️ Vui lòng cung cấp ảnh hiện trường!", "error");
+    if (!orderToAction?._id) return showToast("⚠️ Lỗi: Không tìm thấy ID đơn hàng", "error");
+    
+    setFormLoading(true);
+    try {
+      await shipperReportBomb(orderToAction._id, { 
+        proofImage: formData.proofImage, 
+        reason: formData.reason || "User không nhận hàng" 
+      });
+      await load(true);
+      showToast("🚫 Đã báo bom hàng!", "warning");
+      setShowBombModal(false);
+    } catch (e) { showToast(e.message, "error"); }
+    finally { setFormLoading(false); }
+  };
 
   const TABS = [
     { key:"available", label:"Chờ Nhận",  count:available.length },
@@ -281,19 +355,25 @@ export default function ShipperDashboardPage({ user, onLogout }) {
             <span style={{ fontSize:20 }}>🛵</span>
             <span style={{ fontWeight:800, fontSize:16, color:"#1a1a1a" }}>Shipper Dashboard</span>
           </div>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ textAlign:"right" }}>
-              <div style={{ fontWeight:700, fontSize:13, color:"#1a1a1a" }}>{user?.fullName}</div>
-              <div style={{ fontSize:11, color:"#9ca3af" }}>ID: {user?.id?.slice(-6).toUpperCase()}</div>
+          <div style={{ display:"flex", alignItems:"center", gap:20 }}>
+            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "6px 14px", borderRadius: 20, display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 16 }}>💳 Ví:</span>
+              <span style={{ fontWeight: 800, color: "#16a34a" }}>{fmt(localUser?.walletBalance)}</span>
             </div>
-            <div style={{ width:36,height:36,borderRadius:"50%",overflow:"hidden",background:"#f3f4f6",flexShrink:0,border:"2px solid #e5e7eb" }}>
-              {user?.avatar
-                ? <img src={user.avatar} style={{ width:"100%",height:"100%",objectFit:"cover" }}/>
-                : <div style={{ width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>👤</div>}
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ textAlign:"right" }}>
+                <div style={{ fontWeight:700, fontSize:13, color:"#1a1a1a" }}>{localUser?.fullName}</div>
+                <div style={{ fontSize:11, color:"#9ca3af" }}>ID: {localUser?.id?.slice(-6).toUpperCase()}</div>
+              </div>
+              <div style={{ width:36,height:36,borderRadius:"50%",overflow:"hidden",background:"#f3f4f6",flexShrink:0,border:"2px solid #e5e7eb" }}>
+                {localUser?.avatar
+                  ? <img src={localUser.avatar} style={{ width:"100%",height:"100%",objectFit:"cover" }}/>
+                  : <div style={{ width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>👤</div>}
+              </div>
+              <button onClick={onLogout} style={{ padding:"7px 14px",borderRadius:8,border:"1.5px solid #e5e7eb",background:"#fff",color:"#6b7280",fontWeight:600,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",gap:5 }}>
+                ↩ Đăng xuất
+              </button>
             </div>
-            <button onClick={onLogout} style={{ padding:"7px 14px",borderRadius:8,border:"1.5px solid #e5e7eb",background:"#fff",color:"#6b7280",fontWeight:600,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",gap:5 }}>
-              ↩ Đăng xuất
-            </button>
           </div>
         </div>
       </div>
@@ -305,13 +385,13 @@ export default function ShipperDashboardPage({ user, onLogout }) {
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
             <div style={{ width:48,height:48,borderRadius:14,background:"#fff0ed",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24 }}>🛵</div>
             <div>
-              <div style={{ fontWeight:800,fontSize:18,color:"#1a1a1a" }}>Chào {hour()}, {user?.fullName?.split(" ").pop()}!</div>
+              <div style={{ fontWeight:800,fontSize:18,color:"#1a1a1a" }}>Chào {hour()}, {localUser?.fullName?.split(" ").pop()}!</div>
               <div style={{ fontSize:13,color:"#9ca3af",marginTop:2 }}>Hôm nay bạn có {available.length} lộ trình mới cực hấp dẫn.</div>
             </div>
           </div>
           <div style={{ textAlign:"right" }}>
-            <div style={{ fontWeight:700,fontSize:13,color:"#1a1a1a" }}>{user?.fullName}</div>
-            <div style={{ fontSize:12,color:"#9ca3af" }}>ID: {user?.id?.slice(-6).toUpperCase()}</div>
+            <div style={{ fontWeight:700,fontSize:13,color:"#1a1a1a" }}>{localUser?.fullName}</div>
+            <div style={{ fontSize:12,color:"#9ca3af" }}>ID: {localUser?.id?.slice(-6).toUpperCase()}</div>
           </div>
         </div>
 
@@ -320,7 +400,7 @@ export default function ShipperDashboardPage({ user, onLogout }) {
           <StatCard label="Chờ nhận"   value={available.length.toString().padStart(2,"0")} icon="📋" color="#f59e0b"/>
           <StatCard label="Đang giao"  value={active.length.toString().padStart(2,"0")}    icon="🚚" color="#3b82f6"/>
           <StatCard label="Hoàn thành" value={completed.toString().padStart(2,"0")}         icon="✅" color="#10b981"/>
-          <StatCard label="Thu nhập"   value={fmt(income)}                                  icon="💰" color="#ee4d2d"/>
+          <StatCard label="Số dư ví"    value={fmt(localUser?.walletBalance || 0)}           icon="💰" color="#ee4d2d"/>
         </div>
 
         {/* Tabs */}
@@ -368,7 +448,7 @@ export default function ShipperDashboardPage({ user, onLogout }) {
                       </div>
                       <div style={{ textAlign:"right",flexShrink:0 }}>
                         <span style={{ fontSize:11,fontWeight:700,color:cfg.color,background:cfg.bg,padding:"3px 10px",borderRadius:20,border:`1px solid ${cfg.color}33` }}>{cfg.label}</span>
-                        <div style={{ fontWeight:700,color:"#ee4d2d",fontSize:14,marginTop:6 }}>+{fmt(Math.round((o.deliveryFee||0)*0.7))}</div>
+                        <div style={{ fontWeight:700,color:"#ee4d2d",fontSize:14,marginTop:6 }}>+{fmt(o.deliveryFee || 0)}</div>
                         <div style={{ fontSize:11,color:"#9ca3af" }}>Tổng đơn: {fmt(o.total)}</div>
                       </div>
                     </div>
@@ -377,28 +457,43 @@ export default function ShipperDashboardPage({ user, onLogout }) {
               </div>
             ) : (
               /* Available / Active: 2-col layout */
-              <div>
-                <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-                  {curList.map(order => (
-                    <div key={order._id} style={{ display:"flex", gap:20, alignItems:"flex-start" }}>
-                      {/* Left: order info */}
-                      <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:16 }}>
-                        <OrderInfoCard order={order}/>
-                        <MapSection order={order}/>
+              <div style={{ display:"grid", gridTemplateColumns:"320px 1fr", gap:20 }}>
+                {/* Left: List */}
+                <div style={{ display:"flex", flexDirection:"column", gap:10, maxHeight:"calc(100vh - 350px)", overflowY:"auto", paddingRight:6 }} className="custom-scrollbar">
+                  {curList.map((order, i) => (
+                    <div key={order._id} onClick={()=>setSelIdx(i)} style={{ 
+                      padding:"16px", borderRadius:14, cursor:"pointer", border:"1.5px solid",
+                      borderColor:selIdx===i?"#ee4d2d":"#e5e7eb",
+                      background:selIdx===i?"#fff":"#fafafa",
+                      boxShadow:selIdx===i?"0 4px 12px rgba(238,77,45,.12)":"none",
+                      transition:"all .2s"
+                    }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                        <span style={{ fontWeight:800, fontSize:13 }}>#{order._id.slice(-6).toUpperCase()}</span>
+                        <span style={{ fontSize:12, fontWeight:700, color:"#ee4d2d" }}>{fmt(order.deliveryFee)}</span>
                       </div>
-                      {/* Right: summary + actions */}
-                      <div style={{ width:280, flexShrink:0 }}>
-                        <OrderSummaryPanel
-                          order={order}
-                          mode={tab}
-                          onAccept={handleAccept}
-                          onPickup={handlePickup}
-                          onComplete={handleComplete}
-                          onRefresh={()=>load(true)}
-                        />
-                      </div>
+                      <div style={{ fontSize:14, fontWeight:700, color:"#1a1a1a", marginBottom:4, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{order.restaurantName}</div>
+                      <div style={{ fontSize:12, color:"#6b7280", lineHeight:1.4 }}>📍 {order.deliveryAddress?.slice(0,60)}...</div>
                     </div>
                   ))}
+                </div>
+                {/* Right: Detail */}
+                <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+                  {selOrder && (
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 300px", gap:16, alignItems:"start" }}>
+                      <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+                        <OrderInfoCard order={selOrder}/>
+                        <MapSection order={selOrder}/>
+                      </div>
+                      <OrderSummaryPanel 
+                        order={selOrder} mode={tab} user={localUser}
+                        onAccept={handleAccept} onPickup={handlePickup} 
+                        onComplete={handleComplete} onReportBomb={handleReportBomb}
+                        onRefresh={()=>load(true)}
+                        showToast={showToast}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -406,18 +501,73 @@ export default function ShipperDashboardPage({ user, onLogout }) {
         )}
       </div>
 
-      {/* Toast */}
-      {toast&&(
-        <div style={{ position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:toast.type==="error"?"#ef4444":"#10b981",color:"#fff",padding:"13px 22px",borderRadius:14,fontWeight:600,fontSize:14,zIndex:9999,boxShadow:"0 8px 32px rgba(0,0,0,.2)",display:"flex",alignItems:"center",gap:8,whiteSpace:"nowrap",animation:"toastIn .3s ease" }}>
-          {toast.msg}
-          <button onClick={()=>setToast(null)} style={{ marginLeft:8,background:"rgba(255,255,255,.25)",border:"none",color:"#fff",borderRadius:8,width:20,height:20,cursor:"pointer",fontWeight:700 }}>✕</button>
+      {/* Modal: Giao hàng thành công */}
+      {showCompleteModal && (
+        <div style={mOverlay}>
+          <div style={mContent}>
+            <div style={mHeader}>✅ Hoàn thành giao hàng</div>
+            <div style={mBody}>
+              <div style={mLabel}>Chụp ảnh xác nhận giao hàng:</div>
+              <input type="file" accept="image/*" onChange={handleFileUpload} style={mInputFile}/>
+              {formData.proofImage && <img src={formData.proofImage} alt="proof" style={mPreview}/>}
+            </div>
+            <div style={mFooter}>
+              <button disabled={formLoading} onClick={()=>setShowCompleteModal(false)} style={mBtnCancel}>Đóng</button>
+              <button disabled={formLoading} onClick={submitComplete} style={mBtnSubmit}>
+                {formLoading ? "⏳ Đang gửi..." : "Xác nhận giao xong"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Báo bom hàng */}
+      {showBombModal && (
+        <div style={mOverlay}>
+          <div style={mContent}>
+            <div style={{ ...mHeader, color: "#ef4444" }}>🚫 Báo cáo User bom hàng</div>
+            <div style={mBody}>
+              <div style={mLabel}>Lý do vi phạm:</div>
+              <textarea 
+                placeholder="Ví dụ: Gọi 3 lần không nghe máy, địa chỉ ảo..." 
+                value={formData.reason} 
+                onChange={e=>setFormData({...formData, reason: e.target.value})}
+                style={mTextArea}
+              />
+              <div style={{ ...mLabel, marginTop: 16 }}>Ảnh hiện trường làm bằng chứng:</div>
+              <input type="file" accept="image/*" onChange={handleFileUpload} style={mInputFile}/>
+              {formData.proofImage && <img src={formData.proofImage} alt="proof" style={mPreview}/>}
+            </div>
+            <div style={mFooter}>
+              <button disabled={formLoading} onClick={()=>setShowBombModal(false)} style={mBtnCancel}>Đóng</button>
+              <button disabled={formLoading} onClick={submitBomb} style={{ ...mBtnSubmit, background: "#ef4444" }}>
+                {formLoading ? "⏳ Đang gửi..." : "Gửi báo cáo bom"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       <style>{`
         @keyframes spin { to{transform:rotate(360deg)} }
-        @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(12px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
       `}</style>
     </div>
   );
 }
+
+// ── Modal Styles ──
+const mOverlay = { position:"fixed", top:0, left:0, width:"100%", height:"100%", background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:10000 };
+const mContent = { background:"#fff", borderRadius:20, width:"90%", maxWidth:420, overflow:"hidden", border:"1px solid #e5e7eb", boxShadow:"0 20px 25px -5px rgba(0,0,0,0.1)" };
+const mHeader  = { padding:"20px", borderBottom:"1px solid #f3f4f6", fontWeight:800, fontSize:17, textAlign:"center" };
+const mBody    = { padding:"20px" };
+const mFooter  = { padding:"16px 20px", borderTop:"1px solid #f3f4f6", display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 };
+const mLabel   = { fontSize:14, fontWeight:700, color:"#4b5563", marginBottom:8 };
+const mInputFile = { width:"100%", fontSize:13, color:"#6b7280", padding:"8px 0" };
+const mPreview  = { width:"100%", height:160, objectFit:"cover", borderRadius:12, marginTop:12, border:"1px solid #e5e7eb" };
+const mTextArea = { width:"100%", height:80, borderRadius:12, border:"1.5px solid #e5e7eb", padding:"12px", fontSize:14, fontFamily:"inherit", resize:"none", outline:"none" };
+const mBtnCancel = { padding:"12px", borderRadius:12, border:"1.5px solid #e5e7eb", background:"#fff", color:"#6b7280", fontWeight:700, fontSize:14, cursor:"pointer" };
+const mBtnSubmit = { padding:"12px", borderRadius:12, border:"none", background:"#ee4d2d", color:"#fff", fontWeight:700, fontSize:14, cursor:"pointer" };

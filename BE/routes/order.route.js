@@ -15,6 +15,7 @@ router.get("/shipper/my", authMiddleware, authorizeRole("shipper", "admin"), ord
 router.patch("/:id/shipper-accept", authMiddleware, authorizeRole("shipper"), orderController.shipperAcceptOrder);
 router.patch("/:id/shipper-pickup", authMiddleware, authorizeRole("shipper"), orderController.shipperPickedUp);
 router.patch("/:id/shipper-delivered", authMiddleware, authorizeRole("shipper"), orderController.shipperCompleteDelivery);
+router.patch("/:id/shipper-bomb", authMiddleware, authorizeRole("shipper"), orderController.shipperReportBomb);
 
 // ── Brand routes (nhà hàng) ───────────────────────
 router.get("/restaurant/:restaurantId/stats", authMiddleware, authorizeRole("brand", "admin"), orderController.getRestaurantStats);

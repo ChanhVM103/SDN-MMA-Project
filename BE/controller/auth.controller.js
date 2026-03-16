@@ -194,16 +194,7 @@ const updateProfile = async (req, res) => {
         if (address !== undefined) updateData.address = address;
 
         const updatedUser = await authService.updateUserProfile(req.userId, updateData);
-        const user = {
-            id: updatedUser._id,
-            fullName: updatedUser.fullName,
-            email: updatedUser.email,
-            phone: updatedUser.phone || "",
-            avatar: updatedUser.avatar || "",
-            role: updatedUser.role,
-            authProvider: updatedUser.authProvider,
-            address: updatedUser.address || "",
-        };
+        const user = authService.formatUserResponse(updatedUser);
 
         res.status(200).json({
             success: true,
@@ -312,7 +303,8 @@ const updateAvatar = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Ảnh quá lớn, vui lòng chọn ảnh dưới 5MB' });
         }
 
-        const user = await authService.updateUserProfile(req.userId, { avatar });
+        const updatedUser = await authService.updateUserProfile(req.userId, { avatar });
+        const user = authService.formatUserResponse(updatedUser);
 
         res.status(200).json({
             success: true,

@@ -100,3 +100,8 @@ export const deleteVoucherApi = (id) =>
 
 export const toggleVoucherApi = (id) =>
   adminApiRequest(`/vouchers/${id}/toggle`, { method: "PATCH" });
+
+export const getAllOrdersApi = (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  return adminApiRequest(`/orders${query ? `?${query}` : ""}`);
+};

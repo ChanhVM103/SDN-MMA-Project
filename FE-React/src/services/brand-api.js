@@ -116,3 +116,9 @@ export const togglePromotionStatus = (id, isActive) =>
     method: "PATCH",
     body: JSON.stringify({ isActive }),
   });
+
+export const extendPromotion = (id, endDate) =>
+  brandApiRequest(`/promotions/${id}/extend`, {
+    method: "PATCH",
+    body: JSON.stringify({ endDate }),
+  });

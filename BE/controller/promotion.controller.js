@@ -69,7 +69,7 @@ const createPromotion = async (req, res) => {
 const updatePromotion = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, discountPercent, productIds, isActive, override } = req.body;
+    const { name, discountPercent, productIds, isActive, override, endDate } = req.body;
     const brandId = req.userId;
 
     const promotion = await promotionService.getPromotionById(id);
@@ -87,6 +87,7 @@ const updatePromotion = async (req, res) => {
     if (discountPercent !== undefined) updateData.discountPercent = discountPercent;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (productIds !== undefined) updateData.productIds = promotionService.getSafeProductIds(productIds);
+    if (endDate !== undefined) updateData.endDate = new Date(endDate);
 
     // Conflict handling (only if active)
     const finalActive = isActive !== undefined ? isActive : promotion.isActive;
@@ -204,11 +205,26 @@ const togglePromotionStatus = async (req, res) => {
   return updatePromotion(req, res);
 };
 
+// Gia hạn thời gian kết thúc khuyến mãi
+const extendPromotion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { endDate } = req.body;
+    if (!endDate) return res.status(400).json({ success: false, message: "Ngày kết thúc không hợp lệ" });
+
+    req.body = { endDate };
+    return updatePromotion(req, res);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   createPromotion,
+  updatePromotion,
   getPromotions,
   deletePromotion,
-  updatePromotion,
   checkConflicts,
-  togglePromotionStatus
+  togglePromotionStatus,
+  extendPromotion
 };
