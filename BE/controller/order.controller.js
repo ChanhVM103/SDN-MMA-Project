@@ -2,6 +2,7 @@ const Order = require("../models/order.model");
 const Restaurant = require("../models/restaurant.model");
 const User = require("../models/user.model");
 const Product = require("../models/product.model");
+const WalletTransaction = require("../models/walletTransaction.model");
 
 const incrementRestaurantOrders = async (restaurantId) => {
   await Restaurant.findByIdAndUpdate(restaurantId, {
@@ -18,21 +19,42 @@ const addRestaurantRevenue = async (restaurantId, amount) => {
   });
 };
 
-const addShipperRevenue = async (shipperId, amount) => {
+const addShipperRevenue = async (shipperId, amount, orderId = null, description = "Thu nhập phí giao hàng") => {
+  if (!shipperId || !amount) return;
   // Shipper nhận 100% phí giao hàng
-  await User.findByIdAndUpdate(shipperId, {
-    $inc: { 
-      walletBalance: amount,
-      totalRevenue: amount 
-    },
+  const user = await User.findByIdAndUpdate(shipperId, {
+    $inc: { walletBalance: amount, totalRevenue: amount },
+  }, { new: false });
+  if (!user) return; // Tránh crash nếu không tìm thấy shipper
+  const balanceBefore = user.walletBalance || 0;
+  await WalletTransaction.create({
+    user: shipperId,
+    type: "reward",
+    amount,
+    balanceBefore,
+    balanceAfter: balanceBefore + amount,
+    description,
+    relatedOrder: orderId,
+    status: "completed",
   });
 };
 
-const deductShipperWallet = async (shipperId, amount) => {
-  await User.findByIdAndUpdate(shipperId, {
-    $inc: { 
-      walletBalance: -amount
-    },
+const deductShipperWallet = async (shipperId, amount, orderId = null, description = "Ký quỹ đơn hàng COD") => {
+  if (!shipperId || !amount) return;
+  const user = await User.findByIdAndUpdate(shipperId, {
+    $inc: { walletBalance: -amount },
+  }, { new: false });
+  if (!user) return; // Tránh crash nếu không tìm thấy shipper
+  const balanceBefore = user.walletBalance || 0;
+  await WalletTransaction.create({
+    user: shipperId,
+    type: "escrow",
+    amount,
+    balanceBefore,
+    balanceAfter: balanceBefore - amount,
+    description,
+    relatedOrder: orderId,
+    status: "completed",
   });
 };
 
@@ -858,7 +880,7 @@ const shipperAcceptOrder = async (req, res) => {
         });
       }
 
-      await deductShipperWallet(req.userId, escrowAmount);
+      await deductShipperWallet(req.userId, escrowAmount, order._id, `Ký quỹ đơn #${String(order._id).slice(-6).toUpperCase()}`);
       order.escrowAmount = escrowAmount;
     }
 
@@ -951,7 +973,7 @@ const shipperCompleteDelivery = async (req, res) => {
       // → KHÔNG cộng gì thêm vào ví, shipper đã lời phí ship từ tiền mặt thu được
     } else {
       // VNPay: Khách đã thanh toán online, shipper chỉ giao hàng → cộng phí ship vào ví
-      await addShipperRevenue(order.shipper, shipperFee);
+      await addShipperRevenue(order.shipper, shipperFee, order._id, `Phí ship đơn #${String(order._id).slice(-6).toUpperCase()} (VNPay)`);
     }
 
     await incrementProductSoldCounts(order.items);
@@ -1018,7 +1040,7 @@ const shipperReportBomb = async (req, res) => {
     // - COD: KHÔNG hoàn ký quỹ, tiền đã chuyển cho nhà hàng lúc shipper lấy hàng
     if (order.paymentMethod === "vnpay") {
       const shipperFee = order.deliveryFee || 0;
-      await addShipperRevenue(order.shipper, shipperFee);
+      await addShipperRevenue(order.shipper, shipperFee, order._id, `Phí ship đơn #${String(order._id).slice(-6).toUpperCase()} (VNPay)`);
     }
 
     // Phạt User
