@@ -10,11 +10,13 @@ interface RestaurantMapProps {
 }
 
 export default function RestaurantMap({ latitude, longitude, name, address }: RestaurantMapProps) {
-    if (!latitude || !longitude) return null;
+    // Default to HCM City center if no coordinates
+    const displayLat = latitude || 10.762622;
+    const displayLng = longitude || 106.660172;
 
     const region = {
-        latitude: parseFloat(latitude.toString()),
-        longitude: parseFloat(longitude.toString()),
+        latitude: parseFloat(displayLat.toString()),
+        longitude: parseFloat(displayLng.toString()),
         latitudeDelta: 0.005,
         longitudeDelta: 0.005,
     };
@@ -32,8 +34,8 @@ export default function RestaurantMap({ latitude, longitude, name, address }: Re
                 >
                     <Marker
                         coordinate={{
-                            latitude: parseFloat(latitude.toString()),
-                            longitude: parseFloat(longitude.toString()),
+                            latitude: parseFloat(displayLat.toString()),
+                            longitude: parseFloat(displayLng.toString()),
                         }}
                         title={name}
                         description={address}

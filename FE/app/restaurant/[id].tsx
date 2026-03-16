@@ -625,8 +625,8 @@ export default function RestaurantDetailScreen() {
                         </View>
 
                         <RestaurantMap
-                            latitude={restaurant.lat}
-                            longitude={restaurant.lng}
+                            latitude={restaurant.latitude}
+                            longitude={restaurant.longitude}
                             name={restaurant.name}
                             address={restaurant.address}
                         />

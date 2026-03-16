@@ -66,8 +66,8 @@ export default function EditShopScreen() {
                 setDeliveryFee(String(d.deliveryFee || ''));
                 setOpeningHours(d.openingHours || '');
                 setIsOpen(d.isOpen !== false);
-                setLat(d.lat);
-                setLng(d.lng);
+                setLat(d.latitude);
+                setLng(d.longitude);
             }
         } catch (e) {
             console.error('Failed to load shop data:', e);
@@ -133,8 +133,8 @@ export default function EditShopScreen() {
                 deliveryFee: parseInt(deliveryFee) || 0,
                 openingHours: openingHours.trim(),
                 isOpen,
-                lat,
-                lng,
+                latitude: lat,
+                longitude: lng,
             };
 
             // If image changed (we have a base64 string), pass it; otherwise keep the URL
