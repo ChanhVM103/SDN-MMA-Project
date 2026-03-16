@@ -42,7 +42,12 @@ function OrderInfoCard({ order }) {
         <div style={{ width:44,height:44,borderRadius:10,background:"#fff0ed",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0 }}>🏪</div>
         <div style={{ flex:1 }}>
           <div style={{ fontWeight:700, fontSize:16, color:"#1a1a1a" }}>{order.restaurantName}</div>
-          <div style={{ fontSize:12, color:"#9ca3af", marginTop:1 }}>ID: #{order._id.slice(-8).toUpperCase()} · {fmtD(order.createdAt)}</div>
+          <div style={{ fontSize:12, color:"#9ca3af", marginTop:1, display:"flex", alignItems:"center", gap:6 }}>
+            ID: #{order._id.slice(-8).toUpperCase()} · {fmtD(order.createdAt)}
+            <span style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:10, background: order.paymentMethod==="cash"?"#fef3c7":"#dbeafe", color: order.paymentMethod==="cash"?"#92400e":"#1e40af", border: `1px solid ${order.paymentMethod==="cash"?"#fcd34d":"#93c5fd"}` }}>
+              {order.paymentMethod==="cash"?"💵 COD":"💳 VNPay"}
+            </span>
+          </div>
         </div>
         <span style={{ fontSize:12, fontWeight:800, color:cfg.color, background:cfg.bg, padding:"5px 12px", borderRadius:20, border:`1px solid ${cfg.color}33`, letterSpacing:"0.4px" }}>{cfg.label}</span>
       </div>
@@ -128,11 +133,39 @@ function OrderSummaryPanel({ order, onAccept, onPickup, onComplete, onReportBomb
       {/* Income */}
       <div style={{ background:"#fff7ed", borderRadius:14, padding:"16px 20px", border:"1px solid #fed7aa", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div>
-          <div style={{ fontSize:11, fontWeight:700, color:"#92400e", textTransform:"uppercase", letterSpacing:"0.6px", marginBottom:4 }}>Thu nhập của bạn</div>
+          <div style={{ fontSize:11, fontWeight:700, color:"#92400e", textTransform:"uppercase", letterSpacing:"0.6px", marginBottom:4 }}>Thu nhập của bạn (phí ship)</div>
           <div style={{ fontSize:24, fontWeight:800, color:"#ee4d2d" }}>{fmt(income)}</div>
         </div>
         <span style={{ fontSize:24 }}>💰</span>
       </div>
+
+      {/* COD Escrow Warning */}
+      {order.paymentMethod === "cash" && mode === "available" && (
+        <div style={{ background:"#fef3c7", borderRadius:14, padding:"14px 16px", border:"1px solid #fcd34d" }}>
+          <div style={{ fontSize:13, fontWeight:700, color:"#92400e", marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>⚠️ Đơn thanh toán tiền mặt (COD)</div>
+          <div style={{ fontSize:12, color:"#78350f", lineHeight:1.6 }}>
+            Khi nhận đơn này, hệ thống sẽ <strong>trừ {fmt(order.total - (order.deliveryFee || 0))}</strong> từ ví của bạn để ký quỹ cho nhà hàng.
+          </div>
+          <div style={{ fontSize:12, color:"#78350f", lineHeight:1.6, marginTop:4 }}>
+            Bạn sẽ thu <strong>{fmt(order.total)}</strong> tiền mặt từ khách khi giao hàng (lời phí ship <strong>{fmt(order.deliveryFee || 0)}</strong>).
+          </div>
+          {user && (user.walletBalance || 0) < (order.total - (order.deliveryFee || 0)) && (
+            <div style={{ marginTop:8, fontSize:12, fontWeight:700, color:"#dc2626", background:"#fef2f2", padding:"8px 12px", borderRadius:8, border:"1px solid #fecaca" }}>
+              ❌ Số dư ví không đủ! Cần tối thiểu {fmt(order.total - (order.deliveryFee || 0))} để nhận đơn này.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* COD info for active orders */}
+      {order.paymentMethod === "cash" && mode === "active" && (
+        <div style={{ background:"#fef3c7", borderRadius:14, padding:"14px 16px", border:"1px solid #fcd34d" }}>
+          <div style={{ fontSize:13, fontWeight:700, color:"#92400e", marginBottom:4, display:"flex", alignItems:"center", gap:6 }}>💵 Thu tiền mặt khi giao</div>
+          <div style={{ fontSize:12, color:"#78350f", lineHeight:1.6 }}>
+            Thu <strong>{fmt(order.total)}</strong> tiền mặt từ khách hàng.
+          </div>
+        </div>
+      )}
 
       {/* Action buttons */}
       {mode==="available" && (
@@ -156,7 +189,7 @@ function OrderSummaryPanel({ order, onAccept, onPickup, onComplete, onReportBomb
             {busy ? "⏳..." : "✅ Đã giao thành công"}
           </button>
           <button onClick={()=>onReportBomb(order)} disabled={busy} style={{ padding:"12px", borderRadius:12, border:"1.5px solid #ef4444", background:"#fff", color:"#ef4444", fontWeight:700, fontSize:14, cursor:busy?"not-allowed":"pointer" }}>
-            {busy ? "⏳..." : "🚫 Báo User bom hàng"}
+            {busy ? "⏳..." : "📞 Không liên lạc được khách hàng"}
           </button>
         </div>
       )}
@@ -328,7 +361,7 @@ export default function ShipperDashboardPage({ user: initialUser, onLogout, show
         reason: formData.reason || "User không nhận hàng" 
       });
       await load(true);
-      showToast("🚫 Đã báo bom hàng!", "warning");
+      showToast("📞 Đã gửi báo cáo không liên lạc được khách!", "warning");
       setShowBombModal(false);
     } catch (e) { showToast(e.message, "error"); }
     finally { setFormLoading(false); }
@@ -470,7 +503,12 @@ export default function ShipperDashboardPage({ user: initialUser, onLogout, show
                     }}>
                       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
                         <span style={{ fontWeight:800, fontSize:13 }}>#{order._id.slice(-6).toUpperCase()}</span>
-                        <span style={{ fontSize:12, fontWeight:700, color:"#ee4d2d" }}>{fmt(order.deliveryFee)}</span>
+                        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                          <span style={{ fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:8, background: order.paymentMethod==="cash"?"#fef3c7":"#dbeafe", color: order.paymentMethod==="cash"?"#92400e":"#1e40af" }}>
+                            {order.paymentMethod==="cash"?"COD":"VNPay"}
+                          </span>
+                          <span style={{ fontSize:12, fontWeight:700, color:"#ee4d2d" }}>{fmt(order.deliveryFee)}</span>
+                        </div>
                       </div>
                       <div style={{ fontSize:14, fontWeight:700, color:"#1a1a1a", marginBottom:4, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{order.restaurantName}</div>
                       <div style={{ fontSize:12, color:"#6b7280", lineHeight:1.4 }}>📍 {order.deliveryAddress?.slice(0,60)}...</div>
@@ -525,9 +563,9 @@ export default function ShipperDashboardPage({ user: initialUser, onLogout, show
       {showBombModal && (
         <div style={mOverlay}>
           <div style={mContent}>
-            <div style={{ ...mHeader, color: "#ef4444" }}>🚫 Báo cáo User bom hàng</div>
+            <div style={{ ...mHeader, color: "#ef4444" }}>📞 Báo cáo không liên lạc được khách hàng</div>
             <div style={mBody}>
-              <div style={mLabel}>Lý do vi phạm:</div>
+              <div style={mLabel}>Lý do không giao được:</div>
               <textarea 
                 placeholder="Ví dụ: Gọi 3 lần không nghe máy, địa chỉ ảo..." 
                 value={formData.reason} 
@@ -541,7 +579,7 @@ export default function ShipperDashboardPage({ user: initialUser, onLogout, show
             <div style={mFooter}>
               <button disabled={formLoading} onClick={()=>setShowBombModal(false)} style={mBtnCancel}>Đóng</button>
               <button disabled={formLoading} onClick={submitBomb} style={{ ...mBtnSubmit, background: "#ef4444" }}>
-                {formLoading ? "⏳ Đang gửi..." : "Gửi báo cáo bom"}
+                {formLoading ? "⏳ Đang gửi..." : "Gửi báo cáo"}
               </button>
             </div>
           </div>
