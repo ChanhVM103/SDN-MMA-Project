@@ -28,6 +28,7 @@ import BrandSection from '@/components/home/BrandSection';
 import NewArrivalsSection from '@/components/home/NewArrivalsSection';
 import { getRestaurantsByTags, getTopRatedRestaurants, getFlashSaleRestaurants } from '@/constants/restaurant-api';
 import ChatFloatingButton from '@/components/ChatFloatingButton';
+import { API_BASE_URL, productAPI } from '@/constants/api';
 
 const { width } = Dimensions.get('window');
 
