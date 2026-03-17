@@ -5,7 +5,6 @@ import {
   getAllRestaurants,
 } from "../services/restaurant-api";
 import CarouselSection from "../components/CarouselSection";
-import ChatBox from '../components/ChatBox';
 
 function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
   const [activeType, setActiveType] = useState("all-type");
@@ -214,21 +213,21 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
       <section className="fd-hero">
         <div className="fd-hero-inner">
           <div>
-            <div className="fd-hero-badge">🚀 Fast &amp; Fresh</div>
+            <div className="fd-hero-badge">🚀 Nhanh &amp; Tươi</div>
             <h1 className="fd-hero-title">
-              Fastest<br />Delivery<br /><em>in Town</em>
+              Giao Hàng<br />Nhanh Nhất<br /><em>Thành Phố</em>
             </h1>
             <p className="fd-hero-desc">
-              Craving something delicious? Get your favorite meals delivered fresh and fast to your doorstep. Explore thousands of local favorites.
+              Thèm món gì đó ngon? Hãy để chúng tôi mang bữa ăn yêu thích đến tận cửa nhà bạn một cách nhanh chóng và tươi ngon nhất.
             </p>
             <div className="fd-search-bar">
               <span style={{ fontSize: 16, color: "#ee4d2d" }}>📍</span>
               <input
-                placeholder="Enter your delivery address"
+                placeholder="Nhập địa chỉ giao hàng của bạn"
                 value={globalSearchTerm || ""}
                 onChange={(e) => setGlobalSearchTerm && setGlobalSearchTerm(e.target.value)}
               />
-              <button className="fd-search-btn">🔍 Find Food</button>
+              <button className="fd-search-btn">🔍 Tìm Món Ăn</button>
             </div>
             <div className="fd-customers">
               <div className="fd-avatars">
@@ -236,18 +235,18 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
                   <div key={i} className="fd-avatar">{e}</div>
                 ))}
               </div>
-              <span><strong>500k+</strong> Happy Customers</span>
+              <span><strong>500k+</strong> Khách hàng hài lòng</span>
             </div>
           </div>
           <div className="fd-hero-img">
-            <img src="/banner.png" alt="Delicious food" className="fd-hero-food-img"
+            <img src="/banner.png" alt="Món ăn hấp dẫn" className="fd-hero-food-img"
               onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
             <div style={{ display: "none", width: "100%", maxWidth: 460, height: 320, background: "linear-gradient(135deg, #ff9a7c, #ee4d2d)", borderRadius: "20px 20px 0 0", alignItems: "center", justifyContent: "center", fontSize: 80 }}>🍔</div>
             <div className="fd-avg-badge">
               <span className="icon">⏱️</span>
               <div>
-                <div className="label">Average Time</div>
-                <div className="value">20–30 Mins</div>
+                <div className="label">Trung bình</div>
+                <div className="value">20–30 Phút</div>
               </div>
             </div>
           </div>
@@ -259,10 +258,10 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
         <div className="fd-section-wrap">
           <div className="fd-section-header">
             <div>
-              <div className="fd-section-title">Popular Categories</div>
-              <div className="fd-section-sub">Explore your favorite cuisines</div>
+              <div className="fd-section-title">Danh mục phổ biến</div>
+              <div className="fd-section-sub">Khám phá ẩm thực yêu thích của bạn</div>
             </div>
-            <button className="fd-view-all">View All ›</button>
+            <button className="fd-view-all">Xem tất cả ›</button>
           </div>
           <CategorySectionInline
             onSelectCategory={handleCategorySelect}
@@ -347,12 +346,12 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
       {/* ── HOW IT WORKS ── */}
       <section className="fd-steps" style={{ margin: "32px 0 8px 0" }}>
         <div className="fd-section-wrap">
-          <div className="fd-steps-title">Simple Steps to Your Meal</div>
+          <div className="fd-steps-title">Quy trình giao hàng đơn giản</div>
           <div className="fd-steps-grid">
             {[
-              { icon: "🛍️", title: "Select Your Food", desc: "Browse thousands of restaurants and menus from your area." },
-              { icon: "👨‍🍳", title: "Cooked by Professionals", desc: "Our partner restaurants prepare your meal with the freshest ingredients." },
-              { icon: "🛵", title: "Fastest Delivery", desc: "Our riders deliver your food warm and fresh to your doorstep." },
+              { icon: "🛍️", title: "Chọn món ăn", desc: "Hàng ngàn nhà hàng và thực đơn hấp dẫn đang chờ bạn." },
+              { icon: "👨‍🍳", title: "Chế biến chuyên nghiệp", desc: "Nhà hàng chuẩn bị món ăn với nguyên liệu tươi ngon nhất." },
+              { icon: "🛵", title: "Giao hàng siêu tốc", desc: "Tài xế sẽ giao món ăn nóng hổi đến tận cửa nhà bạn." },
             ].map((step, i) => (
               <div key={i}>
                 <div className="fd-step-icon-wrap">{step.icon}</div>
@@ -368,20 +367,20 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
       <div className="fd-section-wrap" style={{ marginTop: 40, marginBottom: 20 }}>
         <div className="fd-app-cta">
           <div className="fd-app-cta-left">
-            <div className="fd-app-cta-title">Experience the best<br />delivery on our<br />Mobile App</div>
-            <div className="fd-app-cta-desc">Order food anywhere and track your rider in real-time. Get exclusive app-only discounts.</div>
+            <div className="fd-app-cta-title">Trải nghiệm đặt hàng<br />tốt nhất trên<br />Ứng dụng Di động</div>
+            <div className="fd-app-cta-desc">Đặt đồ ăn mọi lúc mọi nơi và theo dõi tài xế theo thời gian thực. Nhận ngay các ưu đãi độc quyền dành riêng cho bạn.</div>
             <div className="fd-app-buttons">
               <button className="fd-app-btn">
                 <span className="store-icon">🍎</span>
                 <div style={{ textAlign: "left" }}>
-                  <div style={{ fontSize: 10, color: "#888" }}>DOWNLOAD ON THE</div>
+                  <div style={{ fontSize: 10, color: "#888" }}>TẢI TRÊN</div>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>App Store</div>
                 </div>
               </button>
               <button className="fd-app-btn">
                 <span className="store-icon">▶️</span>
                 <div style={{ textAlign: "left" }}>
-                  <div style={{ fontSize: 10, color: "#888" }}>GET IT ON</div>
+                  <div style={{ fontSize: 10, color: "#888" }}>TẢI TRÊN</div>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>Google Play</div>
                 </div>
               </button>
@@ -391,14 +390,13 @@ function HomePage({ user, navigate, globalSearchTerm, setGlobalSearchTerm }) {
             <div className="fd-phone-mockup">
               🍔
               <div style={{ position: "absolute", bottom: -8, left: "50%", transform: "translateX(-50%)", background: "linear-gradient(135deg, #ee4d2d, #ff6b3d)", color: "#fff", borderRadius: 20, padding: "6px 20px", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>
-                Order Now
+                Đặt ngay
               </div>
             </div>
           </div>
         </div>
       </div>
-      {/* Chat Box AI fixed on screen */}
-      <ChatBox />
+      {/* Chat Box AI is global in App.jsx */}
     </div>
   );
 }

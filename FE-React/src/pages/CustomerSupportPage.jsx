@@ -44,7 +44,7 @@ function CustomerSupportPage({ navigate }) {
                 <div style={{ fontSize: 28, marginRight: 16 }}>💬</div>
                 <div style={{ textAlign: "left", flex: 1 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: "#3b82f6", textTransform: "uppercase", letterSpacing: 0.5 }}>Nhắn tin Fanpage</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: "#1a1a1a", marginTop: 4 }}>FoodieHub Support</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: "#1a1a1a", marginTop: 4 }}>Hỗ trợ FoodieHub</div>
                 </div>
                 <div style={{ color: "#3b82f6", fontSize: 24, fontWeight: 700 }}>→</div>
               </div>

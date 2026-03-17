@@ -222,7 +222,7 @@ export default function ShipperWalletTab({ user, showToast }) {
                     <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2, display: "flex", gap: 6, flexWrap: "wrap" }}>
                       <span>{fmtDate(txn.createdAt)}</span>
                       {txn.description && <span>· {txn.description}</span>}
-                      {txn.createdByAdmin && <span>· Admin: {txn.createdByAdmin.fullName}</span>}
+                      {txn.createdByAdmin && <span>· Quản trị viên: {txn.createdByAdmin.fullName}</span>}
                     </div>
                     <div style={{ fontSize: 11, marginTop: 3, color: "#c4c4c4" }}>
                       Số dư trước: {fmt(txn.balanceBefore)} → {fmt(txn.balanceAfter)}

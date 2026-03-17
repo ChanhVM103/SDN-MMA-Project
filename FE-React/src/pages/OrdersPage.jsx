@@ -8,9 +8,9 @@ const SC = {
   confirmed:         { label:"Đã xác nhận",          color:"#3b82f6", bg:"#dbeafe" },
   preparing:         { label:"Đang chuẩn bị",        color:"#8b5cf6", bg:"#ede9fe" },
   ready_for_pickup:  { label:"Chờ shipper",           color:"#f97316", bg:"#ffedd5" },
-  shipper_accepted:  { label:"Shipper đã nhận",       color:"#06b6d4", bg:"#cffafe" },
+  shipper_accepted:  { label:"Tài xế đã nhận",        color:"#06b6d4", bg:"#cffafe" },
   delivering:        { label:"Đang giao hàng",        color:"#ee4d2d", bg:"#fff0ed" },
-  shipper_delivered: { label:"Shipper đã giao",       color:"#84cc16", bg:"#ecfccb" },
+  shipper_delivered: { label:"Tài xế đã giao",        color:"#84cc16", bg:"#ecfccb" },
   delivered:         { label:"Đã giao thành công",   color:"#10b981", bg:"#d1fae5" },
   cancelled:         { label:"Đã hủy",                color:"#ef4444", bg:"#fee2e2" },
   bombed:            { label:"Không liên lạc được", color:"#ef4444", bg:"#fee2e2" },
@@ -440,7 +440,7 @@ function OrderDetailPage({ orderId, onBack, showToast, onRefreshList, navigate }
             <span style={{background:cfg.bg,color:cfg.color,padding:"6px 16px",borderRadius:20,fontSize:13,fontWeight:700,border:`1px solid ${cfg.color}40`}}>
               {cfg.label}
             </span>
-            <button onClick={()=>navigator.clipboard?.writeText(order._id)} title="Copy ID" style={{width:34,height:34,borderRadius:8,border:"1px solid #e5e7eb",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>📋</button>
+          <button onClick={()=>navigator.clipboard?.writeText(order._id)} title="Sao chép mã đơn" style={{width:34,height:34,borderRadius:8,border:"1px solid #e5e7eb",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>📋</button>
           </div>
         </div>
       </div>
