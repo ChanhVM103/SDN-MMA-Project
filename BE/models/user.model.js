@@ -75,6 +75,15 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Đánh giá từ khách hàng (tự động cập nhật khi có đánh giá mới)
+    danhGiaShipper: {
+      type: Number,
+      default: 0,
+    },
+    soDanhGiaShipper: {
+      type: Number,
+      default: 0,
+    },
     isActive: {
       type: Boolean,
       default: true,
