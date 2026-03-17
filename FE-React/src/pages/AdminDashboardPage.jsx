@@ -1451,7 +1451,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                     <Tab value="all" label="Tất cả" />
                     <Tab value="user" label="Khách hàng" />
                     <Tab value="brand" label="Thương hiệu" />
-
+                    <Tab value="shipper" label="Giao hàng" />
                   </Tabs>
                 </Box>
 
@@ -2001,6 +2001,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                 <MenuItem value="brand">
                   Thương hiệu / Cửa hàng (Brand)
                 </MenuItem>
+                <MenuItem value="shipper">Giao hàng (Shipper)</MenuItem>
                 <MenuItem value="admin">Quản trị viên (Admin)</MenuItem>
               </Select>
             </FormControl>
@@ -2134,6 +2135,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                 <MenuItem value="brand">
                   Thương hiệu / Cửa hàng (Brand)
                 </MenuItem>
+                <MenuItem value="shipper">Giao hàng (Shipper)</MenuItem>
                 <MenuItem value="admin">Quản trị viên (Admin)</MenuItem>
               </Select>
             </FormControl>
