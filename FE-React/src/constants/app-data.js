@@ -12,6 +12,7 @@ export const VALID_PATHS = new Set([
   "/brand-dashboard",
   "/shipper-dashboard",
   "/payment-result",
+  "/support",
 ]);
 
 export const tabs = [

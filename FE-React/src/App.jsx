@@ -19,6 +19,7 @@ import { clearStoredAuth, parseStoredAuth, persistAuth } from "./services/auth-s
 import { requestFacebookAccessToken, requestGoogleAccessToken } from "./services/social-auth";
 import { normalizePath } from "./utils/navigation";
 import { createOrder, getActiveVouchers } from "./services/order-api";
+import CustomerSupportPage from "./pages/CustomerSupportPage";
 import ChatBox from "./components/ChatBox";
 
 
@@ -55,16 +56,17 @@ function App() {
   useEffect(() => {
     if (!auth?.user) return;
     const role = auth.user.role;
+    // Các trang chung mà mọi role đều được truy cập
+    const allowedForAll = ["/support"];
+    if (allowedForAll.includes(path)) return;
+
     if (role === "admin" && path !== "/admin") {
       navigate("/admin");
     } else if (role === "brand" && path !== "/brand-dashboard") {
-      // Brand phải luôn ở trang brand dashboard
       navigate("/brand-dashboard");
     } else if (role === "shipper" && path !== "/shipper-dashboard") {
-      // Shipper phải luôn ở trang shipper dashboard
       navigate("/shipper-dashboard");
     } else if (role !== "admin" && role !== "brand" && role !== "shipper") {
-      // User thường bị chặn khỏi các trang admin/brand/shipper
       if (path === "/admin" || path === "/brand-dashboard" || path === "/shipper-dashboard" || path === "/sign-in" || path === "/sign-up") {
         navigate("/home");
       }
@@ -235,6 +237,7 @@ function App() {
     if (path === "/admin" && auth?.user?.role === "admin") return <AdminDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} showToast={showToast} showConfirm={showConfirm} />;
     if (path === "/brand-dashboard" && auth?.user?.role === "brand") return <BrandDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} showToast={showToast} showConfirm={showConfirm} />;
     if (path === "/shipper-dashboard" && auth?.user?.role === "shipper") return <ShipperDashboardPage user={auth.user} onLogout={handleLogout} navigate={navigate} showToast={showToast} showConfirm={showConfirm} />;
+    if (path === "/support") return <CustomerSupportPage navigate={navigate} />;
     if (isRestaurantDetail) return (
       <RestaurantDetailPage
         restaurantId={restaurantId}

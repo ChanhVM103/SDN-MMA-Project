@@ -379,7 +379,7 @@ function MapBox({ address }) {
 }
 
 // ─── ORDER DETAIL PAGE ────────────────────────────────────────────
-function OrderDetailPage({ orderId, onBack, showToast, onRefreshList }){
+function OrderDetailPage({ orderId, onBack, showToast, onRefreshList, navigate }){
   const [order,setOrder]=useState(null);
   const [loading,setLoading]=useState(true);
   const [reviewOrder,setReviewOrder]=useState(null);
@@ -644,7 +644,7 @@ function OrderDetailPage({ orderId, onBack, showToast, onRefreshList }){
             )}
 
             <div style={{padding:"12px 14px",background:"#fff",borderRadius:12,border:"1px solid #f3f4f6",textAlign:"center",fontSize:11,color:"#9ca3af",lineHeight:1.6}}>
-              Cần thay đổi thông tin đơn hàng? Vui lòng liên hệ trung tâm CSKH của <span style={{color:"#ee4d2d",fontWeight:700}}>FoodieHub</span> để được hỗ trợ 24/7.
+              Cần thay đổi thông tin đơn hàng? Vui lòng liên hệ trung tâm CSKH của <span onClick={() => navigate("/support")} style={{color:"#ee4d2d",fontWeight:700,cursor:"pointer",textDecoration:"underline"}}>FoodieHub</span> để được hỗ trợ 24/7.
             </div>
           </div>
         </div>
@@ -701,7 +701,7 @@ function OrdersPage({user,navigate,showToast}){
   if(detailId)return(
     <>
       <div className="view-port">
-        <OrderDetailPage orderId={detailId} onBack={()=>setDetailId(null)} showToast={showToast} onRefreshList={()=>fetchOrders(false)}/>
+        <OrderDetailPage orderId={detailId} onBack={()=>setDetailId(null)} showToast={showToast} onRefreshList={()=>fetchOrders(false)} navigate={navigate}/>
       </div>
       <AnimStyles/>
     </>

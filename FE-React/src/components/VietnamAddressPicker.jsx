@@ -96,13 +96,13 @@ export default function VietnamAddressPicker({ value = "", onChange, disabled = 
     setLoadingP(true);
     fetchJson(`${API_BASE}/?depth=1`)
       .then(data => {
-        setProvinces(data);
-        // Auto-select tỉnh nếu có giá trị ban đầu
-        if (parsed.current.province) {
-          const prov = data.find(p =>
-            p.name.toLowerCase() === parsed.current.province.toLowerCase()
-          );
-          if (prov) setSelProvince(String(prov.code));
+        // Chỉ lấy Thành phố Hồ Chí Minh
+        const hcmCity = data.filter(p => p.name.includes("Hồ Chí Minh"));
+        setProvinces(hcmCity);
+        
+        // Luôn auto-select HCM
+        if (hcmCity.length > 0) {
+          setSelProvince(String(hcmCity[0].code));
         }
       })
       .catch(() => {})
