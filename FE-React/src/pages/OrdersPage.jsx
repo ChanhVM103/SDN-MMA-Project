@@ -13,7 +13,7 @@ const SC = {
   shipper_delivered: { label:"Shipper đã giao",       color:"#84cc16", bg:"#ecfccb" },
   delivered:         { label:"Đã giao thành công",   color:"#10b981", bg:"#d1fae5" },
   cancelled:         { label:"Đã hủy",                color:"#ef4444", bg:"#fee2e2" },
-  bombed:            { label:"Giao không thành công", color:"#ef4444", bg:"#fee2e2" },
+  bombed:            { label:"Không liên lạc được", color:"#ef4444", bg:"#fee2e2" },
 };
 
 // 4 bước hiển thị trên timeline ngang (theo ảnh)
