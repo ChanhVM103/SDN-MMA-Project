@@ -566,7 +566,8 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
   const submitCreateVoucher = async (e) => {
     e.preventDefault();
     try {
-      await createVoucherApi(voucherForm);
+      const payload = { ...voucherForm, minOrderAmount: Number(voucherForm.minOrderAmount) || 0, maxDeliveryFee: Number(voucherForm.maxDeliveryFee) || 0 };
+      await createVoucherApi(payload);
       showSnack("Tạo voucher thành công!");
       setIsCreateVoucherOpen(false);
       setVoucherForm(defaultVoucherForm);
@@ -576,7 +577,8 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
   const submitEditVoucher = async (e) => {
     e.preventDefault();
     try {
-      await updateVoucherApi(selectedVoucher._id, voucherForm);
+      const payload = { ...voucherForm, minOrderAmount: Number(voucherForm.minOrderAmount) || 0, maxDeliveryFee: Number(voucherForm.maxDeliveryFee) || 0 };
+      await updateVoucherApi(selectedVoucher._id, payload);
       showSnack("Cập nhật voucher thành công!");
       setIsEditVoucherOpen(false);
       fetchVouchers();
@@ -1894,6 +1896,77 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                 </TableContainer>
               </Paper>
             )}
+
+          {/* ═══ ORDERS TAB ═══ */}
+          {activeTab === "orders" && (
+            <Paper elevation={0} sx={{ border: "1px solid #f0f0f0" }}>
+              <Box sx={{ p: 2.5, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <Typography variant="h6">Tất cả đơn hàng ({adminOrders.length})</Typography>
+                <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchAdminOrders} disabled={loadingOrders}>
+                  Làm mới
+                </Button>
+              </Box>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: "#fafafa" }}>
+                      <TableCell>Mã đơn</TableCell>
+                      <TableCell>Khách hàng</TableCell>
+                      <TableCell>Nhà hàng</TableCell>
+                      <TableCell>Tổng tiền</TableCell>
+                      <TableCell>Trạng thái</TableCell>
+                      <TableCell align="right">Bằng chứng</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {loadingOrders ? (
+                      <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4 }}><CircularProgress /></TableCell></TableRow>
+                    ) : adminOrders.length === 0 ? (
+                      <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4 }}>Chưa có đơn hàng</TableCell></TableRow>
+                    ) : adminOrders.map(order => (
+                      <TableRow key={order._id} hover>
+                        <TableCell sx={{ fontFamily: "monospace", fontSize: "0.85rem" }}>
+                          #{order._id.slice(-8).toUpperCase()}
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={600}>{order.user?.fullName}</Typography>
+                          <Typography variant="caption" color="text.secondary">{order.user?.phone}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{order.restaurant?.name}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={700}>{(order.total || 0).toLocaleString()}đ</Typography>
+                          <Typography variant="caption" color="text.secondary">{{ cash: "Tiền mặt", vnpay: "VNPay", momo: "MoMo" }[order.paymentMethod] || order.paymentMethod}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={{ pending: "Chờ xác nhận", confirmed: "Đã xác nhận", ready_for_pickup: "Chờ lấy hàng", shipper_accepted: "Shipper đã nhận", delivering: "Đang giao", shipper_delivered: "Đã giao (chờ xác nhận)", delivered: "Hoàn thành", cancelled: "Đã huỷ", bombed: "Bị bom" }[order.status] || order.status} 
+                            color={{ delivered: "success", bombed: "error", cancelled: "error", delivering: "info", shipper_accepted: "info", confirmed: "warning", ready_for_pickup: "warning", pending: "default", shipper_delivered: "success" }[order.status] || "default"}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell align="right">
+                          {order.proofImage ? (
+                            <Button 
+                              size="small" 
+                              variant="outlined"
+                              onClick={() => { setProofUrl(order.proofImage); setIsProofDialogOpen(true); }}
+                            >
+                              Xem ảnh
+                            </Button>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">N/A</Typography>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          )}
+
           </Box>
         </Box>
       </Box>
@@ -2142,7 +2215,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                 onChange={(e) =>
                   setRestaurantForm({
                     ...restaurantForm,
-                    discountPercent: parseInt(e.target.value, 10) || 0,
+                    discountPercent: e.target.value === "" ? "" : Number(e.target.value),
                   })
                 }
               />
@@ -2266,7 +2339,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                 onChange={(e) =>
                   setRestaurantForm({
                     ...restaurantForm,
-                    deliveryTime: parseInt(e.target.value, 10) || 0,
+                    deliveryTime: e.target.value === "" ? "" : Number(e.target.value),
                   })
                 }
               />
@@ -2280,7 +2353,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                 onChange={(e) =>
                   setRestaurantForm({
                     ...restaurantForm,
-                    deliveryFee: parseInt(e.target.value, 10) || 0,
+                    deliveryFee: e.target.value === "" ? "" : Number(e.target.value),
                   })
                 }
               />
@@ -2442,7 +2515,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                 onChange={(e) =>
                   setRestaurantForm({
                     ...restaurantForm,
-                    discountPercent: parseInt(e.target.value, 10) || 0,
+                    discountPercent: e.target.value === "" ? "" : Number(e.target.value),
                   })
                 }
               />
@@ -2555,6 +2628,36 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
               }
               sx={{ mb: 2 }}
             />
+            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+              <TextField
+                fullWidth
+                label="Thời gian giao (phút)"
+                type="number"
+                required
+                inputProps={{ min: 0 }}
+                value={restaurantForm.deliveryTime}
+                onChange={(e) =>
+                  setRestaurantForm({
+                    ...restaurantForm,
+                    deliveryTime: e.target.value === "" ? "" : Number(e.target.value),
+                  })
+                }
+              />
+              <TextField
+                fullWidth
+                label="Phí giao hàng (đ)"
+                type="number"
+                required
+                inputProps={{ min: 0, step: 1000 }}
+                value={restaurantForm.deliveryFee}
+                onChange={(e) =>
+                  setRestaurantForm({
+                    ...restaurantForm,
+                    deliveryFee: e.target.value === "" ? "" : Number(e.target.value),
+                  })
+                }
+              />
+            </Stack>
             <Stack direction="row" spacing={2} sx={{ display: "none" }}>
               <TextField
                 fullWidth
@@ -2631,8 +2734,8 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
             <TextField fullWidth label="Tên voucher" required value={voucherForm.name} onChange={(e) => setVoucherForm({ ...voucherForm, name: e.target.value })} sx={{ mb: 2, mt: 1 }} placeholder="VD: Giảm ship đơn 50k" />
             <TextField fullWidth label="Mô tả (tuỳ chọn)" value={voucherForm.description} onChange={(e) => setVoucherForm({ ...voucherForm, description: e.target.value })} sx={{ mb: 2 }} />
             <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-              <TextField fullWidth label="Đơn tối thiểu (₫)" type="number" required inputProps={{ min: 0 }} value={voucherForm.minOrderAmount} onChange={(e) => setVoucherForm({ ...voucherForm, minOrderAmount: parseInt(e.target.value, 10) || 0 })} helperText="Giá trị đơn hàng tối thiểu để áp dụng voucher" />
-              <TextField fullWidth label="Phí ship tối đa (₫)" type="number" required inputProps={{ min: 0 }} value={voucherForm.maxDeliveryFee} onChange={(e) => setVoucherForm({ ...voucherForm, maxDeliveryFee: parseInt(e.target.value, 10) || 0 })} helperText="0 = Free Ship" />
+              <TextField fullWidth label="Đơn tối thiểu (₫)" type="number" required inputProps={{ min: 0 }} value={voucherForm.minOrderAmount} onChange={(e) => setVoucherForm({ ...voucherForm, minOrderAmount: e.target.value === "" ? "" : Number(e.target.value) })} helperText="Giá trị đơn hàng tối thiểu để áp dụng voucher" />
+              <TextField fullWidth label="Phí ship tối đa (₫)" type="number" required inputProps={{ min: 0 }} value={voucherForm.maxDeliveryFee} onChange={(e) => setVoucherForm({ ...voucherForm, maxDeliveryFee: e.target.value === "" ? "" : Number(e.target.value) })} helperText="0 = Free Ship" />
             </Stack>
             <FormControl fullWidth>
               <InputLabel>Trạng thái</InputLabel>
@@ -2657,8 +2760,8 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
             <TextField fullWidth label="Tên voucher" required value={voucherForm.name} onChange={(e) => setVoucherForm({ ...voucherForm, name: e.target.value })} sx={{ mb: 2, mt: 1 }} />
             <TextField fullWidth label="Mô tả" value={voucherForm.description} onChange={(e) => setVoucherForm({ ...voucherForm, description: e.target.value })} sx={{ mb: 2 }} />
             <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-              <TextField fullWidth label="Đơn tối thiểu (₫)" type="number" required inputProps={{ min: 0 }} value={voucherForm.minOrderAmount} onChange={(e) => setVoucherForm({ ...voucherForm, minOrderAmount: parseInt(e.target.value, 10) || 0 })} />
-              <TextField fullWidth label="Phí ship tối đa (₫)" type="number" required inputProps={{ min: 0 }} value={voucherForm.maxDeliveryFee} onChange={(e) => setVoucherForm({ ...voucherForm, maxDeliveryFee: parseInt(e.target.value, 10) || 0 })} helperText="0 = Free Ship" />
+              <TextField fullWidth label="Đơn tối thiểu (₫)" type="number" required inputProps={{ min: 0 }} value={voucherForm.minOrderAmount} onChange={(e) => setVoucherForm({ ...voucherForm, minOrderAmount: e.target.value === "" ? "" : Number(e.target.value) })} />
+              <TextField fullWidth label="Phí ship tối đa (₫)" type="number" required inputProps={{ min: 0 }} value={voucherForm.maxDeliveryFee} onChange={(e) => setVoucherForm({ ...voucherForm, maxDeliveryFee: e.target.value === "" ? "" : Number(e.target.value) })} helperText="0 = Free Ship" />
             </Stack>
             <FormControl fullWidth>
               <InputLabel>Trạng thái</InputLabel>
@@ -2701,75 +2804,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
             </DialogActions>
           </Dialog>
 
-          {/* ═══ ORDERS TAB ═══ */}
-          {activeTab === "orders" && (
-            <Paper elevation={0} sx={{ border: "1px solid #f0f0f0" }}>
-              <Box sx={{ p: 2.5, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <Typography variant="h6">Tất cả đơn hàng ({adminOrders.length})</Typography>
-                <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchAdminOrders} disabled={loadingOrders}>
-                  Làm mới
-                </Button>
-              </Box>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: "#fafafa" }}>
-                      <TableCell>Mã đơn</TableCell>
-                      <TableCell>Khách hàng</TableCell>
-                      <TableCell>Nhà hàng</TableCell>
-                      <TableCell>Tổng tiền</TableCell>
-                      <TableCell>Trạng thái</TableCell>
-                      <TableCell align="right">Bằng chứng</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {loadingOrders ? (
-                      <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4 }}><CircularProgress /></TableCell></TableRow>
-                    ) : adminOrders.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4 }}>Chưa có đơn hàng</TableCell></TableRow>
-                    ) : adminOrders.map(order => (
-                      <TableRow key={order._id} hover>
-                        <TableCell sx={{ fontFamily: "monospace", fontSize: "0.85rem" }}>
-                          #{order._id.slice(-8).toUpperCase()}
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight={600}>{order.user?.fullName}</Typography>
-                          <Typography variant="caption" color="text.secondary">{order.user?.phone}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">{order.restaurant?.name}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight={700}>{(order.total || 0).toLocaleString()}đ</Typography>
-                          <Typography variant="caption" color="text.secondary">{order.paymentMethod}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={order.status === "bombed" ? "Bị bom" : order.status} 
-                            color={order.status === "bombed" ? "error" : order.status === "delivered" ? "success" : "default"}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          {order.proofImage ? (
-                            <Button 
-                              size="small" 
-                              variant="outlined"
-                              onClick={() => { setProofUrl(order.proofImage); setIsProofDialogOpen(true); }}
-                            >
-                              Xem ảnh
-                            </Button>
-                          ) : (
-                            <Typography variant="caption" color="text.secondary">N/A</Typography>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          )}
+
 
       {/* ═══ SNACKBAR ═══ */}
       <Snackbar
