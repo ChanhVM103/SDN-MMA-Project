@@ -105,19 +105,19 @@ function OrderDetailPanel({ order }) {
       {/* Customer + Address */}
       <div style={{ padding:"18px 24px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,borderBottom:"1px solid #f3f4f6" }}>
         <div>
-          <div style={{ fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:8 }}>Customer Information</div>
+          <div style={{ fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:8 }}>Thông tin khách hàng</div>
           <div style={{ fontWeight:700,fontSize:15,color:"#1a1a1a" }}>{order.user?.fullName || "Khách hàng"}</div>
           {order.deliveryPhone && <div style={{ fontSize:14,color:"#ee4d2d",fontWeight:600,marginTop:4 }}>{order.deliveryPhone}</div>}
         </div>
         <div>
-          <div style={{ fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:8 }}>Delivery Address</div>
+          <div style={{ fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:8 }}>Địa chỉ giao hàng</div>
           <div style={{ fontSize:13,color:"#374151",lineHeight:1.6 }}>{order.deliveryAddress}</div>
         </div>
       </div>
 
       {/* Items */}
       <div style={{ padding:"18px 24px" }}>
-        <div style={{ fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:12 }}>Items Detail</div>
+        <div style={{ fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:12 }}>Chi tiết món</div>
         <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
           {order.items?.map((item,i) => (
             <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:"#f9fafb",borderRadius:10 }}>
@@ -143,7 +143,7 @@ function MapSection({ order }) {
   return (
     <div style={{ background:"#fff",borderRadius:16,border:"1px solid #e5e7eb",overflow:"hidden" }}>
       <div style={{ padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
-        <span style={{ fontWeight:700,fontSize:14,color:"#1a1a1a" }}>🗺️ Delivery Route</span>
+        <span style={{ fontWeight:700,fontSize:14,color:"#1a1a1a" }}>🗺️ Tuyến giao hàng</span>
         <button onClick={()=>setExpanded(!expanded)} style={{ fontSize:12,fontWeight:700,color:"#ee4d2d",background:"#fff8f5",border:"1px solid #fecaca",padding:"4px 12px",borderRadius:8,cursor:"pointer" }}>
           {expanded?"Thu lại":"Xem bản đồ"}
         </button>
@@ -175,21 +175,21 @@ function OrderSummaryPanel({ order, mode, user, onAccept, onPickup, onComplete, 
       {/* Order summary */}
       <div style={{ background:"#fff",borderRadius:16,padding:"18px",border:"1px solid #e5e7eb" }}>
         <div style={{ fontWeight:700,fontSize:14,color:"#374151",marginBottom:14,display:"flex",justifyContent:"space-between" }}>
-          <span>Order Summary</span>
+          <span>Tóm tắt đơn hàng</span>
         </div>
         <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
           <div style={{ display:"flex",justifyContent:"space-between",fontSize:13,color:"#6b7280" }}>
-            <span>Item Price</span><span style={{ fontWeight:600,color:"#374151" }}>{fmt(order.subtotal)}</span>
+            <span>Tiền món</span><span style={{ fontWeight:600,color:"#374151" }}>{fmt(order.subtotal)}</span>
           </div>
           <div style={{ display:"flex",justifyContent:"space-between",fontSize:13,color:"#6b7280" }}>
-            <span>Delivery Fee</span><span style={{ fontWeight:600,color:"#374151" }}>{fmt(order.deliveryFee)}</span>
+            <span>Phí giao hàng</span><span style={{ fontWeight:600,color:"#374151" }}>{fmt(order.deliveryFee)}</span>
           </div>
           {order.discount>0&&<div style={{ display:"flex",justifyContent:"space-between",fontSize:13,color:"#10b981" }}>
-            <span>Discount</span><span style={{ fontWeight:600 }}>-{fmt(order.discount)}</span>
+            <span>Giảm giá</span><span style={{ fontWeight:600 }}>-{fmt(order.discount)}</span>
           </div>}
         </div>
         <div style={{ borderTop:"1px solid #f3f4f6",marginTop:12,paddingTop:12,display:"flex",justifyContent:"space-between",alignItems:"baseline" }}>
-          <span style={{ fontWeight:700,fontSize:14,color:"#1a1a1a" }}>TOTAL AMOUNT</span>
+          <span style={{ fontWeight:700,fontSize:14,color:"#1a1a1a" }}>TỔNG CỘNG</span>
           <span style={{ fontWeight:800,fontSize:20,color:"#1a1a1a" }}>{fmt(order.total)}</span>
         </div>
       </div>
@@ -197,7 +197,7 @@ function OrderSummaryPanel({ order, mode, user, onAccept, onPickup, onComplete, 
       {/* COD warning */}
       {order.paymentMethod==="cash"&&mode==="available"&&(
         <div style={{ background:"#fffbeb",borderRadius:12,padding:"12px 14px",border:"1px solid #fde68a",fontSize:12,color:"#92400e" }}>
-          <div style={{ fontWeight:700,marginBottom:4 }}>⚠️ COD Order</div>
+          <div style={{ fontWeight:700,marginBottom:4 }}>⚠️ Đơn COD</div>
           <div style={{ lineHeight:1.6 }}>Nhận đơn này sẽ trừ <strong>{fmt(order.total-(order.deliveryFee||0))}</strong> từ ví ký quỹ.</div>
         </div>
       )}
@@ -209,9 +209,9 @@ function OrderSummaryPanel({ order, mode, user, onAccept, onPickup, onComplete, 
 
       {/* Earnings */}
       <div style={{ background:"#fff",borderRadius:14,padding:"16px 18px",border:"1px solid #e5e7eb" }}>
-        <div style={{ fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:6 }}>Your Earnings</div>
+        <div style={{ fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:6 }}>Thu nhập của bạn</div>
         <div style={{ fontSize:28,fontWeight:800,color:"#10b981" }}>{fmt(income)}</div>
-        <div style={{ fontSize:11,color:"#9ca3af",marginTop:4 }}>Ready for withdrawal tomorrow</div>
+        <div style={{ fontSize:11,color:"#9ca3af",marginTop:4 }}>Sẵn sàng rút vào ngày mai</div>
       </div>
 
       {/* Actions */}
@@ -238,10 +238,10 @@ function OrderSummaryPanel({ order, mode, user, onAccept, onPickup, onComplete, 
         )}
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
           <button onClick={onRefresh} style={{ padding:"10px",borderRadius:10,border:"1.5px solid #e5e7eb",background:"#fff",color:"#6b7280",fontWeight:600,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}>
-            🔄 Refresh Status
+            🔄 Làm mới trạng thái
           </button>
           <button style={{ padding:"10px",borderRadius:10,border:"1.5px solid #e5e7eb",background:"#fff",color:"#6b7280",fontWeight:600,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}>
-            🆘 Help Center
+            🆘 Trung tâm hỗ trợ
           </button>
         </div>
       </div>
@@ -357,7 +357,7 @@ export default function ShipperDashboardPage({ user: initialUser, onLogout, show
   const submitBomb = async()=>{
     if(!formData.proofImage) return showToast("⚠️ Vui lòng cung cấp ảnh hiện trường!","error");
     setFormLoading(true);
-    try { await shipperReportBomb(orderToAction._id,{proofImage:formData.proofImage,reason:formData.reason||"User không nhận hàng"}); await load(true); showToast("📞 Đã gửi báo cáo!","warning"); setShowBombModal(false); }
+    try { await shipperReportBomb(orderToAction._id,{proofImage:formData.proofImage,reason:formData.reason||"Khách không nhận hàng"}); await load(true); showToast("📞 Đã gửi báo cáo!","warning"); setShowBombModal(false); }
     catch(e){ showToast(e.message,"error"); } finally{ setFormLoading(false); }
   };
 
@@ -380,7 +380,7 @@ export default function ShipperDashboardPage({ user: initialUser, onLogout, show
           {/* Logo */}
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <div style={{ width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#ee4d2d,#ff7043)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>🛵</div>
-            <span style={{ fontWeight:800, fontSize:16, color:"#1a1a1a" }}>Shipper<span style={{ color:"#ee4d2d" }}>Hub</span></span>
+            <span style={{ fontWeight:800, fontSize:16, color:"#1a1a1a" }}>Tài xế<span style={{ color:"#ee4d2d" }}>Hub</span></span>
           </div>
 
           {/* Nav links */}
@@ -394,7 +394,7 @@ export default function ShipperDashboardPage({ user: initialUser, onLogout, show
           <div style={{ display:"flex", alignItems:"center", gap:16 }}>
             {/* Balance chip */}
             <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end" }}>
-              <span style={{ fontSize:9,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.6px" }}>Balance</span>
+              <span style={{ fontSize:9,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.6px" }}>Số dư</span>
               <span style={{ fontSize:15,fontWeight:800,color:"#ee4d2d" }}>{fmt(localUser?.walletBalance)}</span>
             </div>
             {/* Avatar */}
@@ -405,7 +405,7 @@ export default function ShipperDashboardPage({ user: initialUser, onLogout, show
                   : <div style={{ width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14 }}>👤</div>}
               </div>
               <div>
-                <div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>Shipper</div>
+                <div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>Tài xế</div>
                 <div style={{ fontSize:10,color:"#9ca3af" }}>ID: {localUser?._id?.slice(-6).toUpperCase()}</div>
               </div>
             </div>
@@ -422,17 +422,17 @@ export default function ShipperDashboardPage({ user: initialUser, onLogout, show
           <div style={{ background:"linear-gradient(135deg,#ee4d2d 0%,#ff6b35 60%,#ff8c42 100%)", borderRadius:20, padding:"24px 32px", marginBottom:20, display:"flex", justifyContent:"space-between", alignItems:"center", boxShadow:"0 8px 32px rgba(238,77,45,0.25)" }}>
             <div>
               <div style={{ fontSize:24,fontWeight:800,color:"#fff",marginBottom:4 }}>
-                Xin chào, Shipper! 🛵
+                Xin chào, tài xế! 🛵
               </div>
               <div style={{ fontSize:13,color:"rgba(255,255,255,0.8)" }}>
                 Hôm nay bạn có {available.length} lộ trình mới đang chờ bạn.
               </div>
             </div>
             <div style={{ background:"rgba(255,255,255,0.15)",backdropFilter:"blur(8px)",borderRadius:12,padding:"10px 18px",border:"1px solid rgba(255,255,255,0.25)" }}>
-              <div style={{ fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.7)",textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:2 }}>Status</div>
+              <div style={{ fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.7)",textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:2 }}>Trạng thái</div>
               <div style={{ display:"flex",alignItems:"center",gap:6 }}>
                 <div style={{ width:8,height:8,borderRadius:"50%",background:"#4ade80",boxShadow:"0 0 8px #4ade80" }}/>
-                <span style={{ fontSize:13,fontWeight:700,color:"#fff" }}>Active & Online</span>
+                <span style={{ fontSize:13,fontWeight:700,color:"#fff" }}>Đang hoạt động</span>
               </div>
             </div>
           </div>
@@ -452,7 +452,7 @@ export default function ShipperDashboardPage({ user: initialUser, onLogout, show
         {loading ? (
           <div style={{ textAlign:"center",padding:"80px 0",color:"#9ca3af" }}>
             <div style={{ width:40,height:40,border:"3px solid #f0f0f0",borderTop:"3px solid #ee4d2d",borderRadius:"50%",animation:"spin 0.8s linear infinite",display:"inline-block" }}/>
-            <div style={{ marginTop:12,fontSize:14 }}>Loading orders...</div>
+            <div style={{ marginTop:12,fontSize:14 }}>Đang tải đơn hàng...</div>
           </div>
 
         ) : tab==="stats" ? (

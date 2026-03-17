@@ -18,7 +18,6 @@ import {
 import LocationPicker from "../components/LocationPicker";
 import {
   brandHandoverToShipper,
-  brandConfirmDelivered,
 } from "../services/order-api";
 
 // MUI Components
@@ -390,19 +389,6 @@ const BrandDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
     try {
       await brandHandoverToShipper(orderId);
       showSnack("📦 Đã bàn giao cho shipper! Chờ shipper đến lấy.");
-      fetchOrders(false);
-    } catch (error) {
-      showSnack("Lỗi: " + error.message, "error");
-    } finally {
-      setUpdatingOrderId(null);
-    }
-  };
-
-  const handleBrandConfirmDelivered = async (orderId) => {
-    setUpdatingOrderId(orderId);
-    try {
-      await brandConfirmDelivered(orderId);
-      showSnack("🎉 Xác nhận giao hàng thành công! Đơn hàng đã hoàn tất.");
       fetchOrders(false);
     } catch (error) {
       showSnack("Lỗi: " + error.message, "error");
@@ -803,7 +789,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                 fontWeight={700}
                 color="primary.main"
               >
-                Quản lý Brand
+                Quản lý nhà hàng
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 {restaurant?.name || "Đang tải..."}
@@ -2214,13 +2200,13 @@ const BrandDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                     icon: <InventoryIcon sx={{ fontSize: 16 }} />,
                   },
                   ready_for_pickup: {
-                    label: "Chờ Shipper đến lấy",
+                    label: "Chờ tài xế đến lấy",
                     color: "#f97316",
                     bg: "#ffedd5",
                     icon: <LocalShippingIcon sx={{ fontSize: 16 }} />,
                   },
                   shipper_accepted: {
-                    label: "Shipper đã nhận đơn",
+                    label: "Tài xế đã nhận đơn",
                     color: "#06b6d4",
                     bg: "#cffafe",
                     icon: <LocalShippingIcon sx={{ fontSize: 16 }} />,
@@ -2232,7 +2218,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                     icon: <LocalShippingIcon sx={{ fontSize: 16 }} />,
                   },
                   shipper_delivered: {
-                    label: "Shipper báo giao xong",
+                    label: "Tài xế báo giao xong",
                     color: "#84cc16",
                     bg: "#ecfccb",
                     icon: <DoneAllIcon sx={{ fontSize: 16 }} />,
@@ -2269,7 +2255,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                   { value: "pending", label: "Chờ xác nhận" },
                   { value: "preparing", label: "Đang chuẩn bị" },
                   { value: "ready_for_pickup", label: "Chờ shipper" },
-                  { value: "shipper_accepted", label: "Shipper đã nhận" },
+                  { value: "shipper_accepted", label: "Tài xế đã nhận" },
                   { value: "delivering", label: "Đang giao" },
                   { value: "shipper_delivered", label: "Báo giao xong" },
                   { value: "delivered", label: "Hoàn thành" },
@@ -2642,7 +2628,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                                   >
                                     {isUpdating
                                       ? "Đang xử lý..."
-                                      : "📦 Bàn giao cho Shipper"}
+                                      : "📦 Bàn giao cho tài xế"}
                                   </Button>
                                 )}
 
@@ -2657,7 +2643,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                                 )}
                                 {order.status === "shipper_accepted" && (
                                   <Chip
-                                    label="🛥 Shipper đang trên đường"
+                                    label="🛥 Tài xế đang trên đường"
                                     color="info"
                                     size="small"
                                     variant="outlined"
@@ -2665,7 +2651,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                                 )}
                                 {order.status === "delivering" && (
                                   <Chip
-                                    label="🚀 Shipper đang giao"
+                                    label="🚀 Tài xế đang giao"
                                     color="info"
                                     size="small"
                                     variant="outlined"

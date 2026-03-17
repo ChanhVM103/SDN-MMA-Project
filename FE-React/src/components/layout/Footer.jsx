@@ -168,7 +168,7 @@ export default function Footer() {
               FoodieHub
             </div>
             <p className="fd-footer-brand-desc">
-              Connecting people with the best restaurants in their city. Fresh, fast, and local.
+              Kết nối mọi người với những nhà hàng ngon nhất trong thành phố. Tươi mới, nhanh chóng và gần gũi.
             </p>
             <div className="fd-footer-socials">
               {[
@@ -183,11 +183,11 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Liên kết nhanh */}
           <div>
-            <div className="fd-footer-col-title">Quick Links</div>
+            <div className="fd-footer-col-title">Liên kết nhanh</div>
             <div className="fd-footer-links">
-              {["About Us", "Featured Restaurants", "Become a Rider", "Partner with Us"].map((l) => (
+              {["Về chúng tôi", "Nhà hàng nổi bật", "Trở thành tài xế", "Hợp tác cùng chúng tôi"].map((l) => (
                 <span key={l} className="fd-footer-link">
                   <span style={{ color: "#ee4d2d", fontSize: 10 }}>›</span> {l}
                 </span>
@@ -195,11 +195,11 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Support */}
+          {/* Hỗ trợ */}
           <div>
-            <div className="fd-footer-col-title">Support</div>
+            <div className="fd-footer-col-title">Hỗ trợ</div>
             <div className="fd-footer-links">
-              {["Help Center", "Terms of Service", "Privacy Policy", "Refund Policy"].map((l) => (
+              {["Trung tâm hỗ trợ", "Điều khoản dịch vụ", "Chính sách riêng tư", "Chính sách hoàn tiền"].map((l) => (
                 <span key={l} className="fd-footer-link">
                   <span style={{ color: "#ee4d2d", fontSize: 10 }}>›</span> {l}
                 </span>
@@ -207,19 +207,19 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Newsletter */}
+          {/* Bản tin */}
           <div>
-            <div className="fd-footer-col-title">Newsletter</div>
+            <div className="fd-footer-col-title">Bản tin</div>
             <p className="fd-footer-newsletter">
-              Join our newsletter to get the latest updates and deals.
+              Đăng ký để nhận tin mới nhất và các ưu đãi hấp dẫn.
             </p>
             <div className="fd-newsletter-form">
               <input
                 className="fd-newsletter-input"
-                placeholder="Your email"
+                placeholder="Email của bạn"
                 type="email"
               />
-              <button className="fd-newsletter-btn">Join</button>
+              <button className="fd-newsletter-btn">Đăng ký</button>
             </div>
           </div>
         </div>
@@ -228,11 +228,11 @@ export default function Footer() {
       {/* Bottom bar */}
       <div className="fd-footer-bottom">
         <div className="fd-footer-bottom-inner">
-          <span className="fd-footer-copy">© 2024 FoodieHub Delivery Service. All rights reserved.</span>
+          <span className="fd-footer-copy">© 2024 FoodieHub. Mọi quyền được bảo lưu.</span>
           <div className="fd-footer-bottom-links">
-            <span className="fd-footer-bottom-link">Privacy</span>
-            <span className="fd-footer-bottom-link">Terms</span>
-            <span className="fd-footer-bottom-link">Cookies</span>
+            <span className="fd-footer-bottom-link">Riêng tư</span>
+            <span className="fd-footer-bottom-link">Điều khoản</span>
+            <span className="fd-footer-bottom-link">Cookie</span>
           </div>
         </div>
       </div>

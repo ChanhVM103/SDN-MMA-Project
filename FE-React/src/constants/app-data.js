@@ -134,9 +134,9 @@ export const demoOrders = [
 ];
 
 export const demoFavorites = [
-  { id: "fv1", title: "Midnight Marina Pizza", note: "Phổ biến tuần này" },
-  { id: "fv2", title: "Volcano Lava Cake", note: "Mới nhất từ bếp ngọt" },
-  { id: "fv3", title: "Sparkling Peach Tea", note: "Gọi kèm burger rất hợp" },
+  { id: "fv1", title: "Pizza Hải Cảng Nửa Đêm", note: "Phổ biến tuần này" },
+  { id: "fv2", title: "Bánh Lava Núi Lửa", note: "Mới nhất từ bếp ngọt" },
+  { id: "fv3", title: "Trà Đào Sủi Bọt", note: "Gọi kèm burger rất hợp" },
 ];
 
 export const demoNotifications = [

@@ -602,7 +602,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
 
   const navItems = [
     { key: "dashboard", label: "Tổng quan", icon: <DashboardIcon /> },
-    { key: "users", label: "Quản lý User", icon: <PeopleIcon /> },
+    { key: "users", label: "Quản lý người dùng", icon: <PeopleIcon /> },
     { key: "restaurants", label: "Cửa hàng", icon: <StorefrontIcon /> },
     { key: "orders", label: "Đơn hàng", icon: <ReceiptIcon /> },
     { key: "vouchers", label: "Voucher", icon: <LocalOfferIcon /> },
@@ -610,9 +610,9 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
 
   const getRoleChip = (role) => {
     const map = {
-      admin: { label: "Admin", color: "error" },
-      brand: { label: "Brand", color: "warning" },
-      user: { label: "User", color: "default" },
+      admin: { label: "Quản trị", color: "error" },
+      brand: { label: "Nhà hàng", color: "warning" },
+      user: { label: "Người dùng", color: "default" },
     };
     const c = map[role] || map.user;
     return (
@@ -666,7 +666,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
             },
           }}
         >
-          {/* Brand */}
+          {/* Thương hiệu */}
           <Box sx={{ p: 2.5, display: "flex", alignItems: "center", gap: 1.5 }}>
             <Box
               sx={{
@@ -697,7 +697,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                 fontWeight={700}
                 color="primary.main"
               >
-                Foodie admin
+                Quản trị Foodie
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Bảng điều khiển
@@ -782,7 +782,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                 sx={{ minWidth: 200 }}
               >
                 {activeTab === "dashboard"
-                  ? "Dashboard"
+                  ? "Tổng quan"
                   : activeTab === "users"
                     ? "Quản lý Người Dùng"
                     : "Quản lý Cửa Hàng"}
@@ -816,7 +816,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
 
               <Box sx={{ flexGrow: 1 }} />
 
-              <Tooltip title={user?.fullName || "Admin"}>
+              <Tooltip title={user?.fullName || "Quản trị viên"}>
                 <Avatar
                   sx={{
                     bgcolor: "primary.main",
@@ -848,7 +848,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                 >
                   <CardContent sx={{ py: 3 }}>
                     <Typography variant="h5">
-                      Chào mừng trở lại, {user?.fullName || "Admin"}! 👋
+                      Chào mừng trở lại, {user?.fullName || "Quản trị viên"}! 👋
                     </Typography>
                     <Typography variant="body2" sx={{ mt: 1, opacity: 0.85 }}>
                       Theo dõi và quản lý mọi hoạt động trên nền tảng của bạn
@@ -1647,7 +1647,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                     <TableHead>
                       <TableRow sx={{ bgcolor: "#fafafa" }}>
                         <TableCell>Cửa hàng</TableCell>
-                        <TableCell>Chủ sở hữu (Brand)</TableCell>
+                        <TableCell>Chủ sở hữu (nhà hàng)</TableCell>
                         <TableCell>Chỉ số</TableCell>
                         <TableCell>Trạng thái</TableCell>
                         <TableCell align="right">Hành động</TableCell>
@@ -1693,7 +1693,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                             {r.owner ? (
                               <Box>
                                 <Typography variant="body2" fontWeight={600}>
-                                  {r.owner.fullName || "Brand User"}
+                                  {r.owner.fullName || "Tài khoản nhà hàng"}
                                 </Typography>
                                 <Typography
                                   variant="caption"
@@ -1941,7 +1941,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                         </TableCell>
                         <TableCell>
                           <Chip 
-                            label={{ pending: "Chờ xác nhận", confirmed: "Đã xác nhận", ready_for_pickup: "Chờ lấy hàng", shipper_accepted: "Shipper đã nhận", delivering: "Đang giao", shipper_delivered: "Đã giao (chờ xác nhận)", delivered: "Hoàn thành", cancelled: "Đã huỷ", bombed: "Không liên lạc được" }[order.status] || order.status} 
+                            label={{ pending: "Chờ xác nhận", confirmed: "Đã xác nhận", ready_for_pickup: "Chờ lấy hàng", shipper_accepted: "Tài xế đã nhận", delivering: "Đang giao", shipper_delivered: "Hoàn thành", delivered: "Hoàn thành", cancelled: "Đã huỷ", bombed: "Không liên lạc được" }[order.status] || order.status} 
                             color={{ delivered: "success", bombed: "error", cancelled: "error", delivering: "info", shipper_accepted: "info", confirmed: "warning", ready_for_pickup: "warning", pending: "default", shipper_delivered: "success" }[order.status] || "default"}
                             size="small"
                           />
@@ -1997,9 +1997,9 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                   setEditForm({ ...editForm, role: e.target.value })
                 }
               >
-                <MenuItem value="user">Người tiêu dùng (User)</MenuItem>
+                <MenuItem value="user">Người tiêu dùng</MenuItem>
                 <MenuItem value="brand">
-                  Thương hiệu / Cửa hàng (Brand)
+                  Thương hiệu / Cửa hàng
                 </MenuItem>
                 <MenuItem value="shipper">Giao hàng (Shipper)</MenuItem>
                 <MenuItem value="admin">Quản trị viên (Admin)</MenuItem>
@@ -2131,9 +2131,9 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                   setCreateUserForm({ ...createUserForm, role: e.target.value })
                 }
               >
-                <MenuItem value="user">Người tiêu dùng (User)</MenuItem>
+                <MenuItem value="user">Người tiêu dùng</MenuItem>
                 <MenuItem value="brand">
-                  Thương hiệu / Cửa hàng (Brand)
+                  Thương hiệu / Cửa hàng
                 </MenuItem>
                 <MenuItem value="shipper">Giao hàng (Shipper)</MenuItem>
                 <MenuItem value="admin">Quản trị viên (Admin)</MenuItem>
@@ -2502,7 +2502,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                 color="text.secondary"
                 sx={{ mt: 0.5 }}
               >
-                * Chỉ hiển thị tài khoản Brand chưa sở hữu cửa hàng.
+                * Chỉ hiển thị tài khoản nhà hàng chưa sở hữu cửa hàng.
               </Typography>
             </FormControl>
 
@@ -2711,7 +2711,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
         <DialogContent>
           <Typography>
             Xoá hoàn toàn <strong>{selectedRestaurant?.name}</strong> khỏi hệ
-            thống và giải phóng Brand. Không thể phục hồi!
+            thống và giải phóng tài khoản nhà hàng. Không thể phục hồi!
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

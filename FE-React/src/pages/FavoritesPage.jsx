@@ -58,7 +58,7 @@ function FavoritesPage({ user, navigate }) {
              {demoFavorites.map((item) => {
               const product = {
                 id: `${item.id}-copy`,
-                name: `[Copy] ${item.title}`,
+                name: `[Bản sao] ${item.title}`,
                 price: "89.000 ₫",
                 soldCount: Math.floor(Math.random() * 500) + 10,
                 badge: null
