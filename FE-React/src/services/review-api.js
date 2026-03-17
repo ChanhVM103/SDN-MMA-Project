@@ -82,3 +82,32 @@ export const getRestaurantReviews = (restaurantId, page = 1, limit = 10) =>
  */
 export const getProductReviews = (productId, page = 1, limit = 10) =>
   apiRequest(`/reviews/product/${productId}?page=${page}&limit=${limit}`);
+
+// ── Đánh giá shipper ──────────────────────────────────────────────
+
+/**
+ * Gửi đánh giá shipper sau khi nhận hàng
+ */
+export const guiDanhGiaShipper = (maDonHang, diemDanhGia, nhanXet, tags) =>
+  apiRequest("/danh-gia-shipper", {
+    method: "POST",
+    body: JSON.stringify({ maDonHang, diemDanhGia, nhanXet, tags }),
+  });
+
+/**
+ * Kiểm tra đã đánh giá shipper của đơn này chưa
+ */
+export const kiemTraDanhGiaShipper = (maDonHang) =>
+  apiRequest(`/danh-gia-shipper/kiem-tra/${maDonHang}`);
+
+/**
+ * Lấy danh sách đánh giá của 1 shipper (dùng trong profile hoặc admin)
+ */
+export const layDanhGiaShipper = (shipperId, trang = 1) =>
+  apiRequest(`/danh-gia-shipper/shipper/${shipperId}?trang=${trang}&gioiHan=10`);
+
+/**
+ * Shipper xem đánh giá của bản thân
+ */
+export const layDanhGiaCuaToi = (trang = 1) =>
+  apiRequest(`/danh-gia-shipper/cua-toi?trang=${trang}&gioiHan=10`);

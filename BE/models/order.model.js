@@ -95,6 +95,7 @@ const orderSchema = new mongoose.Schema(
 
     // Đã đánh giá chưa
     isReviewed: { type: Boolean, default: false },
+    daDanhGiaShipper: { type: Boolean, default: false },
 
     // Lịch sử trạng thái
     statusHistory: [

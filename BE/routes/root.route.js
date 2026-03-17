@@ -24,6 +24,7 @@ router.use("/promotions", promotionRouter);
 router.use("/vouchers", voucherRouter);
 router.use("/chatAI", chatAIRouter);
 router.use("/wallet", walletRouter);
+router.use("/danh-gia-shipper", require("./shipperReview.route"));
 
 // Alias routes to match the simple VNPay sample format.
 router.post("/create-vnpay-url", paymentController.createVnpayUrl);

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getMyOrders, getOrderById, cancelOrder, confirmOrderReceived } from "../services/order-api";
-import { submitBulkReviews, checkOrderReviewed, updateReview, deleteReview } from "../services/review-api";
+import { submitBulkReviews, checkOrderReviewed, updateReview, deleteReview, guiDanhGiaShipper, kiemTraDanhGiaShipper } from "../services/review-api";
 
 // ─── Config ─────────────────────────────────────────────────────
 const SC = {
@@ -138,6 +138,124 @@ function EditReviewModal({reviews,order,onClose,onSuccess}){
   );
 }
 
+// ── Tags đánh giá nhanh cho shipper ──────────────────────────────
+const TAGS_TICH_CUC = ["Giao hàng nhanh", "Thái độ niềm nở", "Giao đúng món", "Đóng gói cẩn thận"];
+const TAGS_TIEU_CUC = ["Giao hàng trễ", "Thái độ kém", "Không liên lạc được"];
+const TAT_CA_TAGS = [...TAGS_TICH_CUC, ...TAGS_TIEU_CUC];
+
+// ── Modal đánh giá shipper ────────────────────────────────────────
+function ModalDanhGiaShipper({ donHang, onDong, onThanhCong }) {
+  const [diem, setDiem] = useState(5);
+  const [nhanXet, setNhanXet] = useState("");
+  const [tagsChon, setTagsChon] = useState([]);
+  const [dangGui, setDangGui] = useState(false);
+  const [loi, setLoi] = useState("");
+
+  const batTatTag = (tag) => {
+    setTagsChon(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  };
+
+  const guiDanhGia = async () => {
+    setDangGui(true); setLoi("");
+    try {
+      await guiDanhGiaShipper(donHang._id, diem, nhanXet, tagsChon);
+      onThanhCong();
+    } catch (e) { setLoi(e.message); } finally { setDangGui(false); }
+  };
+
+  const shipper = donHang.shipper;
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:99998,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 16px"}}>
+      <div onClick={onDong} style={{position:"absolute",inset:0,background:"rgba(0,0,0,.5)",backdropFilter:"blur(6px)"}}/>
+      <div style={{position:"relative",background:"#fff",borderRadius:24,width:"100%",maxWidth:460,boxShadow:"0 32px 80px rgba(0,0,0,.22)",animation:"modalPop .3s cubic-bezier(.175,.885,.32,1.275)",overflow:"hidden"}}>
+
+        {/* Header tím */}
+        <div style={{background:"linear-gradient(135deg,#7c3aed,#a855f7)",padding:"24px 24px 20px",textAlign:"center",position:"relative"}}>
+          <button onClick={onDong} style={{position:"absolute",top:14,right:14,width:32,height:32,borderRadius:"50%",background:"rgba(255,255,255,.2)",border:"none",color:"#fff",fontSize:16,cursor:"pointer"}}>✕</button>
+          {/* Avatar shipper */}
+          <div style={{width:64,height:64,borderRadius:"50%",background:"rgba(255,255,255,.2)",margin:"0 auto 12px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,border:"3px solid rgba(255,255,255,.5)",overflow:"hidden"}}>
+            {shipper?.avatar ? <img src={shipper.avatar} style={{width:"100%",height:"100%",objectFit:"cover"}}/> : "🛵"}
+          </div>
+          <h3 style={{margin:"0 0 4px",fontSize:18,fontWeight:800,color:"#fff"}}>Đánh giá tài xế</h3>
+          <p style={{margin:0,fontSize:13,color:"rgba(255,255,255,.8)"}}>
+            {shipper?.fullName || "Tài xế của bạn"}
+          </p>
+        </div>
+
+        <div style={{padding:"20px 24px"}}>
+          {/* Sao */}
+          <div style={{marginBottom:16}}>
+            <div style={{display:"flex",gap:6,justifyContent:"center"}}>
+              {[1,2,3,4,5].map(s=>(
+                <span key={s} onClick={()=>setDiem(s)}
+                  style={{fontSize:36,cursor:"pointer",color:s<=diem?"#f59e0b":"#e5e7eb",transition:"color .1s,transform .15s",transform:s===diem?"scale(1.25)":"scale(1)",display:"inline-block"}}>★</span>
+              ))}
+            </div>
+            <div style={{textAlign:"center",fontSize:13,fontWeight:700,color:"#7c3aed",marginTop:4,minHeight:20}}>
+              {["","Rất tệ 😞","Không hài lòng 😕","Bình thường 😐","Hài lòng 😊","Tuyệt vời! 🤩"][diem]}
+            </div>
+          </div>
+
+          {/* Tags tích cực */}
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#374151",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.5px"}}>Điểm tốt</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {TAGS_TICH_CUC.map(tag => {
+                const chon = tagsChon.includes(tag);
+                return (
+                  <button key={tag} onClick={()=>batTatTag(tag)} style={{
+                    padding:"5px 12px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",border:"none",
+                    background:chon?"#7c3aed":"#f3f4f6",
+                    color:chon?"#fff":"#374151",transition:"all .15s",
+                  }}>👍 {tag}</button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Tags tiêu cực */}
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#374151",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.5px"}}>Điểm cần cải thiện</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {TAGS_TIEU_CUC.map(tag => {
+                const chon = tagsChon.includes(tag);
+                return (
+                  <button key={tag} onClick={()=>batTatTag(tag)} style={{
+                    padding:"5px 12px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",border:"none",
+                    background:chon?"#ef4444":"#f3f4f6",
+                    color:chon?"#fff":"#374151",transition:"all .15s",
+                  }}>👎 {tag}</button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Nhận xét */}
+          <textarea value={nhanXet} onChange={e=>setNhanXet(e.target.value.slice(0,300))}
+            placeholder="Nhận xét về tài xế (tuỳ chọn)..."
+            rows={3}
+            style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e5e7eb",borderRadius:12,padding:"12px 14px",fontSize:13,fontFamily:"inherit",resize:"none",outline:"none",background:"#fafafa"}}
+            onFocus={e=>e.target.style.borderColor="#7c3aed"} onBlur={e=>e.target.style.borderColor="#e5e7eb"}/>
+          <div style={{fontSize:11,color:"#9ca3af",textAlign:"right",marginBottom:12}}>{nhanXet.length}/300</div>
+
+          {loi && <div style={{marginBottom:12,padding:"10px 14px",borderRadius:10,background:"#fef2f2",color:"#dc2626",fontSize:13}}>⚠️ {loi}</div>}
+
+          <button disabled={dangGui} onClick={guiDanhGia} style={{
+            width:"100%",padding:14,borderRadius:14,border:"none",
+            background:dangGui?"#e5e7eb":"linear-gradient(135deg,#7c3aed,#a855f7)",
+            color:dangGui?"#9ca3af":"#fff",fontWeight:800,fontSize:15,
+            cursor:dangGui?"not-allowed":"pointer",
+            boxShadow:dangGui?"none":"0 4px 14px rgba(124,58,237,.35)",
+          }}>
+            {dangGui?"⏳ Đang gửi...":"🛵 Gửi đánh giá tài xế"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Horizontal Timeline ─────────────────────────────────────────
 function HorizontalTimeline({ order }) {
   const currentIdx = STEP_ORDER.indexOf(order.status);
@@ -268,6 +386,8 @@ function OrderDetailPage({ orderId, onBack, showToast, onRefreshList }){
   const [editReview,setEditReview]=useState(null);
   const [isReviewed,setIsReviewed]=useState(false);
   const [reviews,setReviews]=useState([]);
+  const [hienModalDanhGiaShipper, setHienModalDanhGiaShipper] = useState(false);
+  const [daDanhGiaShipper, setDaDanhGiaShipper] = useState(false);
 
   const load=useCallback(async()=>{
     try{
@@ -276,6 +396,13 @@ function OrderDetailPage({ orderId, onBack, showToast, onRefreshList }){
       if(data.status==="delivered"){
         const r=await checkOrderReviewed(orderId);
         if(r?.reviewed){setIsReviewed(true);setReviews(r.reviews||[]);}
+        // Kiểm tra đã đánh giá shipper chưa
+        if(data.shipper) {
+          try {
+            const ks = await kiemTraDanhGiaShipper(orderId);
+            setDaDanhGiaShipper(ks?.data?.daDanhGia || false);
+          } catch(_) {}
+        }
       }
     }catch(e){showToast("Không tải được đơn hàng","error");}
     finally{setLoading(false);}
@@ -497,6 +624,25 @@ function OrderDetailPage({ orderId, onBack, showToast, onRefreshList }){
               )
             )}
 
+            {/* ── Nút đánh giá tài xế ── */}
+            {order.status==="delivered" && order.shipper && (
+              daDanhGiaShipper ? (
+                <div style={{padding:"11px 16px",borderRadius:12,background:"#ede9fe",color:"#5b21b6",fontWeight:600,fontSize:13,textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                  🛵 Đã đánh giá tài xế
+                </div>
+              ) : (
+                <button onClick={()=>setHienModalDanhGiaShipper(true)} style={{
+                  padding:"13px",borderRadius:12,border:"none",
+                  background:"linear-gradient(135deg,#7c3aed,#a855f7)",
+                  color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",
+                  boxShadow:"0 4px 14px rgba(124,58,237,.3)",
+                  display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+                }}>
+                  🛵 Đánh giá tài xế
+                </button>
+              )
+            )}
+
             <div style={{padding:"12px 14px",background:"#fff",borderRadius:12,border:"1px solid #f3f4f6",textAlign:"center",fontSize:11,color:"#9ca3af",lineHeight:1.6}}>
               Cần thay đổi thông tin đơn hàng? Vui lòng liên hệ trung tâm CSKH của <span style={{color:"#ee4d2d",fontWeight:700}}>FoodieHub</span> để được hỗ trợ 24/7.
             </div>
@@ -506,6 +652,17 @@ function OrderDetailPage({ orderId, onBack, showToast, onRefreshList }){
 
       {reviewOrder&&<ReviewModal order={reviewOrder} onClose={()=>setReviewOrder(null)} onSuccess={async()=>{ setReviewOrder(null); const r=await checkOrderReviewed(order._id); if(r?.reviewed){setIsReviewed(true);setReviews(r.reviews||[]);} showToast("🌟 Cảm ơn bạn đã đánh giá!","success"); }}/>}
       {editReview&&<EditReviewModal reviews={editReview.reviews} order={editReview.order} onClose={()=>setEditReview(null)} onSuccess={async()=>{ setEditReview(null); const r=await checkOrderReviewed(order._id); if(r?.reviewed){setIsReviewed(true);setReviews(r.reviews||[]);} showToast("✅ Đã cập nhật đánh giá!","success"); }}/>}
+      {hienModalDanhGiaShipper && (
+        <ModalDanhGiaShipper
+          donHang={order}
+          onDong={()=>setHienModalDanhGiaShipper(false)}
+          onThanhCong={()=>{
+            setHienModalDanhGiaShipper(false);
+            setDaDanhGiaShipper(true);
+            showToast("🛵 Cảm ơn bạn đã đánh giá tài xế!","success");
+          }}
+        />
+      )}
     </div>
   );
 }

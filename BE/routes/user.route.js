@@ -3,19 +3,16 @@ var router = express.Router();
 var userController = require("../controller/user.controller");
 var { authMiddleware, authorizeRole } = require("../middleware/auth.middleware");
 
-// Public route must be defined before authMiddleware
-router.get("/brands/public", userController.getPublicBrands);
+// ── User tự đổi mật khẩu (chỉ cần đăng nhập) ────
+router.patch("/change-password", authMiddleware, userController.changePassword);
 
-// Favorites (Auth required)
-router.get("/favorites", authMiddleware, userController.getFavorites);
-router.post("/favorites/toggle/:restaurantId", authMiddleware, userController.toggleFavorite);
-
+// ── Admin routes ──────────────────────────────────
 router.use(authMiddleware, authorizeRole("admin"));
 
 router.get("/stats", userController.getUserStats);
 router.get("/", userController.getAllUsers);
 router.get("/:id", userController.getUserById);
-router.post("/", userController.adminCreateUser);
+router.post("/", userController.createUser);
 router.put("/:id", userController.updateUser);
 router.patch("/:id/role", userController.changeUserRole);
 router.patch("/:id/toggle-active", userController.toggleUserActive);
