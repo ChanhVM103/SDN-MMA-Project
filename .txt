@@ -1,0 +1,12 @@
+User :
+khoa@gmail.com
+123456
+Shipper :
+Shipper@gmail.com
+123456
+Brand :
+brand1@gmail.com
+brand123
+Admin :
+abc@gmail.com
+chanh123
