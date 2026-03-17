@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View, Text, StyleSheet, SafeAreaView, ActivityIndicator,
     TouchableOpacity, ScrollView, RefreshControl, Alert as RNAlert,
-    Dimensions, Platform,
+    Dimensions, Platform, Modal, TextInput, Image
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/constants/auth-context';
 import { AppColors } from '@/constants/theme';
 import { shipperAPI } from '@/constants/api';
@@ -36,6 +37,17 @@ export default function ShipperDashboardScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [actioningId, setActioningId] = useState<string | null>(null);
+
+    const [bombReason, setBombReason] = useState('');
+
+    // Bomb Reporting States
+    const [showBombModal, setShowBombModal] = useState(false);
+    const [bombOrderId, setBombOrderId] = useState<string | null>(null);
+
+    // Complete Delivery States
+    const [showCompleteModal, setShowCompleteModal] = useState(false);
+    const [completeOrderId, setCompleteOrderId] = useState<string | null>(null);
+    const [proofImage, setProofImage] = useState<string | null>(null);
 
     const loadData = useCallback(async (silent = false) => {
         if (!token) return;
@@ -74,6 +86,108 @@ export default function ShipperDashboardScreen() {
         } finally {
             setActioningId(null);
         }
+    };
+
+    const handleReportBomb = async () => {
+        if (!proofImage) {
+            RNAlert.alert('Lỗi', 'Vui lòng chụp ảnh bằng chứng để báo bùng đơn hàng');
+            return;
+        }
+        if (!bombReason.trim()) {
+            RNAlert.alert('Lỗi', 'Vui lòng nhập lý do khách không nhận hàng');
+            return;
+        }
+        if (!bombOrderId || !token) return;
+
+        setActioningId(bombOrderId);
+        try {
+            await shipperAPI.reportBomb(token, bombOrderId, { reason: bombReason, proofImage });
+            RNAlert.alert('✅ Đã ghi nhận', 'Đơn hàng đã được đánh dấu là BÙNG. Hệ thống sẽ xử phạt khách hàng này.');
+            setShowBombModal(false);
+            setBombReason('');
+            setBombOrderId(null);
+            setProofImage(null);
+            await loadData(true);
+        } catch (err: any) {
+            RNAlert.alert('Lỗi', err?.message || 'Không thể báo bùng hàng');
+        } finally {
+            setActioningId(null);
+        }
+    };
+
+    const handleCompleteDelivery = async () => {
+        if (!proofImage) {
+            RNAlert.alert('Lỗi', 'Vui lòng chụp ảnh xác nhận đã giao hàng');
+            return;
+        }
+        if (!completeOrderId || !token) return;
+
+        setActioningId(completeOrderId);
+        try {
+            await shipperAPI.completeDelivery(token, completeOrderId, { proofImage });
+            RNAlert.alert('✅ Thành công', 'Tuyệt! Đã báo giao thành công 🎉');
+            setShowCompleteModal(false);
+            setCompleteOrderId(null);
+            setProofImage(null);
+            await loadData(true);
+        } catch (err: any) {
+            RNAlert.alert('Lỗi', err?.message || 'Không thể xác nhận giao hàng');
+        } finally {
+            setActioningId(null);
+        }
+    };
+
+    const takePhoto = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            RNAlert.alert('Lỗi', 'Cần quyền truy cập camera để chụp ảnh bằng chứng');
+            return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 0.5,
+            base64: true,
+        });
+
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+            const base64 = result.assets[0].base64;
+            setProofImage(`data:image/jpeg;base64,${base64}`);
+        }
+    };
+
+    const pickImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            RNAlert.alert('Lỗi', 'Cần quyền truy cập thư viện ảnh để tải ảnh lên');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 0.5,
+            base64: true,
+        });
+
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+            const base64 = result.assets[0].base64;
+            setProofImage(`data:image/jpeg;base64,${base64}`);
+        }
+    };
+
+    const handleSelectImage = () => {
+        RNAlert.alert(
+            'Bằng chứng hình ảnh',
+            'Chọn nguồn ảnh bạn muốn sử dụng',
+            [
+                { text: 'Chụp ảnh mới', onPress: takePhoto },
+                { text: 'Chọn từ thư viện', onPress: pickImage },
+                { text: 'Đóng', style: 'cancel' },
+            ]
+        );
     };
 
     // ── Derived Data ──────────────────────────────────
@@ -128,14 +242,36 @@ export default function ShipperDashboardScreen() {
             }
             if (order.status === 'delivering') {
                 return (
-                    <TouchableOpacity style={styles.mainActionBtn}
-                        onPress={() => doAction(order._id, shipperAPI.completeDelivery, 'Tuyệt! Đã báo giao thành công 🎉')}
-                        disabled={isBusy} activeOpacity={0.8}>
-                        <LinearGradient colors={['#10b981', '#34d399']} style={styles.mainActionGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                            {isBusy ? <ActivityIndicator size="small" color="#fff" /> : <MaterialIcons name="done-all" size={22} color="#fff" />}
-                            <Text style={styles.mainActionText}>{isBusy ? 'Đang xử lý...' : 'Đã Giao Hàng'}</Text>
-                        </LinearGradient>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 10, marginHorizontal: 16, marginTop: 10, marginBottom: 16 }}>
+                        <TouchableOpacity 
+                            style={[styles.mainActionBtn, { flex: 1, marginHorizontal: 0, marginTop: 0, marginBottom: 0 }]}
+                            onPress={() => {
+                                setBombOrderId(order._id);
+                                setShowBombModal(true);
+                            }}
+                            disabled={isBusy} activeOpacity={0.8}
+                        >
+                            <View style={[styles.mainActionGradient, { backgroundColor: '#ef4444' }]}>
+                                <MaterialIcons name="report-problem" size={20} color="#fff" />
+                                <Text style={styles.mainActionText}>Báo Bùng</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={[styles.mainActionBtn, { flex: 2, marginHorizontal: 0, marginTop: 0, marginBottom: 0 }]}
+                            onPress={() => {
+                                setCompleteOrderId(order._id);
+                                setShowCompleteModal(true);
+                                setProofImage(null);
+                            }}
+                            disabled={isBusy} activeOpacity={0.8}
+                        >
+                            <LinearGradient colors={['#10b981', '#34d399']} style={styles.mainActionGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                                {isBusy ? <ActivityIndicator size="small" color="#fff" /> : <MaterialIcons name="done-all" size={22} color="#fff" />}
+                                <Text style={styles.mainActionText}>{isBusy ? 'Đang xử lý...' : 'Đã Giao'}</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    </View>
                 );
             }
             if (order.status === 'shipper_delivered') {
@@ -472,6 +608,98 @@ export default function ShipperDashboardScreen() {
                     )}
                 </ScrollView>
             )}
+
+            {/* ── Bomb Reason Modal ── */}
+            <Modal visible={showBombModal} transparent animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Báo cáo BÙNG hàng</Text>
+                            <TouchableOpacity onPress={() => {
+                                setShowBombModal(false);
+                                setProofImage(null);
+                            }}>
+                                <Ionicons name="close" size={24} color="#64748b" />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.modalSub}>Bắt buộc chụp ảnh bằng chứng và nhập lý do khách không nhận hàng.</Text>
+                        
+                        <TouchableOpacity style={styles.cameraBtn} onPress={handleSelectImage}>
+                            {proofImage ? (
+                                <Image source={{ uri: proofImage }} style={styles.capturedImage} />
+                            ) : (
+                                <View style={styles.cameraPlaceholder}>
+                                    <Ionicons name="camera" size={32} color="#94a3b8" />
+                                    <Text style={styles.cameraLabel}>Chụp ảnh bằng chứng</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="Ví dụ: Khách khoá máy, không nghe máy sau 5 lần gọi..."
+                            value={bombReason}
+                            onChangeText={setBombReason}
+                            multiline
+                            numberOfLines={4}
+                        />
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity style={styles.modalCancel} onPress={() => setShowBombModal(false)}>
+                                <Text style={styles.modalCancelText}>Quay lại</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.modalConfirm} onPress={handleReportBomb}>
+                                <Text style={styles.modalConfirmText}>Báo Cáo</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ── Complete Delivery Modal ── */}
+            <Modal visible={showCompleteModal} transparent animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Xác nhận Giao Hàng</Text>
+                            <TouchableOpacity onPress={() => {
+                                setShowCompleteModal(false);
+                                setProofImage(null);
+                            }}>
+                                <Ionicons name="close" size={24} color="#64748b" />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.modalSub}>Vui lòng chụp ảnh gói hàng đã giao thành công cho khách.</Text>
+                        
+                        <TouchableOpacity style={[styles.cameraBtn, !proofImage && { borderColor: '#10b981', backgroundColor: '#ecfdf5' }]} onPress={handleSelectImage}>
+                            {proofImage ? (
+                                <Image source={{ uri: proofImage }} style={styles.capturedImage} />
+                            ) : (
+                                <View style={styles.cameraPlaceholder}>
+                                    <Ionicons name="camera" size={32} color="#10b981" />
+                                    <Text style={[styles.cameraLabel, { color: '#059669' }]}>Chụp ảnh bàn giao</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+
+                        <View style={[styles.modalActions, { marginTop: 20 }]}>
+                            <TouchableOpacity style={styles.modalCancel} onPress={() => {
+                                setShowCompleteModal(false);
+                                setProofImage(null);
+                            }}>
+                                <Text style={styles.modalCancelText}>Quay lại</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={[styles.modalConfirm, { backgroundColor: '#10b981' }, !proofImage && { opacity: 0.5 }]} 
+                                onPress={handleCompleteDelivery}
+                                disabled={!proofImage || !!actioningId}
+                            >
+                                <Text style={styles.modalConfirmText}>{actioningId ? 'Đang xử lý...' : 'Xác Nhận Giao'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -692,4 +920,58 @@ const styles = StyleSheet.create({
     recentStatItem: { backgroundColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
     recentStatCount: { fontSize: 12, fontWeight: '700', color: '#64748b' },
     recentStatIncome: { fontSize: 14, fontWeight: '800', color: '#10b981' },
+
+    // Modal Styles
+    modalOverlay: {
+        flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center', alignItems: 'center',
+    },
+    modalContent: {
+        width: width * 0.85, backgroundColor: '#fff', borderRadius: 24, padding: 24,
+    },
+    modalHeader: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16,
+    },
+    modalTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
+    modalSub: { fontSize: 13, color: '#64748b', marginBottom: 16, lineHeight: 18 },
+    modalInput: {
+        backgroundColor: '#f8fafc', borderRadius: 12, padding: 12, fontSize: 14, color: '#0f172a',
+        borderWidth: 1, borderColor: '#e2e8f0', textAlignVertical: 'top', height: 100, marginBottom: 20,
+    },
+    modalActions: { flexDirection: 'row', gap: 12 },
+    modalCancel: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+    modalCancelText: { fontSize: 14, fontWeight: '700', color: '#64748b' },
+    modalConfirm: {
+        flex: 1.5, backgroundColor: '#ef4444', paddingVertical: 12, borderRadius: 12, alignItems: 'center',
+    },
+    modalConfirmText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+    
+    // Camera Styles
+    cameraBtn: {
+        width: '100%',
+        height: 180,
+        backgroundColor: '#f8fafc',
+        borderRadius: 16,
+        borderWidth: 2,
+        borderColor: '#e2e8f0',
+        borderStyle: 'dashed',
+        overflow: 'hidden',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    cameraPlaceholder: {
+        alignItems: 'center',
+        gap: 8,
+    },
+    cameraLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748b',
+    },
+    capturedImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
 });

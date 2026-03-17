@@ -11,6 +11,10 @@ interface User {
     role: string;
     authProvider: string;
     address?: string;
+    walletBalance?: number;
+    bomCount?: number;
+    codBannedUntil?: string | null;
+    isVnpayMandatory?: boolean;
 }
 
 interface AuthContextType {

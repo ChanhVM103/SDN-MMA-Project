@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, ScrollView,
-    Platform, Dimensions, Modal, ActivityIndicator,
+    Platform, Dimensions, Modal, ActivityIndicator, TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { voucherAPI } from '@/constants/api';
+import { useAuth } from '@/constants/auth-context';
 
 const { width } = Dimensions.get('window');
 
@@ -34,7 +35,7 @@ interface ConfirmOrderProps {
     cartItems: CartItem[];
     restaurant: any;
     totalPrice: number;
-    onConfirm: (voucherId?: string, finalDeliveryFee?: number) => void;
+    onConfirm: (voucherId?: string, finalDeliveryFee?: number, paymentMethod?: string, deliveryAddress?: string) => void;
     onCancel: () => void;
 }
 
@@ -45,9 +46,31 @@ export default function ConfirmOrderScreen({
     onConfirm,
     onCancel,
 }: ConfirmOrderProps) {
+    const { user } = useAuth();
     const [vouchers, setVouchers] = useState<Voucher[]>([]);
     const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(null);
     const [loadingVouchers, setLoadingVouchers] = useState(true);
+    
+    // New states for COD Business Logic
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'vnpay'>('cash');
+    const [deliveryAddress, setDeliveryAddress] = useState(user?.address || '');
+
+    // Check if user is banned from COD
+    const isCodBanned = useMemo(() => {
+        if (!user) return false;
+        if (user.isVnpayMandatory) return true;
+        if (user.codBannedUntil) {
+            return new Date(user.codBannedUntil) > new Date();
+        }
+        return false;
+    }, [user]);
+
+    // Auto-switch to VNPay if COD is banned
+    useEffect(() => {
+        if (isCodBanned) {
+            setPaymentMethod('vnpay');
+        }
+    }, [isCodBanned]);
 
     const deliveryFee = restaurant?.deliveryFee || 0;
 
@@ -76,7 +99,11 @@ export default function ConfirmOrderScreen({
     const grandTotal = totalPrice + finalDeliveryFee;
 
     const handleConfirm = () => {
-        onConfirm(selectedVoucherId || undefined, finalDeliveryFee);
+        if (!deliveryAddress.trim()) {
+            Platform.OS === 'web' ? window.alert('Vui lòng nhập địa chỉ giao hàng') : alert('Vui lòng nhập địa chỉ giao hàng');
+            return;
+        }
+        onConfirm(selectedVoucherId || undefined, finalDeliveryFee, paymentMethod, deliveryAddress);
     };
 
     const handleCancel = () => {
@@ -101,15 +128,20 @@ export default function ConfirmOrderScreen({
                 </View>
 
                 <ScrollView style={s.content} showsVerticalScrollIndicator={false}>
-                    {/* Thông tin nhà hàng */}
-                    <View style={s.restaurantCard}>
-                        <View style={s.restaurantInfo}>
-                            <Text style={s.restaurantName}>{restaurant?.name}</Text>
-                            <View style={s.addressRow}>
-                                <Ionicons name="location-outline" size={16} color={AppColors.gray} />
-                                <Text style={s.address}>{restaurant?.address || '666 Hoàn Kiếm, Hà Nội'}</Text>
-                            </View>
+                    {/* Địa chỉ giao hàng */}
+                    <View style={s.section}>
+                        <Text style={s.sectionTitle}>📍 Địa chỉ giao hàng</Text>
+                        <View style={s.addressInputContainer}>
+                            <Ionicons name="location" size={20} color={AppColors.primary} style={s.addressIcon} />
+                            <TextInput
+                                style={s.addressInput}
+                                placeholder="Nhập địa chỉ giao hàng của bạn..."
+                                value={deliveryAddress}
+                                onChangeText={setDeliveryAddress}
+                                multiline
+                            />
                         </View>
+                        <Text style={s.restaurantSublabel}>Giao từ: {restaurant?.name}</Text>
                     </View>
 
                     {/* Danh sách sản phẩm */}
@@ -273,11 +305,61 @@ export default function ConfirmOrderScreen({
 
                     {/* Phương thức thanh toán */}
                     <View style={s.section}>
-                        <Text style={s.sectionTitle}>Phương thức thanh toán</Text>
-                        <TouchableOpacity style={s.paymentMethod}>
-                            <Ionicons name="wallet-outline" size={20} color={AppColors.primary} />
-                            <Text style={s.paymentText}>Thanh toán khi nhận hàng</Text>
-                            <Ionicons name="checkmark-circle" size={20} color={AppColors.primary} />
+                        <Text style={s.sectionTitle}>💳 Phương thức thanh toán</Text>
+                        
+                        {/* Option 1: Cash */}
+                        <TouchableOpacity 
+                            style={[
+                                s.paymentOption, 
+                                paymentMethod === 'cash' && s.paymentOptionActive,
+                                isCodBanned && s.paymentOptionDisabled
+                            ]}
+                            onPress={() => !isCodBanned && setPaymentMethod('cash')}
+                            disabled={isCodBanned}
+                        >
+                            <View style={s.paymentOptionLeft}>
+                                <View style={[s.paymentIconBox, { backgroundColor: '#FFF3ED' }]}>
+                                    <MaterialCommunityIcons name="cash" size={24} color="#FF6B35" />
+                                </View>
+                                <View>
+                                    <Text style={s.paymentOptionTitle}>Tiền mặt (COD)</Text>
+                                    <Text style={s.paymentOptionSub}>Thanh toán khi nhận hàng</Text>
+                                    {isCodBanned && (
+                                        <Text style={s.banText}>
+                                            ⚠️ {user?.isVnpayMandatory ? 'Bắt buộc VNPay do bùng hàng' : 'Đang bị cấm COD tạm thời'}
+                                        </Text>
+                                    )}
+                                </View>
+                            </View>
+                            <Ionicons 
+                                name={paymentMethod === 'cash' ? "checkmark-circle" : "ellipse-outline"} 
+                                size={24} 
+                                color={paymentMethod === 'cash' ? AppColors.primary : '#D1D5DB'} 
+                            />
+                        </TouchableOpacity>
+
+                        {/* Option 2: VNPay */}
+                        <TouchableOpacity 
+                            style={[s.paymentOption, paymentMethod === 'vnpay' && s.paymentOptionActive]}
+                            onPress={() => setPaymentMethod('vnpay')}
+                        >
+                            <View style={s.paymentOptionLeft}>
+                                <View style={[s.paymentIconBox, { backgroundColor: '#E0F2FE' }]}>
+                                    <MaterialCommunityIcons name="credit-card-outline" size={24} color="#0EA5E9" />
+                                </View>
+                                <View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <Text style={s.paymentOptionTitle}>VNPay</Text>
+                                        <View style={s.recomBadge}><Text style={s.recomText}>Khuyên dùng</Text></View>
+                                    </View>
+                                    <Text style={s.paymentOptionSub}>Thanh toán online an toàn</Text>
+                                </View>
+                            </View>
+                            <Ionicons 
+                                name={paymentMethod === 'vnpay' ? "checkmark-circle" : "ellipse-outline"} 
+                                size={24} 
+                                color={paymentMethod === 'vnpay' ? AppColors.primary : '#D1D5DB'} 
+                            />
                         </TouchableOpacity>
                     </View>
 
@@ -606,5 +688,91 @@ const s = StyleSheet.create({
         fontSize: 10,
         fontWeight: '700',
         color: '#EF4444',
+    },
+    // New styles
+    addressInputContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#fff',
+        borderRadius: BorderRadius.md,
+        borderWidth: 1.5,
+        borderColor: '#E5E7EB',
+        padding: 12,
+        alignItems: 'flex-start',
+    },
+    addressIcon: {
+        marginTop: 2,
+        marginRight: 10,
+    },
+    addressInput: {
+        flex: 1,
+        fontSize: 14,
+        color: AppColors.charcoal,
+        minHeight: 40,
+        textAlignVertical: 'top',
+    },
+    restaurantSublabel: {
+        fontSize: 11,
+        color: AppColors.gray,
+        marginTop: 6,
+        fontStyle: 'italic',
+    },
+    paymentOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        backgroundColor: '#fff',
+        borderRadius: BorderRadius.md,
+        borderWidth: 1.5,
+        borderColor: '#E5E7EB',
+        marginBottom: 12,
+    },
+    paymentOptionActive: {
+        borderColor: AppColors.primary,
+        backgroundColor: '#FFF7ED',
+    },
+    paymentOptionDisabled: {
+        opacity: 0.6,
+        backgroundColor: '#F9FAFB',
+    },
+    paymentOptionLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+    },
+    paymentIconBox: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    paymentOptionTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: AppColors.charcoal,
+    },
+    paymentOptionSub: {
+        fontSize: 12,
+        color: AppColors.gray,
+    },
+    recomBadge: {
+        backgroundColor: '#E0F2FE',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    recomText: {
+        fontSize: 9,
+        fontWeight: '800',
+        color: '#0369A1',
+        textTransform: 'uppercase',
+    },
+    banText: {
+        fontSize: 11,
+        color: '#EF4444',
+        fontWeight: '600',
+        marginTop: 2,
     },
 });

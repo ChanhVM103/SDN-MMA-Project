@@ -369,10 +369,17 @@ export const shipperAPI = {
             method: "PATCH",
             headers: { Authorization: `Bearer ${token}` },
         }),
-    completeDelivery: (token: string, orderId: string) =>
+    completeDelivery: (token: string, orderId: string, data: { proofImage: string, note?: string, callCount?: number }) =>
         apiRequest(`/orders/${orderId}/shipper-delivered`, {
             method: "PATCH",
             headers: { Authorization: `Bearer ${token}` },
+            body: JSON.stringify(data),
+        }),
+    reportBomb: (token: string, orderId: string, data: { reason: string, proofImage?: string }) =>
+        apiRequest(`/orders/${orderId}/shipper-bomb`, {
+            method: "PATCH",
+            headers: { Authorization: `Bearer ${token}` },
+            body: JSON.stringify(data),
         }),
 };
 

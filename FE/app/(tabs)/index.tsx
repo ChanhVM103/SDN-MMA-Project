@@ -213,6 +213,7 @@ export default function HomeScreen() {
           ];
 
           const dishes = res.data.map((m: any, index: number) => ({
+            ...m,
             id: m._id || m.id || Math.random().toString(),
             name: m.name,
             price: m.price ? m.price.toLocaleString() + 'đ' : '50.000đ',
@@ -581,7 +582,20 @@ export default function HomeScreen() {
                 {popularDishes.map((dish) => {
                   const imgUri = resolveProductImage(dish.image);
                   return (
-                    <TouchableOpacity key={dish.id} style={styles.dishCard} activeOpacity={0.85}>
+                    <TouchableOpacity 
+                      key={dish.id} 
+                      style={styles.dishCard} 
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        const restaurantId = dish.restaurantId?._id || dish.restaurantId;
+                        if (restaurantId) {
+                          router.push({ 
+                            pathname: '/restaurant/[id]', 
+                            params: { id: restaurantId, highlightProduct: dish._id } 
+                          } as any);
+                        }
+                      }}
+                    >
                       <LinearGradient
                         colors={dish.gradient}
                         style={styles.dishImageContainer}
@@ -612,7 +626,18 @@ export default function HomeScreen() {
                         </View>
                         <View style={styles.dishBottom}>
                           <Text style={styles.dishPrice}>{dish.price}</Text>
-                          <TouchableOpacity style={styles.addButton}>
+                          <TouchableOpacity 
+                            style={styles.addButton}
+                            onPress={() => {
+                              const restaurantId = dish.restaurantId?._id || dish.restaurantId;
+                              if (restaurantId) {
+                                router.push({ 
+                                  pathname: '/restaurant/[id]', 
+                                  params: { id: restaurantId, highlightProduct: dish._id, autoAddToCart: '1' } 
+                                } as any);
+                              }
+                            }}
+                          >
                             <Ionicons name="add" size={18} color="#fff" />
                           </TouchableOpacity>
                         </View>

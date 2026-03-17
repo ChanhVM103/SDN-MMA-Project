@@ -146,24 +146,25 @@ function App() {
         paymentMethod,
       };
       if (voucherId) orderPayload.voucherId = voucherId;
-      const order = await createOrder(orderPayload);
+      const res = await createOrder(orderPayload);
       setCart(EMPTY_CART);
       setCartOpen(false);
 
       if (paymentMethod === "vnpay") {
-        // Lấy VNPay URL rồi redirect
-        const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
-        const { token } = parseStoredAuth();
-        const res = await fetch(`${API_BASE}/create-vnpay-url`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ orderId: order._id, orderInfo: `Thanh toan don hang FoodieHub` }),
-        });
-        const data = await res.json();
-        if (data.url) {
-          window.location.href = data.url;
+        if (res.paymentUrl) {
+          window.location.href = res.paymentUrl;
         } else {
-          throw new Error("Không lấy được URL thanh toán");
+          // Fallback if paymentUrl not returned (shouldn't happen with new BE)
+          const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+          const { token } = parseStoredAuth();
+          const vnp = await fetch(`${API_BASE}/create-vnpay-url`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ orderId: res.order?._id || res._id, orderInfo: `Thanh toán đơn hàng FoodieHub` }),
+          });
+          const vnpData = await vnp.json();
+          if (vnpData.url) window.location.href = vnpData.url;
+          else throw new Error("Không lấy được URL thanh toán");
         }
       } else {
         setOrderMsg("🎉 Đặt hàng thành công! Nhà hàng sẽ xác nhận sớm.");

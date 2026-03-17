@@ -6,6 +6,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { useOrder } from '@/constants/order-context';
 import { useAuth } from '@/constants/auth-context';
@@ -443,25 +444,12 @@ export default function RestaurantDetailScreen() {
         setShowConfirmOrder(true);
     };
 
-    const handleConfirmOrder = async (voucherId?: string, finalDeliveryFeeArg?: number) => {
+    const handleConfirmOrder = async (voucherId?: string, finalDeliveryFeeArg?: number, paymentMethod: string = 'cash', deliveryAddress?: string) => {
         try {
             const originalDeliveryFee = restaurant?.deliveryFee || 0;
-            const deliveryFee = finalDeliveryFeeArg !== undefined ? finalDeliveryFeeArg : originalDeliveryFee;
             const items = getCartItems();
 
-            const order = {
-                id: `${Date.now()}`,
-                restaurantName: restaurant?.name || 'Nhà hàng',
-                restaurantAddress: restaurant?.address || 'Quận 11, TP. HCM',
-                totalPrice: cartTotalPrice + deliveryFee,
-                itemCount: cartTotal,
-                status: 'ORDERED' as const,
-                createdAt: new Date().toISOString(),
-                items: items,
-            };
-
             if (token) {
-                // Use the restaurant ID from this page - this is the restaurant we're ordering FROM
                 const realRestId = restaurant?._id || restaurant?.id || id;
 
                 if (realRestId) {
@@ -475,18 +463,30 @@ export default function RestaurantDetailScreen() {
                         note: item.toppings?.join(', ') || ''
                     }));
 
-                    await orderAPI.createOrder(token, {
+                    const res = await orderAPI.createOrder(token, {
                         restaurantId: realRestId,
                         items: apiItems,
-                        deliveryFee: originalDeliveryFee, // Backend recalculates based on voucherId
+                        deliveryFee: originalDeliveryFee,
                         voucherId,
-                        deliveryAddress: '123 Test Street'
+                        deliveryAddress: deliveryAddress || 'Chưa có địa chỉ',
+                        paymentMethod,
+                        note: 'Mobile Order'
                     });
+
+                    if (res.success) {
+                        // Handle VNPay Redirect
+                        if (paymentMethod === 'vnpay' && res.data?.paymentUrl) {
+                            await WebBrowser.openBrowserAsync(res.data.paymentUrl);
+                        }
+
+                        setShowConfirmOrder(false);
+                        setCartLines([]);
+                        router.replace({ pathname: '/', params: { orderSuccess: '1' } } as any);
+                        return;
+                    }
                 }
             }
 
-            // Fallback: still save in local App context just in case
-            addOrder(order);
             setShowConfirmOrder(false);
             setCartLines([]);
             router.replace({ pathname: '/', params: { orderSuccess: '1' } } as any);
