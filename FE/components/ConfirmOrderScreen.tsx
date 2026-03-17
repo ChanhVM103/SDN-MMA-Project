@@ -326,7 +326,7 @@ export default function ConfirmOrderScreen({
                                     <Text style={s.paymentOptionSub}>Thanh toán khi nhận hàng</Text>
                                     {isCodBanned && (
                                         <Text style={s.banText}>
-                                            ⚠️ {user?.isVnpayMandatory ? 'Bắt buộc VNPay do bùng hàng' : 'Đang bị cấm COD tạm thời'}
+                                            ⚠️ {user?.isVnpayMandatory ? 'Bắt buộc VNPay do lịch sử giao hàng không thành công' : 'Đang bị cấm COD tạm thời'}
                                         </Text>
                                     )}
                                 </View>

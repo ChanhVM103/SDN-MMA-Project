@@ -2250,7 +2250,7 @@ const BrandDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                     icon: <CancelIcon sx={{ fontSize: 16 }} />,
                   },
                   bombed: {
-                    label: "Bị bom hàng",
+                    label: "Không liên lạc được",
                     color: "#dc2626",
                     bg: "#fef2f2",
                     icon: <BlockIcon sx={{ fontSize: 16 }} />,

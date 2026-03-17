@@ -1941,7 +1941,7 @@ const AdminDashboardPage = ({ user, onLogout, navigate, showToast, showConfirm }
                         </TableCell>
                         <TableCell>
                           <Chip 
-                            label={{ pending: "Chờ xác nhận", confirmed: "Đã xác nhận", ready_for_pickup: "Chờ lấy hàng", shipper_accepted: "Shipper đã nhận", delivering: "Đang giao", shipper_delivered: "Đã giao (chờ xác nhận)", delivered: "Hoàn thành", cancelled: "Đã huỷ", bombed: "Bị bom" }[order.status] || order.status} 
+                            label={{ pending: "Chờ xác nhận", confirmed: "Đã xác nhận", ready_for_pickup: "Chờ lấy hàng", shipper_accepted: "Shipper đã nhận", delivering: "Đang giao", shipper_delivered: "Đã giao (chờ xác nhận)", delivered: "Hoàn thành", cancelled: "Đã huỷ", bombed: "Không liên lạc được" }[order.status] || order.status} 
                             color={{ delivered: "success", bombed: "error", cancelled: "error", delivering: "info", shipper_accepted: "info", confirmed: "warning", ready_for_pickup: "warning", pending: "default", shipper_delivered: "success" }[order.status] || "default"}
                             size="small"
                           />

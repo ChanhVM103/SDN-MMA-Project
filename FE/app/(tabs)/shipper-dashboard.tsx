@@ -7,7 +7,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/constants/auth-context';
 import { AppColors } from '@/constants/theme';
-import { shipperAPI } from '@/constants/api';
+import { shipperAPI, authAPI } from '@/constants/api';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,7 +30,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 
 // ─── Main Component ───────────────────────────────
 export default function ShipperDashboardScreen() {
-    const { user, token } = useAuth();
+    const { user, token, updateUser } = useAuth();
     const [tabIndex, setTabIndex] = useState(0);
     const [available, setAvailable] = useState<any[]>([]);
     const [myOrders, setMyOrders] = useState<any[]>([]);
@@ -49,6 +49,19 @@ export default function ShipperDashboardScreen() {
     const [completeOrderId, setCompleteOrderId] = useState<string | null>(null);
     const [proofImage, setProofImage] = useState<string | null>(null);
 
+    // Refresh user profile to get latest walletBalance
+    const refreshUserProfile = useCallback(async () => {
+        if (!token) return;
+        try {
+            const profileRes = await authAPI.getProfile(token);
+            if (profileRes?.user) {
+                await updateUser(profileRes.user);
+            }
+        } catch (e) {
+            console.log('Failed to refresh user profile:', e);
+        }
+    }, [token, updateUser]);
+
     const loadData = useCallback(async (silent = false) => {
         if (!token) return;
         if (!silent) setLoading(true);
@@ -60,13 +73,15 @@ export default function ShipperDashboardScreen() {
             ]);
             setAvailable(availRes?.data || availRes || []);
             setMyOrders(myRes?.data || myRes || []);
+            // Also refresh user profile to sync walletBalance
+            await refreshUserProfile();
         } catch (err: any) {
             RNAlert.alert('Lỗi', 'Không thể tải dữ liệu: ' + (err?.message || ''));
         } finally {
             if (!silent) setLoading(false);
             else setRefreshing(false);
         }
-    }, [token]);
+    }, [token, refreshUserProfile]);
 
     useEffect(() => { loadData(); }, [loadData]);
     useEffect(() => {
@@ -90,7 +105,7 @@ export default function ShipperDashboardScreen() {
 
     const handleReportBomb = async () => {
         if (!proofImage) {
-            RNAlert.alert('Lỗi', 'Vui lòng chụp ảnh bằng chứng để báo bùng đơn hàng');
+            RNAlert.alert('Lỗi', 'Vui lòng chụp ảnh bằng chứng để báo cáo không liên lạc được khách');
             return;
         }
         if (!bombReason.trim()) {
@@ -102,14 +117,14 @@ export default function ShipperDashboardScreen() {
         setActioningId(bombOrderId);
         try {
             await shipperAPI.reportBomb(token, bombOrderId, { reason: bombReason, proofImage });
-            RNAlert.alert('✅ Đã ghi nhận', 'Đơn hàng đã được đánh dấu là BÙNG. Hệ thống sẽ xử phạt khách hàng này.');
+            RNAlert.alert('✅ Đã ghi nhận', 'Đã ghi nhận không liên lạc được khách. Hệ thống sẽ xử lý đơn hàng này.');
             setShowBombModal(false);
             setBombReason('');
             setBombOrderId(null);
             setProofImage(null);
             await loadData(true);
         } catch (err: any) {
-            RNAlert.alert('Lỗi', err?.message || 'Không thể báo bùng hàng');
+            RNAlert.alert('Lỗi', err?.message || 'Không thể gửi báo cáo');
         } finally {
             setActioningId(null);
         }
@@ -253,7 +268,7 @@ export default function ShipperDashboardScreen() {
                         >
                             <View style={[styles.mainActionGradient, { backgroundColor: '#ef4444' }]}>
                                 <MaterialIcons name="report-problem" size={20} color="#fff" />
-                                <Text style={styles.mainActionText}>Báo Bùng</Text>
+                                <Text style={styles.mainActionText}>Không liên lạc được</Text>
                             </View>
                         </TouchableOpacity>
 
@@ -555,8 +570,8 @@ export default function ShipperDashboardScreen() {
                         <View style={[styles.statIcon, { backgroundColor: 'rgba(16,185,129,0.15)' }]}>
                             <Text style={{ fontSize: 16 }}>💰</Text>
                         </View>
-                        <Text style={[styles.statNumber, { color: '#10b981', fontSize: 16 }]}>{fmt(totalIncome)}đ</Text>
-                        <Text style={styles.statLabel}>Thu nhập</Text>
+                        <Text style={[styles.statNumber, { color: '#10b981', fontSize: 16 }]}>{fmt(user?.walletBalance || 0)}đ</Text>
+                        <Text style={styles.statLabel}>Số dư ví</Text>
                     </View>
                 </View>
             </LinearGradient>
@@ -614,7 +629,7 @@ export default function ShipperDashboardScreen() {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Báo cáo BÙNG hàng</Text>
+                            <Text style={styles.modalTitle}>Báo cáo không liên lạc được</Text>
                             <TouchableOpacity onPress={() => {
                                 setShowBombModal(false);
                                 setProofImage(null);

@@ -621,7 +621,7 @@ function CartDrawer({ cart, onClose, onUpdateQty, onPlaceOrder, user, navigate, 
                         ⚠️ {user.isVnpayMandatory ? "Bạn bắt buộc phải thanh toán online." : "Bạn đang bị cấm thanh toán tiền mặt."}
                       </div>
                       <div style={{ fontSize: 11, color: "#dc2626", marginTop: 2 }}>
-                        Do lịch sử đơn hàng có đơn bị bom. {user.codBannedUntil && `Cấm đến: ${new Date(user.codBannedUntil).toLocaleDateString("vi-VN")}`}
+                        Do lịch sử đơn hàng có đơn không liên lạc được khách. {user.codBannedUntil && `Cấm đến: ${new Date(user.codBannedUntil).toLocaleDateString("vi-VN")}`}
                       </div>
                     </div>
                   )}

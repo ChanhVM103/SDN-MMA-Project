@@ -260,7 +260,7 @@ function StatsTab({ orders }) {
       <StatCard label="Tổng hoàn thành" value={done.length.toString().padStart(2,"0")} icon="✅" color="#10b981"/>
       <StatCard label="Giao hôm nay" value={today.length.toString().padStart(2,"0")} icon="📦" color="#3b82f6"/>
       <StatCard label="Tổng thu nhập" value={fmt(income)} icon="💰" color="#ee4d2d"/>
-      <StatCard label="Thu Nhập Hôm Nay" value={fmt(todayI)} icon="💵" color="#f59e0b"/>
+      <StatCard label="Thu nhập hôm nay" value={fmt(todayI)} icon="💵" color="#f59e0b"/>
     </div>
   );
 }
@@ -444,7 +444,7 @@ export default function ShipperDashboardPage({ user: initialUser, onLogout, show
             <StatCard label="Chờ Nhận"      value={available.length.toString().padStart(2,"0")} icon="📋" color="#f59e0b"/>
             <StatCard label="Đang Giao"  value={active.length.toString().padStart(2,"0")}    icon="🚚" color="#3b82f6"/>
             <StatCard label="Hoàn Thành"    value={completed.toString().padStart(2,"0")}         icon="✅" color="#10b981"/>
-            <StatCard label="Thu Nhập Hôm Nay" value={fmt(todayProfit)}                           icon="💵" color="#ee4d2d"/>
+            <StatCard label="Số dư ví" value={fmt(localUser?.walletBalance)}                           icon="💰" color="#ee4d2d"/>
           </div>
         )}
 
